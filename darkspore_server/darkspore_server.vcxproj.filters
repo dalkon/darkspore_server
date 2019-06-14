@@ -114,6 +114,18 @@
     <ClInclude Include="source\http\uri.h">
       <Filter>Header Files\http</Filter>
     </ClInclude>
+    <ClInclude Include="source\blaze\component\gamemanagercomponent.h">
+      <Filter>Header Files\blaze\component</Filter>
+    </ClInclude>
+    <ClInclude Include="source\blaze\component\associationlistscomponent.h">
+      <Filter>Header Files\blaze\component</Filter>
+    </ClInclude>
+    <ClInclude Include="source\blaze\component\roomscomponent.h">
+      <Filter>Header Files\blaze\component</Filter>
+    </ClInclude>
+    <ClInclude Include="source\http\multipart.h">
+      <Filter>Header Files\http</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -174,6 +186,18 @@
       <Filter>Source Files\game</Filter>
     </ClCompile>
     <ClCompile Include="source\http\uri.cpp">
+      <Filter>Source Files\http</Filter>
+    </ClCompile>
+    <ClCompile Include="source\blaze\component\gamemanagercomponent.cpp">
+      <Filter>Source Files\blaze\component</Filter>
+    </ClCompile>
+    <ClCompile Include="source\blaze\component\associationlistscomponent.cpp">
+      <Filter>Source Files\blaze\component</Filter>
+    </ClCompile>
+    <ClCompile Include="source\blaze\component\roomscomponent.cpp">
+      <Filter>Source Files\blaze\component</Filter>
+    </ClCompile>
+    <ClCompile Include="source\http\multipart.cpp">
       <Filter>Source Files\http</Filter>
     </ClCompile>
   </ItemGroup>

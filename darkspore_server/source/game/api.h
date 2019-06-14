@@ -34,8 +34,21 @@ namespace Game {
 
 			// game
 			void game_status_getStatus(HTTP::Response& response, const HTTP::URI& uri);
+			void game_status_getBroadcastList(HTTP::Response& response, const HTTP::URI& uri);
+
+			void game_inventory_getPartList(HTTP::Response& response, const HTTP::URI& uri);
+
+			void game_account_auth(HTTP::Response& response, const HTTP::URI& uri);
+			void game_account_getAccount(HTTP::Response& response, const HTTP::URI& uri);
+
+			void game_game_getGame(HTTP::Response& response, const HTTP::URI& uri);
+
+			// survey
+			void survey_survey_getSurveyList(HTTP::Response& response, const HTTP::URI& uri);
 
 		private:
+			void add_broadcasts(pugi::xml_node& node);
+
 			void add_text_node(pugi::xml_node& node, const std::string& name, const std::string& value);
 
 			void add_common_keys(pugi::xml_node& node);

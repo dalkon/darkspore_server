@@ -6,6 +6,9 @@
 #include "component/redirectorcomponent.h"
 #include "component/utilcomponent.h"
 #include "component/usersessioncomponent.h"
+#include "component/gamemanagercomponent.h"
+#include "component/associationlistscomponent.h"
+#include "component/roomscomponent.h"
 
 #include <boost/bind.hpp>
 #include <iostream>
@@ -31,7 +34,32 @@ namespace Blaze {
 			boost::bind(&Client::handle_handshake, this, boost::asio::placeholders::error));
 	}
 
-	void Client::send(const Header& header, const DataBuffer& buffer) {
+	void Client::send(const Header& header, const DataBuffer* buffer) {
+#if 1
+		DataBuffer& writeBuffer = mWriteBuffers.emplace_back();
+
+		size_t length;
+		if (buffer) {
+			length = buffer->size();
+		} else {
+			length = 0;
+		}
+
+		writeBuffer.write_u16_be(static_cast<uint16_t>(length));
+		writeBuffer.write_u16_be(static_cast<uint16_t>(header.component));
+		writeBuffer.write_u16_be(header.command);
+		writeBuffer.write_u16_be(header.error_code);
+
+		uint32_t message = 0;
+		message |= static_cast<uint32_t>(header.message_type) << 28;
+		// message |= 0 & 0x3FF;
+		message |= header.message_id & 0xFFFFF;
+		writeBuffer.write_u32_be(message);
+
+		if (length > 0) {
+			writeBuffer.insert(*buffer);
+		}
+#else
 		size_t length = buffer.size();
 
 		mWriteBuffer.write_u16_be(static_cast<uint16_t>(length));
@@ -39,38 +67,43 @@ namespace Blaze {
 		mWriteBuffer.write_u16_be(header.command);
 		mWriteBuffer.write_u16_be(header.error_code);
 
-		uint32_t message = 0;
-		message |= static_cast<uint32_t>(header.message_type) << 28;
-		// message |= 0 & 0x3FF;
-		message |= header.message_id & 0xFFFFF;
-		mWriteBuffer.write_u32_be(message);
+		if (header.message_type != MessageType::Notification) {
+			uint32_t message = 0;
+			message |= static_cast<uint32_t>(header.message_type) << 28;
+			// message |= 0 & 0x3FF;
+			message |= header.message_id & 0xFFFFF;
+			mWriteBuffer.write_u32_be(message);
+		} else {
+			mWriteBuffer.write_u16_le(static_cast<uint16_t>(header.message_type) << 4);
+			mWriteBuffer.write_u16_be(header.message_id);
+		}
 
 		if (length > 0) {
 			mWriteBuffer.insert(buffer);
 		}
-		/*
-		mComponent = buffer.read_u16_le();
-		mCommand = buffer.read_u16_le();
-		mError = buffer.read_u16_le();
-		mQType = buffer.read_u16_le();
-		mId = buffer.read_u16_le();
-		if (mQType & 0x10) {
-			mExtLength = buffer.read_u16_le();
-		} else {
-			mExtLength = 0;
-		}
-		*/
+#endif
 	}
 
 	void Client::notify(Header header, const DataBuffer& buffer) {
 		header.message_type = MessageType::Notification;
 		header.message_id = 0;
-		send(header, buffer);
+		send(header, &buffer);
+	}
+
+	void Client::reply(Header header) {
+		header.message_type = (header.error_code > 0) ? MessageType::ErrorReply : MessageType::Reply;
+		if (header.message_id == 0) {
+			header.message_id = mCurrentMessageId;
+		}
+		send(header, nullptr);
 	}
 
 	void Client::reply(Header header, const DataBuffer& buffer) {
 		header.message_type = (header.error_code > 0) ? MessageType::ErrorReply : MessageType::Reply;
-		send(header, buffer);
+		if (header.message_id == 0) {
+			header.message_id = mCurrentMessageId;
+		}
+		send(header, &buffer);
 	}
 
 	void Client::handle_handshake(const boost::system::error_code& error) {
@@ -91,13 +124,23 @@ namespace Blaze {
 			mReadBuffer.resize(bytes_transferred);
 			mReadBuffer.set_position(0);
 
+			mWriteBuffers.clear();
 			while (mReadBuffer.position() < bytes_transferred) {
 				parse_packets();
 			}
 
+#if 1
+			for (const auto& buffer : mWriteBuffers) {
+				boost::asio::write(mSocket, boost::asio::buffer(buffer.data(), buffer.size()));
+			}
+
+			mSocket.async_read_some(boost::asio::buffer(mReadBuffer.data(), mReadBuffer.capacity()),
+				boost::bind(&Client::handle_read, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+#else
 			boost::asio::async_write(mSocket,
 				boost::asio::buffer(mWriteBuffer.data(), mWriteBuffer.size()),
 				boost::bind(&Client::handle_write, this, boost::asio::placeholders::error));
+#endif
 		} else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
 			std::cout << "Error: Client disconnected." << std::endl;
 			delete this;
@@ -137,19 +180,33 @@ namespace Blaze {
 		uint32_t message = mReadBuffer.read_u32_be();
 		header.message_type = static_cast<Blaze::MessageType>(message >> 28);
 		header.message_id = message & 0xFFFFF;
-
-		message >>= 20;
+		/*
 		if (message & 1) {
 			header.length |= mReadBuffer.read_u16_be();
 		}
+		*/
 
-		uint32_t header_size = 12 + (message & 6);
+		auto pos = mReadBuffer.position();
 		TDF::Parse(mReadBuffer, mRequest);
 
-		Log(mRequest);
-		// std::cout << "Component: " << static_cast<int>(header.component) << ", Command: " << std::hex << header.command << std::dec << std::endl;
+		mReadBuffer.set_position(pos);
+		mCurrentRequest = {};
+		TDF::Parse(mReadBuffer, mCurrentRequest);
+		
+		if (header.component != Blaze::Component::UserSessions) {
+			// Log(mRequest);
+			std::cout << "Component: " << static_cast<int>(header.component) <<
+				", Command: 0x" << std::hex << header.command << std::dec <<
+				", Type: " << (message >> 28) <<
+				std::endl;
+		}
 
+		mCurrentMessageId = header.message_id;
 		switch (header.component) {
+			case Blaze::Component::AssociationLists:
+				Blaze::AssociationListsComponent::Parse(this, header);
+				break;
+
 			case Blaze::Component::Authentication:
 				Blaze::AuthComponent::Parse(this, header);
 				break;
@@ -162,7 +219,16 @@ namespace Blaze {
 				Blaze::UtilComponent::Parse(this, header);
 				break;
 
+			case Blaze::Component::GameManager:
+				Blaze::GameManagerComponent::Parse(this, header);
+				break;
+
+			case Blaze::Component::Rooms:
+				Blaze::RoomsComponent::Parse(this, header);
+				break;
+
 			case Blaze::Component::UserSessions:
+				// Log(mRequest);
 				Blaze::UserSessionComponent::Parse(this, header);
 				break;
 

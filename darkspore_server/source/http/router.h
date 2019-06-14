@@ -3,6 +3,7 @@
 #define _HTTP_ROUTER_HEADER
 
 // Include
+#include "uri.h"
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <vector>
@@ -11,7 +12,6 @@
 // HTTP
 namespace HTTP {
 	class Session;
-	class URI;
 
 	// Response
 	class Response {
@@ -40,7 +40,15 @@ namespace HTTP {
 			bool mKeepAlive;
 	};
 
-	using RouteFn = std::function<void(Response&, const URI&)>;
+	struct Request {
+		boost::beast::http::request<boost::beast::http::string_body>& data;
+		URI uri;
+
+		Request(boost::beast::http::request<boost::beast::http::string_body>& request) :
+			data(request), uri(data.target().to_string()) {}
+	};
+
+	using RouteFn = std::function<void(Response&, Request&)>;
 
 	// RoutePath
 	class RoutePath {

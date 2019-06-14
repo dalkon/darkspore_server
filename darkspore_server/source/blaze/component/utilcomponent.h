@@ -14,6 +14,11 @@ namespace Blaze {
 		public:
 			static void Parse(Client* client, const Header& header);
 
+			// Response
+			static void SendPostAuth(Client* client, Header header);
+			static void SendGetTickerServer(Client* client);
+			static void SendUserOptions(Client* client);
+
 		private:
 			static void FetchClientConfig(Client* client, Header header);
 			static void Ping(Client* client, Header header);

@@ -26,6 +26,8 @@ namespace HTTP {
 			uint64_t parameteru(const std::string& name) const;
 			bool parameterb(const std::string& name) const;
 
+			void set_parameter(const std::string& name, const std::string& value);
+
 		private:
 			size_t parse_scheme(std::string_view path, size_t offset = 0);
 			size_t parse_authority(std::string_view path, size_t offset = 0);

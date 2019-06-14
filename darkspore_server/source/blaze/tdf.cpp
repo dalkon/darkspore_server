@@ -20,7 +20,7 @@
 
 // Blaze
 namespace Blaze {
-	void Log(rapidjson::Document& document) {
+	void Log(const rapidjson::Document& document) {
 		rapidjson::StringBuffer buffer;
 		buffer.Clear();
 
@@ -139,6 +139,10 @@ namespace Blaze {
 			};
 
 			Header header = ReadHeader(buffer);
+			if (buffer.eof()) {
+				return;
+			}
+
 			// std::cout << "Type: " << static_cast<int>(header.type) << std::endl;
 			switch (header.type) {
 				case Type::Integer: {
@@ -149,6 +153,12 @@ namespace Blaze {
 
 				case Type::String: {
 					rapidjson::Value value = ParseString(buffer, allocator);
+					AddObject(header, value, parent, allocator);
+					break;
+				}
+
+				case Type::Binary: {
+					rapidjson::Value value = ParseBlob(buffer, allocator);
 					AddObject(header, value, parent, allocator);
 					break;
 				}
@@ -166,46 +176,31 @@ namespace Blaze {
 				}
 
 				case Type::List: {
-					rapidjson::Value value(rapidjson::kArrayType);
+					rapidjson::Value value = ParseList(buffer, allocator);
+					AddObject(header, value, parent, allocator);
+					break;
+				}
 
-					uint8_t listType = buffer.read<uint8_t>();
-					uint8_t listSize = buffer.read<uint8_t>();
+				case Type::Map: {
+					rapidjson::Value value = ParseMap(buffer, allocator);
+					AddObject(header, value, parent, allocator);
+					break;
+				}
 
-					Type type = static_cast<Type>(listType);
-					if (buffer.peek<uint8_t>() == 0x02 && type == Type::Struct) {
-						buffer.skip<uint8_t>();
+				case Type::IntegerList: {
+					rapidjson::Value value = ParseIntegerList(buffer, allocator);
+					AddObject(header, value, parent, allocator);
+					break;
+				}
 
-						ParseValue(buffer, value, allocator);
-						ParseValue(buffer, value, allocator);
+				case Type::Vector2: {
+					rapidjson::Value value = ParseVector2(buffer, allocator);
+					AddObject(header, value, parent, allocator);
+					break;
+				}
 
-						buffer.skip<uint8_t>();
-					} else {
-						for (uint8_t i = 0; i < listSize; i++) {
-							switch (type) {
-								case Type::Integer: {
-									rapidjson::Value listValue = ParseInteger(buffer, allocator);
-									AddObject(header, listValue, value, allocator);
-									break;
-								}
-
-								case Type::String: {
-									rapidjson::Value listValue = ParseString(buffer, allocator);
-									AddObject(header, listValue, value, allocator);
-									break;
-								}
-
-								case Type::Struct: {
-									rapidjson::Value listValue = ParseStruct(buffer, allocator);
-									AddObject(header, listValue, value, allocator);
-									break;
-								}
-
-								default:
-									break;
-							}
-						}
-					}
-
+				case Type::Vector3: {
+					rapidjson::Value value = ParseVector3(buffer, allocator);
 					AddObject(header, value, parent, allocator);
 					break;
 				}
@@ -222,6 +217,18 @@ namespace Blaze {
 
 		rapidjson::Value ParseString(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator) {
 			return rapidjson::Value(ReadString(buffer), allocator);
+		}
+
+		rapidjson::Value ParseBlob(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator) {
+			std::string str;
+
+			uint64_t length = buffer.decode_tdf_integer();
+			if (length > 0) {
+				str.resize(length);
+				buffer.read<char>(&str[0], length);
+			}
+
+			return rapidjson::Value(str, allocator);
 		}
 
 		rapidjson::Value ParseStruct(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator) {
@@ -268,13 +275,15 @@ namespace Blaze {
 
 			Type type = static_cast<Type>(listType);
 			if (buffer.peek<uint8_t>() == 0x02 && type == Type::Struct) {
+				value.AddMember(rapidjson::Value("_Stub", allocator), rapidjson::Value(true), allocator);
+
 				buffer.skip<uint8_t>();
-
-				ParseValue(buffer, listContent, allocator);
-				ParseValue(buffer, listContent, allocator);
-
+				while (buffer.peek<uint8_t>() != 0x00) {
+					ParseValue(buffer, listContent, allocator);
+				}
 				buffer.skip<uint8_t>();
 			} else {
+				value.AddMember(rapidjson::Value("_Stub", allocator), rapidjson::Value(false), allocator);
 				for (uint8_t i = 0; i < listSize; i++) {
 					switch (type) {
 						case Type::Integer: {
@@ -305,6 +314,85 @@ namespace Blaze {
 			return value;
 		}
 
+		rapidjson::Value ParseMap(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator) {
+			const auto GetMapItem = [&](Type type) {
+				rapidjson::Value value;
+				switch (type) {
+					case Type::Integer:
+						value = ParseInteger(buffer, allocator);
+						break;
+
+					case Type::String:
+						value = ParseString(buffer, allocator);
+						break;
+
+					case Type::Struct:
+						value = ParseStruct(buffer, allocator);
+						break;
+
+					default:
+						break;
+				}
+				return value;
+			};
+
+			rapidjson::Value value(rapidjson::kObjectType);
+			value.AddMember(rapidjson::Value("_Type", allocator), rapidjson::Value(static_cast<uint8_t>(Type::Map)), allocator);
+
+			uint8_t keyType = buffer.read<uint8_t>();
+			value.AddMember(rapidjson::Value("_KeyType", allocator), rapidjson::Value(keyType), allocator);
+
+			uint8_t valueType = buffer.read<uint8_t>();
+			value.AddMember(rapidjson::Value("_ValueType", allocator), rapidjson::Value(valueType), allocator);
+
+			uint8_t mapSize = buffer.read<uint8_t>();
+			value.AddMember(rapidjson::Value("_MapSize", allocator), rapidjson::Value(mapSize), allocator);
+
+			rapidjson::Value mapContent(rapidjson::kObjectType);
+			for (uint8_t i = 0; i < mapSize; i++) {
+				auto key = GetMapItem(static_cast<Type>(keyType));
+				auto value = GetMapItem(static_cast<Type>(valueType));
+				mapContent.AddMember(key, value, allocator);
+			}
+
+			value.AddMember(rapidjson::Value("_Content", allocator), mapContent, allocator);
+			return value;
+		}
+
+		rapidjson::Value ParseIntegerList(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator) {
+			rapidjson::Value value(rapidjson::kObjectType);
+			value.AddMember(rapidjson::Value("_Type", allocator), rapidjson::Value(static_cast<uint8_t>(Type::IntegerList)), allocator);
+
+			uint8_t listSize = buffer.read<uint8_t>();
+			value.AddMember(rapidjson::Value("_ListSize", allocator), rapidjson::Value(listSize), allocator);
+
+			rapidjson::Value listContent(rapidjson::kArrayType);
+			for (uint8_t i = 0; i < listSize; i++) {
+				rapidjson::Value contentValue = ParseInteger(buffer, allocator);
+				listContent.PushBack(contentValue, allocator);
+			}
+
+			value.AddMember(rapidjson::Value("_Content", allocator), listContent, allocator);
+			return value;
+		}
+
+		rapidjson::Value ParseVector2(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator) {
+			rapidjson::Value value(rapidjson::kObjectType);
+			value.AddMember(rapidjson::Value("_Type", allocator), rapidjson::Value(static_cast<uint8_t>(Type::Vector2)), allocator);
+			value.AddMember(rapidjson::Value("_X", allocator), ParseInteger(buffer, allocator), allocator);
+			value.AddMember(rapidjson::Value("_Y", allocator), ParseInteger(buffer, allocator), allocator);
+			return value;
+		}
+
+		rapidjson::Value ParseVector3(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator) {
+			rapidjson::Value value(rapidjson::kObjectType);
+			value.AddMember(rapidjson::Value("_Type", allocator), rapidjson::Value(static_cast<uint8_t>(Type::Vector2)), allocator);
+			value.AddMember(rapidjson::Value("_X", allocator), ParseInteger(buffer, allocator), allocator);
+			value.AddMember(rapidjson::Value("_Y", allocator), ParseInteger(buffer, allocator), allocator);
+			value.AddMember(rapidjson::Value("_Z", allocator), ParseInteger(buffer, allocator), allocator);
+			return value;
+		}
+
 		// Packet
 		Packet::Packet() : mDocument(), mAllocator(mDocument.GetAllocator()) {
 			mDocument.SetObject();
@@ -325,6 +413,34 @@ namespace Blaze {
 			AddMember(parent, label, rapidjson::Value(value, mAllocator).Move());
 		}
 
+		void Packet::PutBlob(rapidjson::Value* parent, const std::string& label, const uint8_t* data, uint64_t size) {
+			auto value = rapidjson::Value(rapidjson::kObjectType);
+			value.AddMember(rapidjson::Value("_Type", mAllocator), rapidjson::Value(static_cast<uint32_t>(Type::Binary)), mAllocator);
+			if (data != nullptr && size > 0) {
+				std::string str(size, '\0');
+				std::memcpy(&str[0], data, size);
+
+				value.AddMember(rapidjson::Value("_Content", mAllocator), rapidjson::Value(str, mAllocator).Move(), mAllocator);
+			} else {
+				value.AddMember(rapidjson::Value("_Content", mAllocator), rapidjson::Value("", mAllocator).Move(), mAllocator);
+			}
+		}
+
+		void Packet::PutVector2(rapidjson::Value* parent, const std::string& label, uint64_t x, uint64_t y) {
+			auto value = rapidjson::Value(rapidjson::kObjectType);
+			value.AddMember(rapidjson::Value("_Type", mAllocator), rapidjson::Value(static_cast<uint8_t>(Type::Vector2)), mAllocator);
+			value.AddMember(rapidjson::Value("_X", mAllocator), rapidjson::Value(x).Move(), mAllocator);
+			value.AddMember(rapidjson::Value("_Y", mAllocator), rapidjson::Value(y).Move(), mAllocator);
+		}
+
+		void Packet::PutVector3(rapidjson::Value* parent, const std::string& label, uint64_t x, uint64_t y, uint64_t z) {
+			auto value = rapidjson::Value(rapidjson::kObjectType);
+			value.AddMember(rapidjson::Value("_Type", mAllocator), rapidjson::Value(static_cast<uint8_t>(Type::Vector3)), mAllocator);
+			value.AddMember(rapidjson::Value("_X", mAllocator), rapidjson::Value(x).Move(), mAllocator);
+			value.AddMember(rapidjson::Value("_Y", mAllocator), rapidjson::Value(y).Move(), mAllocator);
+			value.AddMember(rapidjson::Value("_Z", mAllocator), rapidjson::Value(z).Move(), mAllocator);
+		}
+
 		rapidjson::Value& Packet::CreateStruct(rapidjson::Value* parent, const std::string& label) {
 			auto value = rapidjson::Value(rapidjson::kObjectType);
 			value.AddMember(rapidjson::Value("_Type", mAllocator), rapidjson::Value(static_cast<uint32_t>(Type::Struct)), mAllocator);
@@ -340,11 +456,12 @@ namespace Blaze {
 			return AddMember(parent, label, value)["_Content"];
 		}
 
-		rapidjson::Value& Packet::CreateList(rapidjson::Value* parent, const std::string& label, Type listType) {
+		rapidjson::Value& Packet::CreateList(rapidjson::Value* parent, const std::string& label, Type listType, bool isStub) {
 			auto value = rapidjson::Value(rapidjson::kObjectType);
 			value.AddMember(rapidjson::Value("_Type", mAllocator), rapidjson::Value(static_cast<uint32_t>(Type::List)), mAllocator);
 			value.AddMember(rapidjson::Value("_ListType", mAllocator), rapidjson::Value(static_cast<uint32_t>(listType)), mAllocator);
 			value.AddMember(rapidjson::Value("_Content", mAllocator), rapidjson::Value(rapidjson::kArrayType).Move(), mAllocator);
+			value.AddMember(rapidjson::Value("_Stub", mAllocator), rapidjson::Value(isStub).Move(), mAllocator);
 			return AddMember(parent, label, value)["_Content"];
 		}
 
@@ -415,7 +532,7 @@ namespace Blaze {
 				}
 
 				case Type::Binary: {
-					std::string str = value.GetString();
+					std::string str = value["_Content"].GetString();
 					uint64_t strLen = str.length();
 
 					buffer.encode_tdf_integer(strLen);
@@ -451,8 +568,17 @@ namespace Blaze {
 					uint8_t contentLength = static_cast<uint8_t>(content.Size());
 					buffer.write<uint8_t>(contentLength);
 
-					for (uint8_t i = 0; i < contentLength; ++i) {
-						WriteType(buffer, static_cast<Type>(listType), nullptr, content[i]);
+					bool isStub = value["_Stub"].GetBool();
+					if (isStub) {
+						buffer.write<uint8_t>(0x02);
+						for (rapidjson::SizeType i = 0; i < content.Size(); ++i) {
+							WriteType(buffer, static_cast<Type>(listType), nullptr, content[i]);
+						}
+						buffer.write<uint8_t>(0x00);
+					} else {
+						for (uint8_t i = 0; i < contentLength; ++i) {
+							WriteType(buffer, static_cast<Type>(listType), nullptr, content[i]);
+						}
 					}
 					break;
 				}
@@ -473,6 +599,19 @@ namespace Blaze {
 						WriteType(buffer, static_cast<Type>(keyType), nullptr, member.name);
 						WriteType(buffer, static_cast<Type>(valueType), nullptr, member.value);
 					}
+					break;
+				}
+
+				case Type::Vector2: {
+					buffer.encode_tdf_integer(value["_X"].GetUint64());
+					buffer.encode_tdf_integer(value["_Y"].GetUint64());
+					break;
+				}
+
+				case Type::Vector3: {
+					buffer.encode_tdf_integer(value["_X"].GetUint64());
+					buffer.encode_tdf_integer(value["_Y"].GetUint64());
+					buffer.encode_tdf_integer(value["_Z"].GetUint64());
 					break;
 				}
 

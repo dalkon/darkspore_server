@@ -113,14 +113,14 @@ namespace HTTP {
 
 	// Router
 	bool Router::run(Session& session, Response& response, boost::beast::http::request<boost::beast::http::string_body>& request) {
-		URI uri(request.target().to_string());
+		Request _request(request);
 		for (const auto& route : mRoutes) {
-			if (route.mMethod == request.method() && route.equals(uri.resource())) {
+			if (route.mMethod == request.method() && route.equals(_request.uri.resource())) {
 				response.result() = boost::beast::http::status::ok;
 				response.version() = request.version();
 				response.keep_alive() = request.keep_alive();
 
-				route.mFunction(response, uri);
+				route.mFunction(response, _request);
 				return true;
 			}
 		}

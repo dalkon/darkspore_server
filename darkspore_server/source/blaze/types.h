@@ -9,14 +9,20 @@
 // Blaze
 namespace Blaze {
 	enum class Component {
-		Authentication = 1,
-		GameManager = 4,
-		Redirector,
-		Stats = 7,
-		Util = 9,
-		Clubs = 11,
+		Authentication = 0x01,
+		GameManager = 0x04,
+		Redirector = 0x05,
+		Playgrounds = 0x06,
+		Stats = 0x07,
+		Util = 0x09,
+		CensusData = 0x0A,
+		Clubs = 0x0B,
+		Messaging = 0x0F,
+		Rooms = 0x15,
+		AssociationLists = 0x19,
 		GameReporting = 0x1C,
 		RSP = 0x801,
+		Teams = 0x816,
 		UserSessions = 0x7802
 	};
 
@@ -58,6 +64,14 @@ namespace Blaze {
 		Destructing,
 		Resetable,
 		ReplaySetup
+	};
+
+	enum class UserFlags {
+		Idle = 0,
+		Connecting,
+		Connected,
+		Authenticated,
+		Invalid
 	};
 
 	enum class PlayerState {
@@ -143,9 +157,9 @@ namespace Blaze {
 		uint16_t length;
 		Component component;
 		uint16_t command;
-		uint16_t error_code;
+		uint16_t error_code = 0;
 		MessageType message_type;
-		uint32_t message_id;
+		uint32_t message_id = 0;
 	};
 }
 

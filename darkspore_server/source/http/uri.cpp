@@ -86,6 +86,13 @@ namespace HTTP {
 		return parameteru(name) != 0;
 	}
 
+	void URI::set_parameter(const std::string& name, const std::string& value) {
+		auto [entry, inserted] = mQuery.try_emplace(name, value);
+		if (!inserted) {
+			entry->second = value;
+		}
+	}
+
 	size_t URI::parse_scheme(std::string_view path, size_t offset) {
 		static constexpr std::string_view protocol_identifier = "://";
 
@@ -132,7 +139,7 @@ namespace HTTP {
 		auto position = path.find('?', offset);
 		if (position != std::string_view::npos) {
 			auto fragment_position = path.find('#', position);
-			if (position != std::string_view::npos) {
+			if (fragment_position != std::string_view::npos) {
 				parse_query(path.substr(position + 1, fragment_position - position - 1));
 				mFragment = path.substr(fragment_position + 1);
 			} else {

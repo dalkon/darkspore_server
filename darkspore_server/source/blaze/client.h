@@ -18,11 +18,13 @@ namespace Blaze {
 
 			auto& get_socket() { return mSocket.lowest_layer(); }
 			const auto& get_request() const { return mRequest; }
+			const auto& get_current_request() const { return mCurrentRequest; }
 
 			void start();
 
-			void send(const Header& header, const DataBuffer& buffer);
+			void send(const Header& header, const DataBuffer* buffer);
 			void notify(Header header, const DataBuffer& buffer);
+			void reply(Header header);
 			void reply(Header header, const DataBuffer& buffer);
 
 			void handle_handshake(const boost::system::error_code& error);
@@ -36,6 +38,11 @@ namespace Blaze {
 			boost::asio::ssl::stream<boost::asio::ip::tcp::socket> mSocket;
 
 			rapidjson::Document mRequest;
+			rapidjson::Document mCurrentRequest;
+
+			std::vector<DataBuffer> mWriteBuffers;
+			
+			uint32_t mCurrentMessageId;
 	};
 }
 

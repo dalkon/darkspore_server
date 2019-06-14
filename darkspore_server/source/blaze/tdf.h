@@ -13,7 +13,7 @@
 
 // Blaze
 namespace Blaze {
-	void Log(rapidjson::Document& document);
+	void Log(const rapidjson::Document& document);
 
 	// TDF
 	namespace TDF {
@@ -62,9 +62,14 @@ namespace Blaze {
 
 		rapidjson::Value ParseInteger(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
 		rapidjson::Value ParseString(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
+		rapidjson::Value ParseBlob(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
 		rapidjson::Value ParseStruct(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
 		rapidjson::Value ParseUnion(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
 		rapidjson::Value ParseList(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
+		rapidjson::Value ParseMap(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
+		rapidjson::Value ParseIntegerList(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
+		rapidjson::Value ParseVector2(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
+		rapidjson::Value ParseVector3(DataBuffer& buffer, rapidjson::Document::AllocatorType& allocator);
 
 		// Packet
 		class Packet {
@@ -75,10 +80,13 @@ namespace Blaze {
 
 				void PutInteger(rapidjson::Value* parent, const std::string& label, uint64_t value);
 				void PutString(rapidjson::Value* parent, const std::string& label, const std::string& value);
+				void PutBlob(rapidjson::Value* parent, const std::string& label, const uint8_t* data, uint64_t size);
+				void PutVector2(rapidjson::Value* parent, const std::string& label, uint64_t x, uint64_t y);
+				void PutVector3(rapidjson::Value* parent, const std::string& label, uint64_t x, uint64_t y, uint64_t z);
 
 				rapidjson::Value& CreateStruct(rapidjson::Value* parent, const std::string& label);
 				rapidjson::Value& CreateUnion(rapidjson::Value* parent, const std::string& label, NetworkAddressMember addressMember);
-				rapidjson::Value& CreateList(rapidjson::Value* parent, const std::string& label, Type listType);
+				rapidjson::Value& CreateList(rapidjson::Value* parent, const std::string& label, Type listType, bool isStub = false);
 				rapidjson::Value& CreateMap(rapidjson::Value* parent, const std::string& label, Type keyType, Type valueType);
 
 			private:

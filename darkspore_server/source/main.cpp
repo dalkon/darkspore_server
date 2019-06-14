@@ -7,6 +7,13 @@
 
 #include <iostream>
 
+/*
+
+127.0.0.1 321915-prodmydb007.spore.rspc-iad.ea.com
+127.0.0.1 beta-sn.darkspore.ea.com
+
+*/
+
 // Application
 Application* Application::sApplication = nullptr;
 
@@ -39,11 +46,12 @@ bool Application::OnInit() {
 		return false;
 	}
 
-	mGameAPI = std::make_unique<Game::API>("5.3.0.103");
+	mGameAPI = std::make_unique<Game::API>("5.3.0.127");
 
 	// Blaze
 	mRedirectorServer = std::make_unique<Blaze::Server>(mIoService, 42127);
 	mBlazeServer = std::make_unique<Blaze::Server>(mIoService, 10041);
+	mGmsServer = std::make_unique<UDPTest>(mIoService, 3659);
 
 	mPssServer = std::make_unique<Blaze::Server>(mIoService, 8443);
 	mTickServer = std::make_unique<Blaze::Server>(mIoService, 8999);
@@ -63,6 +71,7 @@ bool Application::OnInit() {
 
 int Application::OnExit() {
 	mGameAPI.reset();
+	mGmsServer.reset();
 	mRedirectorServer.reset();
 	mBlazeServer.reset();
 	mHttpServer.reset();

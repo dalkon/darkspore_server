@@ -14,8 +14,12 @@ namespace Blaze {
 		public:
 			static void Parse(Client* client, const Header& header);
 
+			// Responses
+			static void SendServerInstanceInfo(Client* client, const std::string& host, uint16_t port);
+			static void SendServerAddressInfo(Client* client, const std::string& host, uint16_t port);
+
 		private:
-			static void SendServerInstanceInfo(Client* client, Header header);
+			static void ServerInstanceInfo(Client* client, Header header);
 	};
 }
 

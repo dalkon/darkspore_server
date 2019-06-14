@@ -6,6 +6,7 @@
 #include "blaze/server.h"
 #include "http/server.h"
 #include "game/api.h"
+#include "udptest.h"
 
 // Application
 class Application {
@@ -37,10 +38,12 @@ class Application {
 
 		std::unique_ptr<Blaze::Server> mRedirectorServer;
 		std::unique_ptr<Blaze::Server> mBlazeServer;
+		std::unique_ptr<UDPTest> mGmsServer;
 		std::unique_ptr<Blaze::Server> mPssServer;
 		std::unique_ptr<Blaze::Server> mTickServer;
 
 		std::unique_ptr<HTTP::Server> mHttpServer;
+		std::unique_ptr<HTTP::Server> mHttpsServer;
 		std::unique_ptr<HTTP::Server> mQosServer;
 };
 

@@ -7,7 +7,7 @@
 #include <iostream>
 
 /*
-	Request Packet IDs
+	Packet IDs
 		0x0A = CreateAccount
 		0x14 = UpdateAccount
 		0x1C = UpdateParentalEmail
@@ -52,7 +52,29 @@
 		0xD2 = ValidateSessionKey
 		0xE6 = WalUserSession
 
-	Response Packet IDs
+	Blaze types
+		0x04 = Integer
+		0x08 = Vector3
+		0x0C = Vector2
+		0x10 = Integer List
+		0x14 = Union
+		0x18 = Struct
+		0x1C = Enum
+		0x20 = Blob
+		0x24 = String
+		0x28 = Enum
+		0x2C = Float
+		0x30 = Integer
+		0x34 = Integer
+		0x38 = Integer (IPs and such?)
+		0x3C = Integer
+		0x40 = Integer (Ports and more?)
+		0x44 = Integer
+		0x48 = Integer
+		0x4C = Integer
+		0x50 = Boolean
+		0x54 = Map
+		0x58 = Array
 
 	BlazeValues meanings
 		PDTL = PersonaDetails
@@ -62,27 +84,37 @@
 		MAIL = Client Email
 		UID = Unique ID
 		PCTK = Packet Key
+		CDAT = ClientData
 
 	BlazeValues
+		CDAT
+			IITO = 0x50
+			LANG = 0x38
+			SVCN = 0x24
+			TYPE = 0x1C
+
 		PLST
 			List of PDTL
 
 		PDTL
-			DSNM
-			LAST
-			PID
-			STAS
-			XREF
-			XTYP
+			DSNM = 0x24
+			LAST = 0x38
+			PID = 0x34
+			STAS = 0x1C
+			XREF = 0x30
+			XTYP = 0x1C
+
+		PINF
+			List of personas
 
 		SESS
-			BUID
-			FRST
-			KEY
-			LLOG
-			MAIL
-			PDTL
-			UID
+			BUID = 0x34
+			FRST = 0x50
+			KEY = 0x24
+			LLOG = 0x34
+			MAIL = 0x24
+			PDTL = 0x18
+			UID = 0x34
 
 		(User details)
 			MAIL
@@ -137,6 +169,18 @@
 		LoginPersona
 			PNAM
 
+		UpdateAccount
+			CPWD = 0x24
+			CTRY = 0x24
+			DOB = 0x24
+			LANG = 0x24
+			MAIL = 0x24
+			OPTQ = 0x4C
+			OPTS = 0x4C
+			PASS = 0x24
+			PRNT = 0x24
+			UID = 0x34
+
 	Response Packets
 		ConsumeCode
 			EXRF
@@ -150,25 +194,37 @@
 			UID
 
 		Login
-			NTOS
-			PCTK
-			PLST
-			PRIV
-			SKEY
-			SPAM
-			THST
-			TURI
-			UID
+			NTOS = 0x50
+			PCTK = 0x24
+			PLST = 0x58
+			PRIV = 0x24
+			SKEY = 0x24
+			SPAM = 0x50
+			THST = 0x24
+			TURI = 0x24
+			UID = 0x34
 
 		FullLogin
-			AGUP
-			NTOS
-			PCTK
-			PRIV
-			SESS
-			SPAM
-			THST
-			TURI
+			AGUP = 0x50
+			NTOS = 0x50
+			PCTK = 0x24
+			PRIV = 0x24
+			SESS = 0x18
+			SPAM = 0x50
+			THST = 0x24
+			TURI = 0x24
+
+		GetTOSInfo
+			EAMC = 0x38
+			PMC = 0x38
+			PRIV = 0x24
+			THST = 0x24
+			TURI = 0x24
+
+		GetTermsAndConditions
+			LDVC = 0x24
+			TCOL = 0x38
+			TCOT = 0x24
 */
 
 // Blaze
@@ -181,11 +237,27 @@ namespace Blaze {
 				break;
 
 			case 0x24:
-				SendAuthToken(client, header);
+				GetAuthToken(client, header);
 				break;
 
 			case 0x28:
 				Login(client, header);
+				break;
+
+			case 0x29:
+				AcceptTOS(client, header);
+				break;
+
+			case 0x2A:
+				GetTOSInfo(client, header);
+				break;
+
+			case 0x2E:
+				GetTermsAndConditions(client, header);
+				break;
+
+			case 0x2F:
+				GetPrivacyPolicy(client, header);
 				break;
 
 			case 0x32:
@@ -204,6 +276,188 @@ namespace Blaze {
 				std::cout << "Unknown auth command: 0x" << std::hex << header.command << std::dec << std::endl;
 				break;
 		}
+	}
+
+	void AuthComponent::SendAuthToken(Client* client, const std::string& token) {
+		TDF::Packet packet;
+		packet.PutString(nullptr, "AUTH", token);
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		Header header;
+		header.component = Component::Authentication;
+		header.command = 0x24;
+		header.error_code = 0;
+
+		client->reply(header, outBuffer);
+	}
+
+	void AuthComponent::SendLogin(Client* client, Header header) {
+		auto& request = client->get_request();
+		uint64_t currentTime = utils::get_unix_time();
+
+		TDF::Packet packet;
+		packet.PutInteger(nullptr, "NTOS", 0);
+		packet.PutString(nullptr, "PCTK", "");
+		{
+			auto& plstList = packet.CreateList(nullptr, "PLST", TDF::Type::Struct);
+			{
+				auto& pdtlStruct = packet.CreateStruct(&plstList, "");
+				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
+				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
+				packet.PutInteger(&pdtlStruct, "PID", 1); // user id?
+				packet.PutInteger(&pdtlStruct, "STAS", 2);
+				packet.PutInteger(&pdtlStruct, "XREF", 0);
+				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+			}
+		}
+		packet.PutString(nullptr, "PRIV", "");
+		packet.PutString(nullptr, "SKEY", "");
+		packet.PutInteger(nullptr, "SPAM", 1);
+		packet.PutString(nullptr, "THST", "");
+		packet.PutString(nullptr, "TURI", "");
+		packet.PutInteger(nullptr, "UID", 1); // client id
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		header.component = Component::Authentication;
+		header.command = 0x28;
+		header.error_code = 0;
+
+		client->reply(std::move(header), outBuffer);
+	}
+
+	void AuthComponent::SendLoginPersona(Client* client, Header header) {
+		auto& request = client->get_request();
+		uint64_t currentTime = utils::get_unix_time();
+
+		TDF::Packet packet;
+		packet.PutInteger(nullptr, "BUID", 1); // user id?
+		packet.PutInteger(nullptr, "FRST", 0);
+		packet.PutString(nullptr, "KEY", "");
+		packet.PutInteger(nullptr, "LLOG", currentTime);
+		packet.PutString(nullptr, "MAIL", request["MAIL"].GetString());
+		{
+			auto& pdtlStruct = packet.CreateStruct(nullptr, "PDTL");
+			packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
+			packet.PutInteger(&pdtlStruct, "LAST", currentTime);
+			packet.PutInteger(&pdtlStruct, "PID", 1); // user id?
+			packet.PutInteger(&pdtlStruct, "STAS", 2);
+			packet.PutInteger(&pdtlStruct, "XREF", 0);
+			packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+		}
+		packet.PutInteger(nullptr, "UID", 1); // client id?
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		header.component = Component::Authentication;
+		header.command = 0x6E;
+		header.error_code = 0;
+
+		client->reply(std::move(header), outBuffer);
+	}
+
+	void AuthComponent::SendFullLogin(Client* client, Header header) {
+		auto& request = client->get_request();
+		uint64_t currentTime = utils::get_unix_time();
+
+		TDF::Packet packet;
+		packet.PutInteger(nullptr, "AGUP", 0);
+		packet.PutInteger(nullptr, "NTOS", 0);
+		packet.PutString(nullptr, "PCTK", "");
+		{
+			auto& sessStruct = packet.CreateStruct(nullptr, "SESS");
+			packet.PutInteger(&sessStruct, "BUID", 0);
+			packet.PutInteger(&sessStruct, "FRST", 0);
+			packet.PutString(&sessStruct, "KEY", "");
+			packet.PutInteger(&sessStruct, "LLOG", currentTime);
+			packet.PutString(&sessStruct, "MAIL", request["MAIL"].GetString());
+			{
+				auto& pdtlStruct = packet.CreateStruct(&sessStruct, "PDTL");
+				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
+				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
+				packet.PutInteger(&pdtlStruct, "PID", 0);
+				packet.PutInteger(&pdtlStruct, "STAS", 2);
+				packet.PutInteger(&pdtlStruct, "XREF", 0);
+				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+			}
+			packet.PutInteger(&sessStruct, "UID", 1);
+		}
+		packet.PutInteger(nullptr, "SPAM", 0);
+		packet.PutString(nullptr, "THST", "");
+		packet.PutString(nullptr, "TURI", "");
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		header.component = Component::Authentication;
+		header.command = 0x3C;
+		header.error_code = 0;
+
+		client->reply(std::move(header), outBuffer);
+	}
+
+	void AuthComponent::SendTOSInfo(Client* client, Header header) {
+		auto& request = client->get_request();
+
+		TDF::Packet packet;
+		packet.PutInteger(nullptr, "EAMC", 0);
+		packet.PutInteger(nullptr, "PMC", 0);
+		packet.PutString(nullptr, "PRIV", "");
+		packet.PutString(nullptr, "THST", "");
+		packet.PutString(nullptr, "TURI", "");
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		header.component = Component::Authentication;
+		header.command = 0x2A;
+		header.error_code = 0;
+
+		client->reply(std::move(header), outBuffer);
+	}
+
+	void AuthComponent::SendTermsAndConditions(Client* client, Header header) {
+		auto& request = client->get_request();
+
+		std::string testConditions = "Hello this is something";
+
+		TDF::Packet packet;
+		packet.PutString(nullptr, "LDVC", "Something");
+		packet.PutInteger(nullptr, "TCOL", testConditions.length());
+		packet.PutString(nullptr, "TCOT", testConditions);
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		header.component = Component::Authentication;
+		header.command = 0x2E;
+		header.error_code = 0;
+
+		client->reply(std::move(header), outBuffer);
+	}
+
+	void AuthComponent::SendPrivacyPolicy(Client* client, Header header) {
+		auto& request = client->get_request();
+
+		std::string testConditions = "Hello this is stuff about privacy";
+
+		TDF::Packet packet;
+		packet.PutString(nullptr, "LDVC", "Something2");
+		packet.PutInteger(nullptr, "TCOL", testConditions.length());
+		packet.PutString(nullptr, "TCOT", testConditions);
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		header.component = Component::Authentication;
+		header.command = 0x2F;
+		header.error_code = 0;
+
+		client->reply(std::move(header), outBuffer);
 	}
 
 	void AuthComponent::ListUserEntitlements(Client* client, Header header) {
@@ -469,17 +723,9 @@ namespace Blaze {
 		*/
 	}
 
-	void AuthComponent::SendAuthToken(Client* client, Header header) {
+	void AuthComponent::GetAuthToken(Client* client, Header header) {
 		std::cout << "Send auth token" << std::endl;
-
-		TDF::Packet packet;
-		packet.PutString(nullptr, "AUTH", "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.error_code = 0;
-		client->reply(header, outBuffer);
+		SendAuthToken(client, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 	}
 
 	void AuthComponent::Login(Client* client, Header header) {
@@ -490,13 +736,15 @@ namespace Blaze {
 		std::string email = request["MAIL"].GetString();
 		if (email != "dalkon@live.se") {
 			std::cout << "User with email " << email << " not found." << std::endl;
-			return;
+
+			header.component = Component::Authentication;
+			header.command = 0x28;
+			header.error_code = 0x000B;
+
+			client->reply(std::move(header));
+		} else {
+			SendLogin(client, std::move(header));
 		}
-
-		SendLogin(client, std::move(header));
-
-		// UserSessionComponent::NotifyUserAdded(client, 0, "Dalkon");
-		// UserSessionComponent::NotifyUserUpdated(client, 0);
 	}
 
 	void AuthComponent::SilentLogin(Client* client, Header header) {
@@ -526,7 +774,7 @@ namespace Blaze {
 				packet.PutInteger(&pdtlStruct, "XREF", 0);
 				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
 			}
-			packet.PutInteger(&sessStruct, "UID", 0);
+			packet.PutInteger(&sessStruct, "UID", 1);
 		}
 		packet.PutInteger(nullptr, "SPAM", 0);
 		packet.PutString(nullptr, "THST", "");
@@ -545,113 +793,28 @@ namespace Blaze {
 
 		SendLoginPersona(client, std::move(header));
 
-		// UserSessionComponent::NotifyUserAdded(client, 0, "Dalkon");
-		// UserSessionComponent::NotifyUserUpdated(client, 0);
+		UserSessionComponent::NotifyUserAdded(client, 1, "Dalkon");
+		UserSessionComponent::NotifyUserUpdated(client, 1);
+
+		// GameManagerComponent::NotifyGameStateChange(client, 0, 2);
 	}
 
-	void AuthComponent::SendLogin(Client* client, Header header) {
-		auto& request = client->get_request();
-
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "NTOS", 0);
-		packet.PutString(nullptr, "PCTK", "");
-		{
-			auto& plstList = packet.CreateList(nullptr, "PLST", TDF::Type::Struct);
-			{
-				auto& pdtlStruct = packet.CreateStruct(&plstList, "");
-				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
-				packet.PutInteger(&pdtlStruct, "LAST", 0);
-				packet.PutInteger(&pdtlStruct, "PID", 0);
-				packet.PutInteger(&pdtlStruct, "STAS", 2);
-				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
-			}
-		}
-		packet.PutString(nullptr, "PRIV", "");
-		packet.PutString(nullptr, "SKEY", "");
-		packet.PutInteger(nullptr, "SPAM", 1);
-		packet.PutString(nullptr, "THST", "");
-		packet.PutString(nullptr, "TURI", "");
-		packet.PutInteger(nullptr, "UID", 0);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = 0x28;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void AuthComponent::AcceptTOS(Client* client, Header header) {
+		std::cout << "Accepted Terms of service" << std::endl;
 	}
 
-	void AuthComponent::SendLoginPersona(Client* client, Header header) {
-		auto& request = client->get_request();
-		uint64_t currentTime = utils::get_unix_time();
-
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "BUID", 0);
-		packet.PutInteger(nullptr, "FRST", 0);
-		packet.PutString(nullptr, "KEY", "");
-		packet.PutInteger(nullptr, "LLOG", currentTime);
-		packet.PutString(nullptr, "MAIL", request["MAIL"].GetString());
-		{
-			auto& pdtlStruct = packet.CreateStruct(nullptr, "PDTL");
-			packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
-			packet.PutInteger(&pdtlStruct, "LAST", currentTime);
-			packet.PutInteger(&pdtlStruct, "PID", 0);
-			packet.PutInteger(&pdtlStruct, "STAS", 2);
-			packet.PutInteger(&pdtlStruct, "XREF", 0);
-			packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
-		}
-		packet.PutInteger(nullptr, "UID", 0);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = 0x6E;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void AuthComponent::GetTOSInfo(Client* client, Header header) {
+		std::cout << "Get Terms of service" << std::endl;
+		SendTOSInfo(client, std::move(header));
 	}
 
-	void AuthComponent::SendFullLogin(Client* client, Header header) {
-		auto& request = client->get_request();
-		uint64_t currentTime = utils::get_unix_time();
+	void AuthComponent::GetTermsAndConditions(Client* client, Header header) {
+		std::cout << "Get Terms and conditions" << std::endl;
+		SendTermsAndConditions(client, std::move(header));
+	}
 
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "AGUP", 0);
-		packet.PutInteger(nullptr, "NTOS", 0);
-		packet.PutString(nullptr, "PCTK", "");
-		{
-			auto& sessStruct = packet.CreateStruct(nullptr, "SESS");
-			packet.PutInteger(&sessStruct, "BUID", 0);
-			packet.PutInteger(&sessStruct, "FRST", 0);
-			packet.PutString(&sessStruct, "KEY", "");
-			packet.PutInteger(&sessStruct, "LLOG", currentTime);
-			packet.PutString(&sessStruct, "MAIL", request["MAIL"].GetString());
-			{
-				auto& pdtlStruct = packet.CreateStruct(&sessStruct, "PDTL");
-				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
-				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
-				packet.PutInteger(&pdtlStruct, "PID", 0);
-				packet.PutInteger(&pdtlStruct, "STAS", 2);
-				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
-			}
-			packet.PutInteger(&sessStruct, "UID", 0);
-		}
-		packet.PutInteger(nullptr, "SPAM", 0);
-		packet.PutString(nullptr, "THST", "");
-		packet.PutString(nullptr, "TURI", "");
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = 0x3C;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void AuthComponent::GetPrivacyPolicy(Client* client, Header header) {
+		std::cout << "Get Privacy policy" << std::endl;
+		SendPrivacyPolicy(client, std::move(header));
 	}
 }
