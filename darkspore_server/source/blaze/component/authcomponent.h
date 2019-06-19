@@ -20,6 +20,7 @@ namespace Blaze {
 			static void SendLogin(Client* client, Header header);
 			static void SendLoginPersona(Client* client, Header header);
 			static void SendFullLogin(Client* client, Header header);
+			static void SendConsoleLogin(Client* client, Header header);
 
 			static void SendTOSInfo(Client* client, Header header);
 			static void SendTermsAndConditions(Client* client, Header header);
@@ -33,6 +34,7 @@ namespace Blaze {
 			static void Login(Client* client, Header header);
 			static void SilentLogin(Client* client, Header header);
 			static void LoginPersona(Client* client, Header header);
+			static void Logout(Client* client, Header header);
 
 			// Terms and such
 			static void AcceptTOS(Client* client, Header header);

@@ -197,6 +197,7 @@ namespace Blaze {
 	}
 
 	void UserSessionComponent::UpdateNetworkInfo(Client* client, Header header) {
+		// Log(client->get_current_request());
 		std::cout << "Update network info" << std::endl;
 		/*
 		Log.Info(string.Format("Client {0} updating network info", request.Client.ID));

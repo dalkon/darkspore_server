@@ -7,7 +7,7 @@
 #include "component/utilcomponent.h"
 #include "component/usersessioncomponent.h"
 #include "component/gamemanagercomponent.h"
-#include "component/associationlistscomponent.h"
+#include "component/associationcomponent.h"
 #include "component/roomscomponent.h"
 
 #include <boost/bind.hpp>
@@ -204,7 +204,7 @@ namespace Blaze {
 		mCurrentMessageId = header.message_id;
 		switch (header.component) {
 			case Blaze::Component::AssociationLists:
-				Blaze::AssociationListsComponent::Parse(this, header);
+				Blaze::AssociationComponent::Parse(this, header);
 				break;
 
 			case Blaze::Component::Authentication:

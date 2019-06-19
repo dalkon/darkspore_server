@@ -3,24 +3,123 @@
 #define _GAME_USER_HEADER
 
 // Include
-#include "../databuffer.h"
-#include <boost/asio.hpp>
+#include "squad.h"
+
+#include <cstdint>
+#include <string>
+#include <map>
+#include <pugixml.hpp>
 
 // Game
 namespace Game {
+	// Account
+	struct Account {
+		bool tutorialCompleted = false;
+		bool grantAllAccess = false;
+		bool grantOnlineAccess = false;
+
+		uint32_t chainProgression = 0;
+		uint32_t creatureRewards = 0;
+
+		uint32_t currentGameId = 1;
+		uint32_t currentPlaygroupId = 1;
+
+		uint32_t defaultDeckPveId = 1;
+		uint32_t defaultDeckPvpId = 1;
+
+		uint32_t level = 1;
+		uint32_t xp = 0;
+		uint32_t avatarId = 0;
+		uint32_t id = 1;
+
+		uint32_t newPlayerInventory = 0;
+		uint32_t newPlayerProgress = 0;
+
+		uint32_t cashoutBonusTime = 0;
+		uint32_t starLevel = 0;
+
+		uint32_t unlockCatalysts = 0;
+		uint32_t unlockDiagonalCatalysts = 0;
+		uint32_t unlockInventory = 0;
+		uint32_t unlockFuelTanks = 0;
+		uint32_t unlockPveDecks = 0;
+		uint32_t unlockPvpDecks = 0;
+		uint32_t unlockStats = 0;
+		uint32_t unlockInventoryIdentify = 0;
+		uint32_t unlockEditorFlairSlots = 0;
+
+		uint32_t upsell = 0;
+
+		uint32_t capLevel = 0;
+		uint32_t capProgression = 0;
+
+		void Read(const pugi::xml_node& node);
+		void Write(pugi::xml_node& node) const;
+	};
+
 	// User
 	class User {
 		public:
-			User();
+			User(const std::string& email);
 			~User();
 
-			static std::shared_ptr<User> GetUserByEmail(const std::string& email);
+			//
+			auto& get_account() { return mAccount; }
+			const auto& get_account() const { return mAccount; }
+
+			auto& get_creatures() { return mCreatures; }
+			const auto& get_creatures() const { return mCreatures; }
+
+			auto& get_squads() { return mSquads; }
+			const auto& get_squads() const { return mSquads; }
+
+			const std::string& get_auth_token() const { return mAuthToken; }
+			void set_auth_token(const std::string& authToken) { mAuthToken = authToken; }
+
+			const auto& get_email() const { return mEmail; }
+			const auto& get_password() const { return mPassword; }
+			const auto& get_name() const { return mName; }
+
+			// Creature
+			Creature* GetCreatureById(uint32_t id);
+			const Creature* GetCreatureById(uint32_t id) const;
+
+			void UnlockCreature(uint32_t templateId);
+
+			// Auth
+			void Logout();
+
+			// Storage
+			bool Load();
+			bool Save();
 
 		private:
-			std::string mEmail;
-			std::string mName;
+			Account mAccount;
 
-			uint64_t mId;
+			Creatures mCreatures;
+			Squads mSquads;
+
+			std::string mEmail;
+			std::string mPassword;
+			std::string mName;
+			std::string mAuthToken;
+	};
+
+	using UserPtr = std::shared_ptr<User>;
+
+	// UserManager
+	class UserManager {
+		public:
+			static UserPtr GetUserByEmail(const std::string& email);
+			static UserPtr GetUserByAuthToken(const std::string& authToken);
+
+		private:
+			static void RemoveUser(const std::string& email);
+
+		private:
+			static std::map<std::string, UserPtr> sUsersByEmail;
+
+			friend class User;
 	};
 }
 

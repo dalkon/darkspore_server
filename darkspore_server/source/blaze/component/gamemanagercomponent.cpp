@@ -2,10 +2,22 @@
 // Include
 #include "gamemanagercomponent.h"
 #include "usersessioncomponent.h"
+
 #include "../client.h"
+#include "../../utils/functions.h"
+
 #include <iostream>
 
 /*
+	Gamemodes
+		Tutorial = 1
+		Chain(Matched/Premade) = 2
+		Arena = 3
+		KillRace = 4
+		Juggernaut = 5
+		Quickplay = 6
+		DirectEntry = 7
+
 	Packet IDs
 		0x01 = CreateGame
 		0x02 = DestroyGame
@@ -99,6 +111,23 @@
 			UGID = 0x08
 			UID = 0x28
 
+		ReplicatedPlayerData
+			BLOB = 0x20
+			EXID = 0x30
+			GID = 0x38
+			LOC = 0x38
+			NAME = 0x24
+			PATT = 0x54
+			PID = 0x34
+			PNET = 0x14
+			SID = 0x48
+			SLOT = 0x1C
+			STAT = 0x1C
+			TIDX = 0x40
+			TIME = 0x34
+			UGID = 0x08
+			UID = 0x38
+
 		ReplicatedGameData
 			ADMN = 0x58
 			ATTR = 0x54
@@ -134,6 +163,36 @@
 			VSTR = 0x24
 			XNNC = 0x20
 			XSES = 0x20
+
+		IndirectJoinGameSetupContext
+			GRID = 0x08
+			RPVC = 0x50
+
+		ResetDedicatedServerSetupContext
+			ERR = 0x38
+
+		GameBrowserGameData
+			ADMN = 0x58
+			ATTR = 0x54
+			CAP = 0x58
+			CRIT = 0x54
+			GID = 0x38
+			GNAM = 0x24
+			GSET = 0x28
+			GSTA = 0x1C
+			HNET = 0x58
+			HOST = 0x34
+			PCNT = 0x58
+			PRES = 0x1C
+			PSID = 0x24
+			QCAP = 0x40
+			QCNT = 0x40
+			ROST = 0x58
+			SID = 0x30
+			TCAP = 0x40
+			TINF = 0x58
+			VOIP = 0x1C
+			VSTR = 0x24
 
 	Request Packets
 		CreateGame
@@ -181,7 +240,7 @@
 			USER = 0x18
 
 		ResetDedicatedServer
-			same as CreateGame
+			same as CreateGame?
 
 	Response Packets
 		CreateGame
@@ -211,6 +270,10 @@
 		NotifyCreateDynamicDedicatedServerGame
 			GREQ = 0x18
 			MID = 0x24
+
+		NotifyPlatformHostInitialized
+			GID = 0x38
+			PHST = 0x48
 */
 
 // Blaze
@@ -358,7 +421,7 @@ namespace Blaze {
 			}
 			packet.PutInteger(&gameStruct, "HSES", 13666);
 			packet.PutInteger(&gameStruct, "IGNO", gameIgnore);
-			packet.PutInteger(&gameStruct, "MCAP", 4);
+			packet.PutInteger(&gameStruct, "MCAP", 1);
 			{
 				auto& nqosStruct = packet.CreateStruct(&gameStruct, "NQOS");
 				packet.PutInteger(&nqosStruct, "DBPS", 100);
@@ -393,9 +456,31 @@ namespace Blaze {
 			packet.PutBlob(&gameStruct, "XNNC", nullptr, 0);
 			packet.PutBlob(&gameStruct, "XSES", nullptr, 0);
 		} {
-			auto& prosList = packet.CreateList(nullptr, "PROS", TDF::Type::String);
+			auto& prosList = packet.CreateList(nullptr, "PROS", TDF::Type::Struct);
+			{
+				auto& playerStruct = packet.CreateStruct(&prosList, "");
+				packet.PutBlob(&playerStruct, "BLOB", nullptr, 0);
+				packet.PutInteger(&playerStruct, "EXID", 0);
+				packet.PutInteger(&playerStruct, "GID", 1);
+				packet.PutInteger(&playerStruct, "LOC", 1);
+				packet.PutString(&playerStruct, "NAME", "Dalkon");
+				{
+					// PATT
+				}
+				packet.PutInteger(&playerStruct, "PID", 1);
+				{
+					// PNET (union)
+				}
+				packet.PutInteger(&playerStruct, "SID", 0);
+				packet.PutInteger(&playerStruct, "SLOT", 0);
+				packet.PutInteger(&playerStruct, "STAT", 0);
+				packet.PutInteger(&playerStruct, "TIDX", 0xFFFF);
+				packet.PutInteger(&playerStruct, "TIME", utils::get_unix_time());
+				packet.PutVector3(&playerStruct, "UGID", 0, 0, 0);
+				packet.PutInteger(&playerStruct, "UID", 1);
+			}
 		} {
-			auto& reasUnion = packet.CreateUnion(nullptr, "REAS", NetworkAddressMember::Unset);
+			auto& reasUnion = packet.CreateUnion(nullptr, "REAS", NetworkAddressMember::XboxClientAddress);
 			auto& valuStruct = packet.CreateStruct(&reasUnion, "VALU");
 			packet.PutInteger(&valuStruct, "DCTX", 0);
 		}
@@ -538,6 +623,8 @@ namespace Blaze {
 	}
 
 	void GameManagerComponent::NotifyCreateDynamicDedicatedServerGame(Client* client) {
+		// Sending this should make the client send back a CreateGameRequest or ResetDedicatedServer
+
 		auto& request = client->get_request();
 
 		std::string gameCtr = request["GCTR"].GetString();
@@ -643,20 +730,6 @@ namespace Blaze {
 		client->notify(std::move(header), outBuffer);
 	}
 
-	void CreateGame(Client* client, Header header) {
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", 1);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::GameManager;
-		header.command = 0x01;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
-	}
-
 	void GameManagerComponent::CreateGame(Client* client, Header header) {
 		SendCreateGame(client, 1);
 
@@ -678,7 +751,8 @@ namespace Blaze {
 		// Log(client->get_current_request());
 		SendCreateGame(client, 1);
 		
-		NotifyCreateDynamicDedicatedServerGame(client);
+		// NotifyCreateDynamicDedicatedServerGame(client);
+		NotifyGameCreated(client);
 		NotifyGameStateChange(client, 1, static_cast<uint32_t>(GameState::Initializing));
 		NotifyGameSetup(client);
 	}

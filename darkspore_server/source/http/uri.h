@@ -14,7 +14,12 @@ namespace HTTP {
 	// URI
 	class URI {
 		public:
-			URI(std::string_view path);
+			void parse(std::string_view path);
+			
+			decltype(auto) begin() { return mQuery.begin(); }
+			decltype(auto) begin() const { return mQuery.begin(); }
+			decltype(auto) end() { return mQuery.end(); }
+			decltype(auto) end() const { return mQuery.end(); }
 
 			const std::string& protocol() const;
 			const std::string& domain() const;

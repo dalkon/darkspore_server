@@ -51,7 +51,7 @@ bool Application::OnInit() {
 	// Blaze
 	mRedirectorServer = std::make_unique<Blaze::Server>(mIoService, 42127);
 	mBlazeServer = std::make_unique<Blaze::Server>(mIoService, 10041);
-	mGmsServer = std::make_unique<UDPTest>(mIoService, 3659);
+	// mGmsServer = std::make_unique<UDPTest>(mIoService, 3659);
 
 	mPssServer = std::make_unique<Blaze::Server>(mIoService, 8443);
 	mTickServer = std::make_unique<Blaze::Server>(mIoService, 8999);

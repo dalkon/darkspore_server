@@ -117,14 +117,20 @@
     <ClInclude Include="source\blaze\component\gamemanagercomponent.h">
       <Filter>Header Files\blaze\component</Filter>
     </ClInclude>
-    <ClInclude Include="source\blaze\component\associationlistscomponent.h">
-      <Filter>Header Files\blaze\component</Filter>
-    </ClInclude>
     <ClInclude Include="source\blaze\component\roomscomponent.h">
       <Filter>Header Files\blaze\component</Filter>
     </ClInclude>
     <ClInclude Include="source\http\multipart.h">
       <Filter>Header Files\http</Filter>
+    </ClInclude>
+    <ClInclude Include="source\game\creature.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="source\game\squad.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="source\blaze\component\associationcomponent.h">
+      <Filter>Header Files\blaze\component</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -191,14 +197,20 @@
     <ClCompile Include="source\blaze\component\gamemanagercomponent.cpp">
       <Filter>Source Files\blaze\component</Filter>
     </ClCompile>
-    <ClCompile Include="source\blaze\component\associationlistscomponent.cpp">
-      <Filter>Source Files\blaze\component</Filter>
-    </ClCompile>
     <ClCompile Include="source\blaze\component\roomscomponent.cpp">
       <Filter>Source Files\blaze\component</Filter>
     </ClCompile>
     <ClCompile Include="source\http\multipart.cpp">
       <Filter>Source Files\http</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\creature.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\squad.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\blaze\component\associationcomponent.cpp">
+      <Filter>Source Files\blaze\component</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

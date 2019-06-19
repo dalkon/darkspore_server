@@ -3,15 +3,23 @@
 #define _HTTP_SESSION_HEADER
 
 // Include
+#include "uri.h"
+
+#include "../game/user.h"
+
 #include <boost/asio.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
 
 // HTTP
 namespace HTTP {
 	class Server;
 
 	boost::beast::string_view mime_type(boost::beast::string_view path);
+
+	// Request
+	struct Request {
+		boost::beast::http::request<boost::beast::http::string_body> data;
+		URI uri;
+	};
 
 	// Session
 	class Session : public std::enable_shared_from_this<Session> {
@@ -20,6 +28,12 @@ namespace HTTP {
 			~Session();
 
 			void start();
+
+			auto& get_request() { return mRequest; }
+			const auto& get_request() const { return mRequest; }
+
+			const auto& get_user() const { return mUser; }
+			void set_user(const Game::UserPtr& user) { mUser = user; }
 
 			template<class Message>
 			void send(Message&& message) {
@@ -43,9 +57,11 @@ namespace HTTP {
 
 			boost::beast::tcp_stream mStream;
 			boost::beast::flat_buffer mBuffer;
-			boost::beast::http::request<boost::beast::http::string_body> mRequest;
 
+			Request mRequest;
 			std::shared_ptr<void> mResponse;
+
+			Game::UserPtr mUser;
 	};
 }
 

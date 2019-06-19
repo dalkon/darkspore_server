@@ -112,15 +112,17 @@ namespace HTTP {
 	}
 
 	// Router
-	bool Router::run(Session& session, Response& response, boost::beast::http::request<boost::beast::http::string_body>& request) {
-		Request _request(request);
-		for (const auto& route : mRoutes) {
-			if (route.mMethod == request.method() && route.equals(_request.uri.resource())) {
-				response.result() = boost::beast::http::status::ok;
-				response.version() = request.version();
-				response.keep_alive() = request.keep_alive();
+	bool Router::run(Session& session, Response& response) {
+		decltype(auto) request = session.get_request();
+		request.uri.parse(request.data.target().to_string());
 
-				route.mFunction(response, _request);
+		for (const auto& route : mRoutes) {
+			if (route.mMethod == request.data.method() && route.equals(request.uri.resource())) {
+				response.result() = boost::beast::http::status::ok;
+				response.version() = request.data.version();
+				response.keep_alive() = request.data.keep_alive();
+
+				route.mFunction(session, response);
 				return true;
 			}
 		}

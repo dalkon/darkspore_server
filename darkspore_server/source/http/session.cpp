@@ -79,12 +79,14 @@ namespace HTTP {
 		return result;
 	}
 
-	template<class Body, class Allocator>
 	void handle_request(
 		Session& session,
-		Router& router,
-		boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>>&& request
+		Router& router
 	) {
+		auto& request = session.get_request().data;
+
+		std::cout << request.target() << std::endl;
+
 		// Returns a bad request response
 		const auto bad_request = [&request](boost::beast::string_view why) {
 			boost::beast::http::response<boost::beast::http::string_body> response {
@@ -127,8 +129,6 @@ namespace HTTP {
 			return response;
 		};
 
-		std::cout << request.target() << std::endl;
-
 		// Make sure we can handle the method
 		if (request.method() != boost::beast::http::verb::get && request.method() != boost::beast::http::verb::head && request.method() != boost::beast::http::verb::post) {
 			return session.send(bad_request("Unknown HTTP-method"));
@@ -140,9 +140,9 @@ namespace HTTP {
 		}
 
 		// Router stuff
-		if constexpr (std::is_same_v<Body, boost::beast::http::string_body>) {
+		{
 			Response response;
-			if (router.run(session, response, request)) {
+			if (router.run(session, response)) {
 				return response.send(session);
 			}
 		}
@@ -216,7 +216,7 @@ namespace HTTP {
 		mRequest = {};
 		mStream.expires_after(std::chrono::seconds(30));
 
-		boost::beast::http::async_read(mStream, mBuffer, mRequest,
+		boost::beast::http::async_read(mStream, mBuffer, mRequest.data,
 			boost::beast::bind_front_handler(&Session::handle_read, shared_from_this()));
 	}
 
@@ -232,7 +232,7 @@ namespace HTTP {
 		} else if (error) {
 			// Error
 		} else {
-			handle_request(*this, *mServer->get_router(), std::move(mRequest));
+			handle_request(*this, *mServer->get_router());
 		}
 	}
 

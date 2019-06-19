@@ -51,6 +51,7 @@
 		0xC8 = PS3Login
 		0xD2 = ValidateSessionKey
 		0xE6 = WalUserSession
+		0x12C = DeviceLoginGuest (What?)
 
 	Blaze types
 		0x04 = Integer
@@ -214,6 +215,15 @@
 			THST = 0x24
 			TURI = 0x24
 
+		ConsoleLogin
+			AGUP = 0x50
+			NTOS = 0x50
+			PRIV = 0x24
+			SESS = 0x18
+			SPAM = 0x50
+			THST = 0x24
+			TURI = 0x24
+
 		GetTOSInfo
 			EAMC = 0x38
 			PMC = 0x38
@@ -265,7 +275,7 @@ namespace Blaze {
 				break;
 
 			case 0x46:
-				std::cout << "Logout" << std::endl;
+				Logout(client, header);
 				break;
 
 			case 0x6E:
@@ -279,6 +289,8 @@ namespace Blaze {
 	}
 
 	void AuthComponent::SendAuthToken(Client* client, const std::string& token) {
+		client->get_user()->set_auth_token(token);
+
 		TDF::Packet packet;
 		packet.PutString(nullptr, "AUTH", token);
 
@@ -368,6 +380,7 @@ namespace Blaze {
 		packet.PutInteger(nullptr, "AGUP", 0);
 		packet.PutInteger(nullptr, "NTOS", 0);
 		packet.PutString(nullptr, "PCTK", "");
+		packet.PutString(nullptr, "PRIV", "");
 		{
 			auto& sessStruct = packet.CreateStruct(nullptr, "SESS");
 			packet.PutInteger(&sessStruct, "BUID", 0);
@@ -395,6 +408,46 @@ namespace Blaze {
 
 		header.component = Component::Authentication;
 		header.command = 0x3C;
+		header.error_code = 0;
+
+		client->reply(std::move(header), outBuffer);
+	}
+
+	void AuthComponent::SendConsoleLogin(Client* client, Header header) {
+		auto& request = client->get_request();
+		uint64_t currentTime = utils::get_unix_time();
+
+		TDF::Packet packet;
+		packet.PutInteger(nullptr, "AGUP", 0);
+		packet.PutInteger(nullptr, "NTOS", 0);
+		packet.PutString(nullptr, "PRIV", "");
+		{
+			auto& sessStruct = packet.CreateStruct(nullptr, "SESS");
+			packet.PutInteger(&sessStruct, "BUID", 0);
+			packet.PutInteger(&sessStruct, "FRST", 0);
+			packet.PutString(&sessStruct, "KEY", "");
+			packet.PutInteger(&sessStruct, "LLOG", currentTime);
+			packet.PutString(&sessStruct, "MAIL", request["MAIL"].GetString());
+			{
+				auto& pdtlStruct = packet.CreateStruct(&sessStruct, "PDTL");
+				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
+				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
+				packet.PutInteger(&pdtlStruct, "PID", 0);
+				packet.PutInteger(&pdtlStruct, "STAS", 2);
+				packet.PutInteger(&pdtlStruct, "XREF", 0);
+				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+			}
+			packet.PutInteger(&sessStruct, "UID", 1);
+		}
+		packet.PutInteger(nullptr, "SPAM", 1);
+		packet.PutString(nullptr, "THST", "");
+		packet.PutString(nullptr, "TURI", "");
+
+		DataBuffer outBuffer;
+		packet.Write(outBuffer);
+
+		header.component = Component::Authentication;
+		header.command = 0x28;
 		header.error_code = 0;
 
 		client->reply(std::move(header), outBuffer);
@@ -729,12 +782,16 @@ namespace Blaze {
 	}
 
 	void AuthComponent::Login(Client* client, Header header) {
-		std::cout << "Login" << std::endl;
-
 		auto& request = client->get_request();
 
 		std::string email = request["MAIL"].GetString();
-		if (email != "dalkon@live.se") {
+		std::string password = request["PASS"].GetString();
+
+		const auto& user = Game::UserManager::GetUserByEmail(email);
+		if (user && user->get_password() == password) {
+			client->set_user(user);
+			SendLogin(client, std::move(header));
+		} else {
 			std::cout << "User with email " << email << " not found." << std::endl;
 
 			header.component = Component::Authentication;
@@ -742,8 +799,6 @@ namespace Blaze {
 			header.error_code = 0x000B;
 
 			client->reply(std::move(header));
-		} else {
-			SendLogin(client, std::move(header));
 		}
 	}
 
@@ -797,6 +852,13 @@ namespace Blaze {
 		UserSessionComponent::NotifyUserUpdated(client, 1);
 
 		// GameManagerComponent::NotifyGameStateChange(client, 0, 2);
+	}
+
+	void AuthComponent::Logout(Client* client, Header header) {
+		const auto& user = client->get_user();
+		if (user) {
+			user->Logout();
+		}
 	}
 
 	void AuthComponent::AcceptTOS(Client* client, Header header) {

@@ -133,7 +133,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="source\blaze\client.h" />
-    <ClInclude Include="source\blaze\component\associationlistscomponent.h" />
+    <ClInclude Include="source\blaze\component\associationcomponent.h" />
     <ClInclude Include="source\blaze\component\authcomponent.h" />
     <ClInclude Include="source\blaze\component\gamemanagercomponent.h" />
     <ClInclude Include="source\blaze\component\redirectorcomponent.h" />
@@ -146,6 +146,8 @@
     <ClInclude Include="source\databuffer.h" />
     <ClInclude Include="source\game\api.h" />
     <ClInclude Include="source\game\config.h" />
+    <ClInclude Include="source\game\creature.h" />
+    <ClInclude Include="source\game\squad.h" />
     <ClInclude Include="source\game\user.h" />
     <ClInclude Include="source\http\multipart.h" />
     <ClInclude Include="source\http\router.h" />
@@ -160,7 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\blaze\client.cpp" />
-    <ClCompile Include="source\blaze\component\associationlistscomponent.cpp" />
+    <ClCompile Include="source\blaze\component\associationcomponent.cpp" />
     <ClCompile Include="source\blaze\component\authcomponent.cpp" />
     <ClCompile Include="source\blaze\component\gamemanagercomponent.cpp" />
     <ClCompile Include="source\blaze\component\redirectorcomponent.cpp" />
@@ -172,6 +174,8 @@
     <ClCompile Include="source\databuffer.cpp" />
     <ClCompile Include="source\game\api.cpp" />
     <ClCompile Include="source\game\config.cpp" />
+    <ClCompile Include="source\game\creature.cpp" />
+    <ClCompile Include="source\game\squad.cpp" />
     <ClCompile Include="source\game\user.cpp" />
     <ClCompile Include="source\http\multipart.cpp" />
     <ClCompile Include="source\http\router.cpp" />

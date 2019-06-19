@@ -8,6 +8,7 @@
 
 // HTTP
 namespace HTTP {
+	class Session;
 	class URI;
 	class Response;
 }
@@ -26,30 +27,33 @@ namespace Game {
 			void empty_json_response(HTTP::Response& response);
 
 			// dls
-			void dls_launcher_setTheme(HTTP::Response& response, const HTTP::URI& uri);
-			void dls_launcher_listThemes(HTTP::Response& response, const HTTP::URI& uri);
+			void dls_launcher_setTheme(HTTP::Session& session, HTTP::Response& response);
+			void dls_launcher_listThemes(HTTP::Session& session, HTTP::Response& response);
 
 			// bootstrap
-			void bootstrap_config_getConfig(HTTP::Response& response, const HTTP::URI& uri);
+			void bootstrap_config_getConfig(HTTP::Session& session, HTTP::Response& response);
 
 			// game
-			void game_status_getStatus(HTTP::Response& response, const HTTP::URI& uri);
-			void game_status_getBroadcastList(HTTP::Response& response, const HTTP::URI& uri);
+			void game_status_getStatus(HTTP::Session& session, HTTP::Response& response);
+			void game_status_getBroadcastList(HTTP::Session& session, HTTP::Response& response);
 
-			void game_inventory_getPartList(HTTP::Response& response, const HTTP::URI& uri);
+			void game_inventory_getPartList(HTTP::Session& session, HTTP::Response& response);
 
-			void game_account_auth(HTTP::Response& response, const HTTP::URI& uri);
-			void game_account_getAccount(HTTP::Response& response, const HTTP::URI& uri);
+			void game_account_auth(HTTP::Session& session, HTTP::Response& response);
+			void game_account_getAccount(HTTP::Session& session, HTTP::Response& response);
+			void game_account_logout(HTTP::Session& session, HTTP::Response& response);
 
-			void game_game_getGame(HTTP::Response& response, const HTTP::URI& uri);
+			void game_game_getGame(HTTP::Session& session, HTTP::Response& response);
+
+			void game_creature_resetCreature(HTTP::Session& session, HTTP::Response& response);
+			void game_creature_unlockCreature(HTTP::Session& session, HTTP::Response& response);
+			void game_creature_getCreature(HTTP::Session& session, HTTP::Response& response);
 
 			// survey
-			void survey_survey_getSurveyList(HTTP::Response& response, const HTTP::URI& uri);
+			void survey_survey_getSurveyList(HTTP::Session& session, HTTP::Response& response);
 
 		private:
 			void add_broadcasts(pugi::xml_node& node);
-
-			void add_text_node(pugi::xml_node& node, const std::string& name, const std::string& value);
 
 			void add_common_keys(pugi::xml_node& node);
 			void add_common_keys(rapidjson::Document& document);

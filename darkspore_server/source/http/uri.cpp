@@ -9,7 +9,7 @@
 // HTTP
 namespace HTTP {
 	// URI
-	URI::URI(std::string_view path) {
+	void URI::parse(std::string_view path) {
 		auto scheme_end = parse_scheme(path);
 		auto authority_end = parse_authority(path, scheme_end);
 		if ((authority_end + 1) < path.length()) {
@@ -77,7 +77,7 @@ namespace HTTP {
 		try {
 			value = std::stoull(parameter(name));
 		} catch (...) {
-			value = 0;
+			value = std::numeric_limits<uint64_t>::max();
 		}
 		return value;
 	}

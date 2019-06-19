@@ -17,6 +17,10 @@ namespace Blaze {
 			Client(boost::asio::io_context& io_service, boost::asio::ssl::context& context);
 
 			auto& get_socket() { return mSocket.lowest_layer(); }
+
+			const auto& get_user() const { return mUser; }
+			void set_user(const Game::UserPtr& user) { mUser = user; }
+
 			const auto& get_request() const { return mRequest; }
 			const auto& get_current_request() const { return mCurrentRequest; }
 
@@ -41,6 +45,8 @@ namespace Blaze {
 			rapidjson::Document mCurrentRequest;
 
 			std::vector<DataBuffer> mWriteBuffers;
+
+			Game::UserPtr mUser;
 			
 			uint32_t mCurrentMessageId;
 	};

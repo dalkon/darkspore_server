@@ -4,6 +4,7 @@
 
 // Include
 #include "uri.h"
+
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <vector>
@@ -40,15 +41,7 @@ namespace HTTP {
 			bool mKeepAlive;
 	};
 
-	struct Request {
-		boost::beast::http::request<boost::beast::http::string_body>& data;
-		URI uri;
-
-		Request(boost::beast::http::request<boost::beast::http::string_body>& request) :
-			data(request), uri(data.target().to_string()) {}
-	};
-
-	using RouteFn = std::function<void(Response&, Request&)>;
+	using RouteFn = std::function<void(Session&, Response&)>;
 
 	// RoutePath
 	class RoutePath {
@@ -77,13 +70,10 @@ namespace HTTP {
 	// Router
 	class Router {
 		public:
-			bool run(Session& session, Response& response, boost::beast::http::request<boost::beast::http::string_body>& request);
+			bool run(Session& session, Response& response);
 
 			void add(std::string path, std::initializer_list<boost::beast::http::verb> methods, RouteFn function);
 			void add(std::string path, boost::beast::http::verb method, RouteFn function);
-
-		private:
-			void find() const;
 
 		private:
 			std::vector<RoutePath> mRoutes;
