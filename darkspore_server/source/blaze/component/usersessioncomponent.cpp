@@ -152,9 +152,9 @@ namespace Blaze {
 			packet.PutInteger(&dataStruct, "HWFG", 0);
 			{
 				auto& qdatStruct = packet.CreateStruct(&dataStruct, "QDAT");
-				packet.PutInteger(&qdatStruct, "DBPS", 0);
+				packet.PutInteger(&qdatStruct, "DBPS", 1);
 				packet.PutInteger(&qdatStruct, "NATT", static_cast<uint64_t>(NatType::Open));
-				packet.PutInteger(&qdatStruct, "UBPS", 0);
+				packet.PutInteger(&qdatStruct, "UBPS", 1);
 			}
 			packet.PutInteger(&dataStruct, "UATT", 0);
 		} {
@@ -182,7 +182,7 @@ namespace Blaze {
 		auto& request = client->get_request();
 
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "FLGS", static_cast<uint32_t>(UserFlags::Authenticated));
+		packet.PutInteger(nullptr, "FLGS", static_cast<uint32_t>(SessionState::Authenticated));
 		packet.PutInteger(nullptr, "ID", userId);
 
 		DataBuffer outBuffer;
@@ -233,7 +233,7 @@ namespace Blaze {
 			packet.PutInteger(&edatStruct, "ID", userId);
 			packet.PutString(&edatStruct, "NAME", userName);
 		}
-		packet.PutInteger(nullptr, "FLGS", static_cast<uint32_t>(UserFlags::Authenticated));
+		packet.PutInteger(nullptr, "FLGS", static_cast<uint32_t>(SessionState::Authenticated));
 		{
 			auto& userStruct = packet.CreateStruct(nullptr, "USER");
 			packet.PutInteger(&userStruct, "AID", 1);

@@ -36,8 +36,8 @@ namespace Blaze {
 	enum class NetworkAddressMember {
 		XboxClientAddress,
 		XboxServerAddress,
-		IPPAirAddress,
-		IPAddress,
+		IpPairAddress,
+		IpAddress,
 		HostnameAddress,
 		Unset = 0x7F
 	};
@@ -53,6 +53,11 @@ namespace Blaze {
 		OptIn
 	};
 
+	enum class Slot {
+		Public = 0,
+		Private
+	};
+
 	enum class GameState {
 		NewState,
 		Initializing,
@@ -63,10 +68,10 @@ namespace Blaze {
 		Migrating,
 		Destructing,
 		Resetable,
-		ReplaySetup
+		ReplaySetup,
 	};
 
-	enum class UserFlags {
+	enum class SessionState {
 		Idle = 0,
 		Connecting,
 		Connected,

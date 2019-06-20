@@ -28,6 +28,7 @@ namespace Game {
 
 		level = utils::xml_get_text_node<uint32_t>(account, "level");
 		xp = utils::xml_get_text_node<uint32_t>(account, "xp");
+		dna = utils::xml_get_text_node<uint32_t>(account, "dna");
 		avatarId = std::clamp<uint32_t>(utils::xml_get_text_node<uint32_t>(account, "avatar_id"), 0, 16);
 		id = utils::xml_get_text_node<uint32_t>(account, "id");
 
@@ -66,6 +67,7 @@ namespace Game {
 			utils::xml_add_text_node(account, "avatar_id", avatarId);
 			utils::xml_add_text_node(account, "blaze_id", id);
 			utils::xml_add_text_node(account, "id", id);
+			utils::xml_add_text_node(account, "dna", dna);
 			utils::xml_add_text_node(account, "new_player_inventory", newPlayerInventory);
 			utils::xml_add_text_node(account, "new_player_progress", newPlayerProgress);
 			utils::xml_add_text_node(account, "cashout_bonus_time", cashoutBonusTime);
@@ -124,6 +126,10 @@ namespace Game {
 			mCreatures.Add(templateId);
 			mAccount.creatureRewards--;
 		}
+	}
+
+	void User::UnlockUpgrade(uint32_t unlockId) {
+		// No
 	}
 
 	void User::Logout() {

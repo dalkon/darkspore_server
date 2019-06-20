@@ -33,7 +33,7 @@ Application& Application::GetApp() {
 }
 
 bool Application::OnInit() {
-	setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "C");
 
 	AllocConsole();
 	(void)freopen("CONOUT$", "w", stdout);

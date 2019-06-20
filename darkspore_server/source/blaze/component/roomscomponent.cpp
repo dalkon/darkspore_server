@@ -144,9 +144,7 @@ namespace Blaze {
 
 		bool update = request["UPDT"].GetUint() != 0;
 		if (update) {
-			NotifyRoomViewUpdated(client, 0);
 			// What do we send here?
-			/*
 			TDF::Packet packet;
 			packet.PutInteger(nullptr, "SEID", 1);
 			packet.PutInteger(nullptr, "UPRE", 0);
@@ -161,7 +159,8 @@ namespace Blaze {
 			header.error_code = 0;
 
 			client->reply(std::move(header), outBuffer);
-			*/
+			
+			NotifyRoomViewUpdated(client, 1);
 		}
 	}
 

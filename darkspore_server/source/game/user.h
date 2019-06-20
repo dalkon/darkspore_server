@@ -29,6 +29,7 @@ namespace Game {
 
 		uint32_t level = 1;
 		uint32_t xp = 0;
+		uint32_t dna = 0;
 		uint32_t avatarId = 0;
 		uint32_t id = 1;
 
@@ -85,6 +86,9 @@ namespace Game {
 			const Creature* GetCreatureById(uint32_t id) const;
 
 			void UnlockCreature(uint32_t templateId);
+
+			// Upgrades
+			void UnlockUpgrade(uint32_t unlockId);
 
 			// Auth
 			void Logout();

@@ -840,6 +840,27 @@ namespace Game {
 		}
 	}
 
+	void API::game_account_unlock(HTTP::Session& session, HTTP::Response& response) {
+		auto& request = session.get_request();
+
+		const auto& user = session.get_user();
+		if (user) {
+			uint32_t unlockId = request.uri.parameteru("unlock_id");
+			user->UnlockUpgrade(unlockId);
+		}
+
+		pugi::xml_document document;
+		if (auto docResponse = document.append_child("response")) {
+			add_common_keys(docResponse);
+		}
+
+		xml_string_writer writer;
+		document.save(writer, "\t", 1U, pugi::encoding_latin1);
+
+		response.set(boost::beast::http::field::content_type, "text/xml");
+		response.body() = std::move(writer.result);
+	}
+
 	void API::game_game_getGame(HTTP::Session& session, HTTP::Response& response) {
 		pugi::xml_document document;
 
@@ -1009,6 +1030,24 @@ namespace Game {
 		response.body() = std::move(writer.result);
 		*/
 	}
+
+	/*
+/game/api?version=1&token=cookie
+cost = 0
+gear = 0.000
+id = 749013658
+large = iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAgAElEQVR4nOy9Z7Bl13WY+e1wwk0v
+large_crc = 692908162
+method = api.creature.updateCreature
+parts = 117957934
+points = 300.000
+stats = STR,14,0;DEX,13,0;MIND,23,0;HLTH,100,70;MANA,125,23;PDEF,50,78;EDEF,150,138;CRTR,50,52
+stats_ability_keyvalues = 885660025!minDamage,5;885660025!maxDamage,8;885660025!percentToHeal,20;1152331895!duration,20;1152331895!spawnMax,2;424126604!radius,8;424126604!healing,5;424126604!duration,6;424126604!minHealing,21;424126604!maxHealing,32;1577880566!Enrage.damage,9;1577880566!Enrage.duration,30;1577880566!Enrage.healing,35;1829107826!diameter,12;1829107826!damage,6;1829107826!duration,10;1829107826!speedDebuff,75
+thumb = iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAgAElEQVR4nGy8adRm11kduJ9zh3f6
+thumb_crc = 1921048798
+token = ABCDEFGHIJKLMNOPQRSTUVWXYZ
+version = 1
+	*/
 
 	void API::survey_survey_getSurveyList(HTTP::Session& session, HTTP::Response& response) {
 		pugi::xml_document document;

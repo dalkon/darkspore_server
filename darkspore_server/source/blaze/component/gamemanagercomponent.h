@@ -23,7 +23,7 @@ namespace Blaze {
 			static void NotifyGameCreated(Client* client);
 			static void NotifyGameRemoved(Client* client);
 			static void NotifyGameSetup(Client* client);
-			static void NotifyPlayerJoining(Client* client);
+			static void NotifyPlayerJoining(Client* client, uint32_t gameId);
 			static void NotifyPlayerJoinCompleted(Client* client);
 			static void NotifyGameStateChange(Client* client, uint64_t gameId, uint64_t gameState);
 			static void NotifyCreateDynamicDedicatedServerGame(Client* client);

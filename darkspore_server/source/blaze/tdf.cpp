@@ -112,6 +112,7 @@ namespace Blaze {
 
 		// Parser
 		void Parse(DataBuffer& buffer, rapidjson::Document& document) {
+			// TODO: fix this memory leak, only after the game is playable however.
 			rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
 			if (!document.IsObject()) {
 				document.SetObject();

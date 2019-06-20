@@ -53,6 +53,23 @@
 		0xE6 = WalUserSession
 		0x12C = DeviceLoginGuest (What?)
 
+	Union types (0-4 means the value when creating the union)
+		ADDR
+
+		PNET
+			0 = XboxClientAddress
+			1 = XboxServerAddress
+			2 = IpPairAddress or (IpAddress + IpAddress)?
+			3 = IpAddress
+			4 = HostNameAddress
+
+		REAS
+			0 = DatalessContextSetup
+			1 = ResetDedicatedServerSetupContext
+			2 = IndirectJoinGameSetupContext
+			3 = MatchmakingSetupContext
+			4 = IndirectMatchmakingSetupContext
+
 	Blaze types
 		0x04 = Integer
 		0x08 = Vector3
@@ -88,6 +105,53 @@
 		CDAT = ClientData
 
 	BlazeValues
+		DatalessContextSetup
+			DCTX = 0x1C
+
+		ResetDedicatedServerSetupContext
+			ERR = 0x38
+
+		IndirectJoinGameSetupContext
+			GRID = 0x08
+			RPVC = 0x50
+
+		MatchmakingSetupContext
+			FIT = 0x38
+			MAXF = 0x38
+			MSID = 0x38
+			RSLT = 0x1C
+			USID = 0x38
+
+		IndirectMatchmakingSetupContext
+			FIT = 0x38
+			GRID = 0x08
+			MAXF = 0x38
+			MSID = 0x38
+			RPVC = 0x50
+			RSLT = 0x1C
+			USID = 0x38
+
+		XboxClientAddress
+			XDDR = 0x20
+			XUID = 0x30
+
+		XboxServerAddress
+			PORT = 0x40
+			SITE = 0x24
+			SVID = 0x38
+
+		IpPairAddress
+			EXIP = 0x18
+			INIP = 0x18
+
+		IpAddress
+			IP = 0x38
+			PORT = 0x40
+
+		HostNameAddress
+			NAME = 0x24
+			PORT = 0x40
+
 		CDAT
 			IITO = 0x50
 			LANG = 0x38
