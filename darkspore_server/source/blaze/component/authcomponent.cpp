@@ -383,9 +383,9 @@ namespace Blaze {
 				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
 				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
 				packet.PutInteger(&pdtlStruct, "PID", 1); // user id?
-				packet.PutInteger(&pdtlStruct, "STAS", 2);
+				packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Active);
 				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+				packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
 			}
 		}
 		packet.PutString(nullptr, "PRIV", "");
@@ -420,9 +420,9 @@ namespace Blaze {
 			packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
 			packet.PutInteger(&pdtlStruct, "LAST", currentTime);
 			packet.PutInteger(&pdtlStruct, "PID", 1); // user id?
-			packet.PutInteger(&pdtlStruct, "STAS", 2);
+			packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Active);
 			packet.PutInteger(&pdtlStruct, "XREF", 0);
-			packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+			packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
 		}
 		packet.PutInteger(nullptr, "UID", 1); // client id?
 
@@ -457,9 +457,9 @@ namespace Blaze {
 				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
 				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
 				packet.PutInteger(&pdtlStruct, "PID", 0);
-				packet.PutInteger(&pdtlStruct, "STAS", 2);
+				packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Active);
 				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+				packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
 			}
 			packet.PutInteger(&sessStruct, "UID", 1);
 		}
@@ -497,9 +497,9 @@ namespace Blaze {
 				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
 				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
 				packet.PutInteger(&pdtlStruct, "PID", 0);
-				packet.PutInteger(&pdtlStruct, "STAS", 2);
+				packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Active);
 				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+				packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
 			}
 			packet.PutInteger(&sessStruct, "UID", 1);
 		}
@@ -889,9 +889,9 @@ namespace Blaze {
 				packet.PutString(&pdtlStruct, "DSNM", "Dalkon");
 				packet.PutInteger(&pdtlStruct, "LAST", 0);
 				packet.PutInteger(&pdtlStruct, "PID", 0);
-				packet.PutInteger(&pdtlStruct, "STAS", 0);
+				packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Unknown);
 				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", static_cast<uint64_t>(ExternalRefType::Unknown));
+				packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
 			}
 			packet.PutInteger(&sessStruct, "UID", 1);
 		}

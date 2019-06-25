@@ -1,6 +1,7 @@
 
 // Include
 #include "usersessioncomponent.h"
+#include "gamemanagercomponent.h"
 #include "../client.h"
 #include "../../utils/functions.h"
 #include <iostream>
@@ -58,6 +59,10 @@
 		QDAT
 
 		CVAR
+			GRP = 0x40
+			LVL = 0x38
+			STAT = 0x1C
+			XTRA = 0x40
 
 		(User Status)
 			FLGS = 0x28
@@ -199,6 +204,10 @@ namespace Blaze {
 	void UserSessionComponent::UpdateNetworkInfo(Client* client, Header header) {
 		// Log(client->get_current_request());
 		std::cout << "Update network info" << std::endl;
+
+		header.error_code = 0;
+		client->reply(std::move(header));
+
 		/*
 		Log.Info(string.Format("Client {0} updating network info", request.Client.ID));
 
@@ -220,7 +229,12 @@ namespace Blaze {
 	}
 
 	void UserSessionComponent::UpdateUserSessionClientData(Client* client, Header header) {
-		auto& request = client->get_request();
+		// Log(client->get_current_request());
+
+		header.error_code = 0;
+		client->reply(std::move(header));
+
+		// NotifyUserSessionExtendedDataUpdate(client, 1);
 		// Log(request);
 		/*
 		TDF::Packet packet;

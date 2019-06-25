@@ -3,6 +3,7 @@
 #define _GAME_USER_HEADER
 
 // Include
+#include "game.h"
 #include "squad.h"
 
 #include <cstdint>
@@ -77,9 +78,14 @@ namespace Game {
 			const std::string& get_auth_token() const { return mAuthToken; }
 			void set_auth_token(const std::string& authToken) { mAuthToken = authToken; }
 
+			const GameInfoPtr& get_game_info() const { return mGameInfo; }
+			void set_game_info(const GameInfoPtr& gameInfo) { mGameInfo = gameInfo; }
+
 			const auto& get_email() const { return mEmail; }
 			const auto& get_password() const { return mPassword; }
 			const auto& get_name() const { return mName; }
+
+			bool UpdateState(uint32_t newState);
 
 			// Creature
 			Creature* GetCreatureById(uint32_t id);
@@ -107,6 +113,10 @@ namespace Game {
 			std::string mPassword;
 			std::string mName;
 			std::string mAuthToken;
+
+			GameInfoPtr mGameInfo;
+
+			uint32_t mState = 0;
 	};
 
 	using UserPtr = std::shared_ptr<User>;
