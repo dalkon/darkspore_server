@@ -9,7 +9,38 @@
 // HTTP
 namespace HTTP {
 	// URI
+	std::string URI::encode(std::string_view str) {
+		// Cant bother atm
+		return std::string();
+	}
+
+	std::string URI::decode(std::string_view str) {
+		std::string out;
+		out.reserve(str.size());
+
+		std::string tmp(2, '\0');
+		for (auto i = 0; i < str.size(); ++i) {
+			char symbol = str[i];
+			if (symbol == '%') {
+				if (i + 3 <= str.size()) {
+					tmp[0] = str[++i];
+					tmp[1] = str[++i];
+					out += utils::to_number<char>(tmp, 16);
+				}
+			} else if (symbol == '+') {
+				out += ' ';
+			} else {
+				out += symbol;
+			}
+		}
+
+		return out;
+	}
+
 	void URI::parse(std::string_view path) {
+		auto decoded_path = decode(path);
+		path = decoded_path;
+
 		auto scheme_end = parse_scheme(path);
 		auto authority_end = parse_authority(path, scheme_end);
 		if ((authority_end + 1) < path.length()) {

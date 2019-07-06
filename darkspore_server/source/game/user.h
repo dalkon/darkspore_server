@@ -59,10 +59,42 @@ namespace Game {
 		void Write(pugi::xml_node& node) const;
 	};
 
+	// FeedItem
+	struct FeedItem {
+		std::string metadata;
+		std::string name;
+
+		uint64_t timestamp;
+
+		uint32_t accountId;
+		uint32_t id;
+		uint32_t messageId;
+	};
+
+	// Feed
+	class Feed {
+		public:
+			decltype(auto) begin() { return mItems.begin(); }
+			decltype(auto) begin() const { return mItems.begin(); }
+			decltype(auto) end() { return mItems.end(); }
+			decltype(auto) end() const { return mItems.end(); }
+
+			auto& data() { return mItems; }
+			const auto& data() const { return mItems; }
+
+			void Read(const pugi::xml_node& node);
+			void Write(pugi::xml_node& node) const;
+
+			void Add(FeedItem&& item);
+
+		private:
+			std::vector<FeedItem> mItems;
+	};
+
 	// User
 	class User {
 		public:
-			User(const std::string& email);
+			User(const std::string& username);
 			~User();
 
 			//
@@ -75,13 +107,18 @@ namespace Game {
 			auto& get_squads() { return mSquads; }
 			const auto& get_squads() const { return mSquads; }
 
+			auto& get_feed() { return mFeed; }
+			const auto& get_feed() const { return mFeed; }
+
 			const std::string& get_auth_token() const { return mAuthToken; }
 			void set_auth_token(const std::string& authToken) { mAuthToken = authToken; }
 
 			const GameInfoPtr& get_game_info() const { return mGameInfo; }
 			void set_game_info(const GameInfoPtr& gameInfo) { mGameInfo = gameInfo; }
 
-			const auto& get_email() const { return mEmail; }
+			auto get_id() const { return mAccount.id; }
+
+			const auto& get_username() const { return mUsername; }
 			const auto& get_password() const { return mPassword; }
 			const auto& get_name() const { return mName; }
 
@@ -108,14 +145,16 @@ namespace Game {
 
 			Creatures mCreatures;
 			Squads mSquads;
+			Feed mFeed;
 
-			std::string mEmail;
+			std::string mUsername;
 			std::string mPassword;
 			std::string mName;
 			std::string mAuthToken;
 
 			GameInfoPtr mGameInfo;
 
+			uint32_t mId = 0;
 			uint32_t mState = 0;
 	};
 
@@ -124,11 +163,11 @@ namespace Game {
 	// UserManager
 	class UserManager {
 		public:
-			static UserPtr GetUserByEmail(const std::string& email);
+			static UserPtr GetUserByEmail(const std::string& username);
 			static UserPtr GetUserByAuthToken(const std::string& authToken);
 
 		private:
-			static void RemoveUser(const std::string& email);
+			static void RemoveUser(const std::string& username);
 
 		private:
 			static std::map<std::string, UserPtr> sUsersByEmail;

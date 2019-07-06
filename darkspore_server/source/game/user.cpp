@@ -4,6 +4,55 @@
 #include "../utils/functions.h"
 #include <algorithm>
 
+/*
+<feed>
+	<count>20</count>
+	<total>161</total>
+	<items>
+		<item>
+		<account_id>386571374</account_id>
+		<id>1803</id>
+		<message_id>2</message_id>
+		<metadata>3524487169;1002340</metadata>
+		<name>maxisjohn</name>
+		<time>1296011517</time>
+		</item>
+		<item>
+		<account_id>386571374</account_id>
+		<id>1802</id>
+		<message_id>2</message_id>
+		<metadata>2128242117;1002339</metadata>
+		<name>maxisjohn</name>
+		<time>1296011487</time>
+		</item>
+		<item>
+		<account_id>386571374</account_id>
+		<id>1798</id>
+		<message_id>3</message_id>
+		<metadata>8</metadata>
+		<name>maxisjohn</name>
+		<time>1296008728</time>
+		</item>
+		<item>
+		<account_id>386573487</account_id>
+		<id>1773</id>
+		<message_id>1</message_id>
+		<metadata>Synesthesiac</metadata>
+		<name>somegamerdood</name>
+		<time>1295961120</time>
+		</item>
+		<item>
+		<account_id>386573487</account_id>
+		<id>1772</id>
+		<message_id>1</message_id>
+		<metadata>MaxisJohn</metadata>
+		<name>somegamerdood</name>
+		<time>1295961116</time>
+		</item>
+	</items>
+</feed>
+*/
+
 // Game
 namespace Game {
 	// Account
@@ -90,8 +139,46 @@ namespace Game {
 		}
 	}
 
+	// Feed
+	void Feed::Read(const pugi::xml_node& node) {
+		auto feed = node.child("feed");
+		if (!feed) {
+			return;
+		}
+
+		auto items = feed.child("items");
+		if (!items) {
+			return;
+		}
+
+		for (const auto& item : items) {
+			decltype(auto) feedItem = mItems.emplace_back();
+			feedItem.accountId = utils::xml_get_text_node<uint32_t>(item, "account_id");
+			feedItem.id = utils::xml_get_text_node<uint32_t>(item, "id");
+			feedItem.messageId = utils::xml_get_text_node<uint32_t>(item, "message_id");
+			feedItem.metadata = utils::xml_get_text_node(item, "metadata");
+			feedItem.name = utils::xml_get_text_node(item, "name");
+			feedItem.timestamp = utils::xml_get_text_node<uint64_t>(item, "time");
+		}
+	}
+
+	void Feed::Write(pugi::xml_node& node) const {
+		if (auto feed = node.append_child("feed")) {
+			auto items = feed.append_child("items");
+			for (const auto& feedItem : mItems) {
+				auto item = items.append_child("item");
+				utils::xml_add_text_node(item, "account_id", feedItem.accountId);
+				utils::xml_add_text_node(item, "id", feedItem.id);
+				utils::xml_add_text_node(item, "message_id", feedItem.messageId);
+				utils::xml_add_text_node(item, "metadata", feedItem.metadata);
+				utils::xml_add_text_node(item, "name", feedItem.name);
+				utils::xml_add_text_node(item, "time", feedItem.timestamp);
+			}
+		}
+	}
+
 	// User
-	User::User(const std::string& email) : mEmail(email) {
+	User::User(const std::string& username) : mUsername(username) {
 		// Empty
 	}
 
@@ -165,12 +252,12 @@ namespace Game {
 	}
 
 	void User::Logout() {
-		UserManager::RemoveUser(mEmail);
+		UserManager::RemoveUser(mUsername);
 		Save();
 	}
 
 	bool User::Load() {
-		std::string filepath = "data/user/" + mEmail + ".xml";
+		std::string filepath = "data/user/" + mUsername + ".xml";
 
 		pugi::xml_document document;
 		if (!document.load_file(filepath.c_str())) {
@@ -179,29 +266,34 @@ namespace Game {
 
 		if (auto user = document.child("user")) {
 			mName = utils::xml_get_text_node(user, "name");
-			mEmail = utils::xml_get_text_node(user, "email");
+			// mEmail = utils::xml_get_text_node(user, "email");
 			mPassword = utils::xml_get_text_node(user, "password"); // Hash this later?
 
 			mAccount.Read(user);
 			mCreatures.Read(user);
 			mSquads.Read(user);
+			mFeed.Read(user);
 		}
+
+		// static uint32_t id = 0;
+		// mId = ++id;
 
 		return true;
 	}
 
 	bool User::Save() {
-		std::string filepath = "data/user/" + mEmail + ".xml";
+		std::string filepath = "data/user/" + mUsername + ".xml";
 
 		pugi::xml_document document;
 		if (auto user = document.append_child("user")) {
 			utils::xml_add_text_node(user, "name", mName);
-			utils::xml_add_text_node(user, "email", mEmail);
+			// utils::xml_add_text_node(user, "email", mEmail);
 			utils::xml_add_text_node(user, "password", mPassword);
 
 			mAccount.Write(user);
 			mCreatures.Write(user);
 			mSquads.Write(user);
+			mFeed.Write(user);
 		}
 
 		return document.save_file(filepath.c_str(), "\t", 1U, pugi::encoding_latin1);
@@ -210,16 +302,16 @@ namespace Game {
 	// UserManager
 	std::map<std::string, UserPtr> UserManager::sUsersByEmail;
 
-	UserPtr UserManager::GetUserByEmail(const std::string& email) {
+	UserPtr UserManager::GetUserByEmail(const std::string& username) {
 		UserPtr user;
 
-		auto it = sUsersByEmail.find(email);
+		auto it = sUsersByEmail.find(username);
 		if (it != sUsersByEmail.end()) {
 			user = it->second;
 		} else {
-			user = std::make_shared<User>(email);
+			user = std::make_shared<User>(username);
 			if (user->Load()) {
-				sUsersByEmail.emplace(email, user);
+				sUsersByEmail.emplace(username, user);
 			} else {
 				user.reset();
 			}
