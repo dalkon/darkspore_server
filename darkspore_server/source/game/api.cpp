@@ -667,6 +667,7 @@ version = 1
 
 			utils::xml_add_text_node(docResponse, "expires", timestamp + (3 * 60 * 60 * 1000));
 			if (auto parts = docResponse.append_child("parts")) {
+				/*
 				if (auto part = parts.append_child("part")) {
 					utils::xml_add_text_node(part, "is_flair", "0");
 					utils::xml_add_text_node(part, "cost", "100");
@@ -684,6 +685,7 @@ version = 1
 					utils::xml_add_text_node(part, "usage", "1");
 					utils::xml_add_text_node(part, "creation_date", timestamp);
 				}
+				*/
 			}
 			
 			add_common_keys(docResponse);

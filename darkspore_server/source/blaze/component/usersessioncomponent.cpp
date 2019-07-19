@@ -103,8 +103,6 @@ namespace Blaze {
 	void UserSessionComponent::NotifyUserSessionExtendedDataUpdate(Client* client, uint64_t userId) {
 		std::cout << "UserSession: User extended data" << std::endl;
 
-		auto& request = client->get_request();
-
 		TDF::Packet packet;
 		{
 			auto& dataStruct = packet.CreateStruct(nullptr, "DATA");
@@ -120,7 +118,7 @@ namespace Blaze {
 			{
 				auto& qdatStruct = packet.CreateStruct(&dataStruct, "QDAT");
 				packet.PutInteger(&qdatStruct, "DBPS", 0);
-				packet.PutInteger(&qdatStruct, "NATT", static_cast<uint64_t>(NatType::Open));
+				packet.PutInteger(&qdatStruct, "NATT", NatType::Open);
 				packet.PutInteger(&qdatStruct, "UBPS", 0);
 			}
 			packet.PutInteger(&dataStruct, "UATT", 0);
