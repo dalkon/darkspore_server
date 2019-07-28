@@ -31,6 +31,11 @@ namespace utils {
 		}
 	}
 
+	// Other
+	constexpr int const_tolower(int c) {
+		return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c;
+	}
+
 	// Time
 	uint64_t get_unix_time();
 
@@ -102,6 +107,18 @@ namespace utils {
 	template<typename T>
 	std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, T> xml_get_text_node(const pugi::xml_node& node, const std::string& name) {
 		return to_number<T>(xml_get_text_node(node, name));
+	}
+
+	// Hashes
+	constexpr uint32_t hash_id(const char* pStr) {
+		uint32_t rez = 0x811C9DC5u;
+		while (*pStr) {
+			// To avoid compiler warnings
+			rez = static_cast<uint32_t>(rez * static_cast<unsigned long long>(0x1000193));
+			rez ^= static_cast<uint32_t>(const_tolower(*pStr));
+			++pStr;
+		}
+		return rez;
 	}
 }
 
