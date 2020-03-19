@@ -55,4 +55,29 @@ namespace Game {
 			}
 		}
 	}
+
+	Squad* Squads::Create() {
+		if (mSquads.size() >= 3) {
+			return nullptr;
+		}
+
+		auto& squad = mSquads.emplace_back();
+		squad.id = static_cast<uint32_t>(mSquads.size());
+		squad.slot = squad.id;
+
+		return &squad;
+	}
+
+	void Squads::Remove(size_t index) {
+		if (index < mSquads.size()) {
+			mSquads.erase(mSquads.begin() + index);
+		}
+	}
+
+	Squad* Squads::Get(size_t index) {
+		if (index < mSquads.size()) {
+			return &mSquads[index];
+		}
+		return nullptr;
+	}
 }

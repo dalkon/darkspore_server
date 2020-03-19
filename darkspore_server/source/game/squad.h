@@ -37,6 +37,12 @@ namespace Game {
 			void Read(const pugi::xml_node& node);
 			void Write(pugi::xml_node& node) const;
 
+			Squad* Create();
+			void Remove(size_t index);
+
+			Squad* Get(size_t index);
+			uint32_t Size() const { return static_cast<uint32_t>(mSquads.size()); }
+
 		private:
 			std::vector<Squad> mSquads;
 	};

@@ -8,6 +8,123 @@
 #include <vector>
 #include <pugixml.hpp>
 
+namespace Ability {
+	enum : uint32_t {
+		Strength = 0,
+		Dexterity,
+		Mind,
+		MaxHealthIncrease,
+		MaxHealth,
+		MaxMana,
+		DamageReduction,
+		PhysicalDefense,
+		PhysicalDamageReduction,
+		EnergyDefense,
+		CriticalRating,
+		NonCombatSpeed,
+		CombatSpeed,
+		DamageBuff,
+		Silence,
+		Immobilized,
+		DefenseBoostBasicDamage,
+		PhysicalDamageIncrease,
+		PhysicalDamageIncreaseFlat,
+		AutoCrit,
+		BehindDirectDamageIncrease,
+		BehindOrSideDirectDamageIncrease,
+		CriticalDamageIncrease,
+		AttackSpeedScale,
+		CooldownScale,
+		Frozen,
+		ProjectileSpeedIncrease,
+		AoeResistance,
+		EnergyDamageBuff,
+		Intangible,
+		HealingReduction,
+		EnergyDamageIncrease,
+		EnergyDamageIncreaseFlat,
+		Immune,
+		StealthDetection,
+		LifeSteal,
+		RejectModifier,
+		AoeDamage,
+		TechnologyTypeDamage,
+		SpacetimeTypeDamage,
+		LifeTypeDamage,
+		ElementsTypeDamage,
+		SupernaturalTypeDamage,
+		TechnologyTypeResistance,
+		SpacetimeTypeResistance,
+		LifeTypeResistance,
+		ElementsTypeResistance,
+		SupernaturalTypeResistance,
+		MovementSpeedBuff,
+		ImmuneToDebuffs,
+		BuffDuration,
+		DebuffDuration,
+		ManaSteal,
+		DebuffDurationIncrease,
+		EnergyDamageReduction,
+		Incorporeal,
+		DotDamageIncrease,
+		MindControlled,
+		SwapDisabled,
+		ImmuneToRandomTeleport,
+		ImmuneToBanish,
+		ImmuneToKnockback,
+		AoeRadius,
+		PetDamage,
+		PetHealth,
+		CrystalFind,
+		DNADropped,
+		RangeIncrease,
+		OrbEffectiveness,
+		OverdriveBuildup,
+		OverdriveDuration,
+		LootFind,
+		Surefooted,
+		ImmuneToStunned,
+		ImmuneToSleep,
+		ImmuneToTerrified,
+		ImmuneToSilence,
+		ImmuneToCursed,
+		ImmuneToPoisonOrDisease,
+		ImmuneToBurning,
+		ImmuneToRooted,
+		ImmuneToSlow,
+		ImmuneToPull,
+		DotDamageDoneIncrease,
+		AggroIncrease,
+		AggroDecrease,
+		PhysicalDamageDoneIncrease,
+		PhysicalDamageDoneByAbilityIncrease,
+		EnergyDamageDoneIncrease,
+		EnergyDamageDoneByAbilityIncrease,
+		ChannelTimeDecrease,
+		CrowdControlDurationDecrease,
+		DotDurationDecrease,
+		AoeDurationIncrease,
+		HealIncrease,
+		OnLockdown,
+		HoTDoneIncrease,
+		ProjectileDamageIncrease,
+		DeployBonusInvincibilityTime,
+		PhysicalDamageDecreaseFlat,
+		EnergyDamageDecreaseFlat,
+		MinWeaponDamage,
+		MaxWeaponDamage,
+		MinWeaponDamagePercent,
+		MaxWeaponDamagePercent,
+		DirectAttackDamage,
+		DirectAttackDamagePercent,
+		GetHitAnimDisabled,
+		XPBoost,
+		InvisibleToSecurityTeleporters,
+		BodyScale,
+		Count
+	};
+}
+
 // Game
 namespace Game {
 	// Creature template IDs
@@ -51,8 +168,21 @@ namespace Game {
 		TorkAlpha = 1957997466,
 	};
 
+	enum class CreatureType : uint16_t {
+		Bio,
+		Cyber,
+		Plasma,
+		Necro,
+		Chrono,
+		All
+	};
+
+	std::string to_string(CreatureType type);
+
 	// Creature
 	struct Creature {
+		using Ptr = std::shared_ptr<Creature>;
+
 		std::string name;
 		std::string nameLocaleId;
 		std::string elementType;
@@ -66,6 +196,8 @@ namespace Game {
 		uint32_t id = 0;
 		uint64_t nounId = 0;
 		uint32_t version = 0;
+
+		CreatureType type = CreatureType::All;
 
 		void Read(const pugi::xml_node& node);
 		void Write(pugi::xml_node& node) const;
@@ -87,8 +219,10 @@ namespace Game {
 
 			void Add(uint32_t templateId);
 
+			Creature::Ptr Get(size_t creatureId) const;
+
 		private:
-			std::vector<Creature> mCreatures;
+			std::vector<Creature::Ptr> mCreatures;
 	};
 }
 

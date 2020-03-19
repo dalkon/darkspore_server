@@ -113,6 +113,16 @@ namespace HTTP {
 		return value;
 	}
 
+	double URI::parameterd(const std::string& name) const {
+		double value;
+		try {
+			value = std::stod(parameter(name));
+		} catch (...) {
+			value = 0;
+		}
+		return value;
+	}
+
 	bool URI::parameterb(const std::string& name) const {
 		return parameteru(name) != 0;
 	}

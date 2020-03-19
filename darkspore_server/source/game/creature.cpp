@@ -6,13 +6,34 @@
 
 // Game
 namespace Game {
+	// CreatureType
+	std::string to_string(CreatureType type) {
+		switch (type) {
+			case CreatureType::Bio:
+				return "bio";
+
+			case CreatureType::Cyber:
+				return "cyber";
+
+			case CreatureType::Plasma:
+				return "plasma";
+
+			case CreatureType::Necro:
+				return "necro";
+
+			case CreatureType::Chrono:
+				return "chrono";
+
+			case CreatureType::All:
+				return "all";
+
+			default:
+				return "unknown";
+		}
+	}
+
 	// Creature
 	void Creature::Read(const pugi::xml_node& node) {
-		std::string_view nodeName = node.name();
-		if (nodeName != "creature") {
-			return;
-		}
-
 		name = utils::xml_get_text_node(node, "name");
 		nameLocaleId = utils::xml_get_text_node(node, "name_locale_id");
 		elementType = utils::xml_get_text_node(node, "type_a");
@@ -29,19 +50,17 @@ namespace Game {
 	}
 
 	void Creature::Write(pugi::xml_node& node) const {
-		if (auto creature = node.append_child("creature")) {
-			utils::xml_add_text_node(creature, "id", id);
-			utils::xml_add_text_node(creature, "name", name);
-			utils::xml_add_text_node(creature, "name_locale_id", nameLocaleId);
-			utils::xml_add_text_node(creature, "type_a", elementType);
-			utils::xml_add_text_node(creature, "class", classType);
-			utils::xml_add_text_node(creature, "png_large_url", pngLargeUrl);
-			utils::xml_add_text_node(creature, "png_thumb_url", pngThumbUrl);
-			utils::xml_add_text_node(creature, "noun_id", nounId);
-			utils::xml_add_text_node(creature, "version", version);
-			utils::xml_add_text_node(creature, "gear_score", gearScore);
-			utils::xml_add_text_node(creature, "item_points", itemPoints);
-		}
+		utils::xml_add_text_node(node, "id", id);
+		utils::xml_add_text_node(node, "name", name);
+		utils::xml_add_text_node(node, "name_locale_id", nameLocaleId);
+		utils::xml_add_text_node(node, "type_a", elementType);
+		utils::xml_add_text_node(node, "class", classType);
+		utils::xml_add_text_node(node, "png_large_url", pngLargeUrl);
+		utils::xml_add_text_node(node, "png_thumb_url", pngThumbUrl);
+		utils::xml_add_text_node(node, "noun_id", nounId);
+		utils::xml_add_text_node(node, "version", version);
+		utils::xml_add_text_node(node, "gear_score", gearScore);
+		utils::xml_add_text_node(node, "item_points", itemPoints);
 	}
 
 	// Creatures
@@ -52,28 +71,46 @@ namespace Game {
 		}
 
 		for (const auto& creatureNode : creatures) {
-			decltype(auto) creature = mCreatures.emplace_back();
-			creature.Read(creatureNode);
+			std::string_view nodeName = creatureNode.name();
+			if (nodeName == "creature") {
+				auto creature = std::make_shared<Creature>();
+				creature->Read(creatureNode);
+				mCreatures.push_back(std::move(creature));
+			}
 		}
 	}
 
 	void Creatures::Write(pugi::xml_node& node) const {
-		if (auto creatures = node.append_child("creatures")) {
+		if (auto creaturesNode = node.append_child("creatures")) {
 			for (const auto& creature : mCreatures) {
-				creature.Write(creatures);
+				if (auto creatureNode = creaturesNode.append_child("creature")) {
+					creature->Write(creatureNode);
+				}
 			}
 		}
 	}
 
 	void Creatures::Add(uint32_t templateId) {
 		for (const auto& creature : mCreatures) {
-			if (creature.nounId == templateId) {
+			if (creature->nounId == templateId) {
 				return;
 			}
 		}
 
-		decltype(auto) creature = mCreatures.emplace_back();
-		creature.id = 1;
-		creature.nounId = templateId;
+		auto creature = std::make_shared<Creature>();
+
+		creature->id = static_cast<uint32_t>(mCreatures.size()); // TODO: change this for a proper global id
+		creature->nounId = templateId;
+
+		mCreatures.push_back(std::move(creature));
+	}
+
+	Creature::Ptr Creatures::Get(size_t creatureId) const {
+		for (const auto& creature : mCreatures) {
+			if (creature->id == creatureId) {
+				return creature;
+			}
+		}
+		return nullptr;
 	}
 }

@@ -1,8 +1,11 @@
 
 // Include
 #include "messagingcomponent.h"
-#include "../client.h"
-#include "../../utils/functions.h"
+
+#include "blaze/client.h"
+#include "blaze/functions.h"
+#include "utils/functions.h"
+
 #include <iostream>
 
 /*
@@ -24,6 +27,19 @@
 			PYLD = 0x18
 			SRCE = 0x08
 			TIME = 0x38
+
+
+	Message types
+		0-2 = user message types
+		2 = playgroup, lobby & game message types
+
+		static var kMessageType_Tell = 0;
+		static var kMessageType_Party = 7;
+		static var kMessageType_Game = 8;
+		static var kMessageType_Lobby = 9;
+		static var kMessageType_System = 14;
+		static var kMessageType_Warning = 15;
+		static var kMessageType_SporeNetBroadcast = 16;
 */
 
 // Blaze
@@ -58,44 +74,49 @@ namespace Blaze {
 	}
 
 	void MessagingComponent::OnSendMessageResponse(Client* client) {
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "MGID", 0);
-		{
-			auto& midsList = packet.CreateList(nullptr, "MIDS", TDF::Type::Integer);
-			packet.PutInteger(&midsList, "", 0);
+		ClientMessage message;
+		message.Read(client->get_request());
+
+		uint32_t id;
+		if (!message.attributes.empty()) {
+			id = message.attributes.begin()->first;
+		} else {
+			id = 0;
 		}
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
+		TDF::Packet packet;
+		packet.put_integer("MGID", id);
+		packet.push_list("MIDS", TDF::Type::Integer); // vector<uint32_t>
+		for (const auto& [id, _] : message.attributes) {
+			packet.put_integer("", id);
+		}
+		packet.pop();
 
-		Header header;
-		header.component = Component::Messaging;
-		header.command = 0x01;
-		header.error_code = 0;
+		NotifyMessage(client);
 
-		client->reply(std::move(header), outBuffer);
+		client->reply({
+			.component = Component::Messaging,
+			.command = 0x01
+		}, packet);
 	}
 
 	void MessagingComponent::NotifyMessage(Client* client) {
+		ServerMessage serverMessage;
+		serverMessage.flags = 0;
+		serverMessage.messageId = 1;
+		serverMessage.name = "Unknown";
+		serverMessage.time = static_cast<uint32_t>(utils::get_unix_time());
+		
+		ClientMessage& clientMessage = serverMessage.message;
+		clientMessage.attributes.emplace(1, "testing 123");
+
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "FLAG", 0);
-		packet.PutInteger(nullptr, "MGID", 0);
-		packet.PutString(nullptr, "NAME", "");
-		{
-			auto& pyldStruct = packet.CreateStruct(nullptr, "PYLD");
-		}
-		packet.PutVector3(nullptr, "SRCE", 0, 0, 0);
-		packet.PutInteger(nullptr, "TIME", utils::get_unix_time());
+		serverMessage.Write(packet);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Messaging;
-		header.command = 0x01;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		client->notify({
+			.component = Component::Messaging,
+			.command = 0x01
+		}, packet);
 	}
 
 	void MessagingComponent::OnSendMessage(Client* client, Header header) {

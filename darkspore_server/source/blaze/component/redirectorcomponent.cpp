@@ -1,7 +1,9 @@
 
 // Include
 #include "redirectorcomponent.h"
-#include "../client.h"
+
+#include "blaze/client.h"
+
 #include <iostream>
 
 /*

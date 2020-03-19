@@ -120,6 +120,93 @@ namespace utils {
 		}
 		return rez;
 	}
+
+	// Functions
+	template<typename T>
+	struct impl_function_traits {
+		static_assert(sizeof(T) == 0, "function_traits<T>: T is not a function type");
+		static constexpr bool valid = false;
+		static constexpr std::size_t arity = 0;
+	};
+
+	template<typename T>
+	struct function_traits : public impl_function_traits<decltype(&T::operator())> {};
+
+	template<class Class, typename Result, typename... Args>
+	struct function_traits<Result(Class::*)(Args...)> {
+		static constexpr bool valid = true;
+		static constexpr size_t arity = sizeof...(Args);
+
+		using result_type = Result;
+		using argument_tuple = std::tuple<Args...>;
+
+		template <size_t argument_index>
+		struct argument_type {
+			static_assert(argument_index < arity, "error: invalid parameter index.");
+			using type = typename std::tuple_element<argument_index, argument_tuple>::type;
+		};
+	};
+
+	template<typename Result, typename... Args>
+	struct function_traits<Result(Args...)> {
+		static constexpr bool valid = true;
+		static constexpr std::size_t arity = sizeof...(Args);
+
+		using result_type = Result;
+		using argument_tuple = std::tuple<Args...>;
+
+		template <size_t argument_index>
+		struct argument {
+			static_assert(argument_index < arity, "error: invalid parameter index.");
+			using type = typename std::tuple_element<argument_index, argument_tuple>::type;
+		};
+	};
+
+	// Generics
+	namespace generics {
+		constexpr size_t max_arity = 10;
+
+		struct variadic_t {};
+
+		namespace detail {
+			template <size_t>
+			struct arbitrary_t {
+				template<typename T> operator T&& ();
+				template<typename T> operator T& ();
+			};
+
+			template<typename F, size_t... Is, typename U = decltype(std::declval<F>()(arbitrary_t<Is>{}...))>
+			constexpr auto test_signature(std::index_sequence<Is...>) {
+				return std::integral_constant<size_t, sizeof...(Is)>{};
+			}
+
+			template<size_t I, typename F>
+			constexpr auto arity_impl(int) -> decltype(test_signature<F>(std::make_index_sequence<I>{})) {
+				return {};
+			}
+
+			template<size_t I, typename F, typename = std::enable_if_t<(I > 0)>>
+			constexpr auto arity_impl(...) {
+				return arity_impl<I - 1, F>(0);
+			}
+
+			template<typename F, size_t MaxArity = 10>
+			constexpr auto arity_impl() {
+				constexpr auto tmp = arity_impl<MaxArity + 1, F>(0);
+				if constexpr (tmp == MaxArity + 1) {
+					return variadic_t {};
+				} else {
+					return tmp;
+				}
+			}
+		}
+
+		template<typename F, size_t MaxArity = max_arity>
+		constexpr auto arity = detail::arity_impl<std::decay_t<F>, MaxArity>();
+
+		template<typename F, size_t MaxArity = max_arity>
+		constexpr bool is_variadic_v = std::is_same_v<std::decay_t<decltype(arity_v<F, MaxArity>)>, variadic_t>;
+	}
 }
 
 #endif

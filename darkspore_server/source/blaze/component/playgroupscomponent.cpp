@@ -1,8 +1,10 @@
 
 // Include
 #include "playgroupscomponent.h"
-#include "../client.h"
-#include "../../utils/functions.h"
+
+#include "blaze/client.h"
+#include "utils/functions.h"
+
 #include <iostream>
 
 /*
@@ -193,7 +195,6 @@ namespace Blaze {
 			packet.PutInteger(&infoStruct, "OWNR", user->get_id());
 			packet.PutInteger(&infoStruct, "PGID", 1);
 			packet.PutInteger(&infoStruct, "PRES", PresenceMode::Standard);
-			packet.PutString(&infoStruct, "NAME", "My Room");
 			packet.PutString(&infoStruct, "UKEY", "what");
 			packet.PutInteger(&infoStruct, "UPRS", 1);
 			packet.PutString(&infoStruct, "UUID", "71bc4bdb-82ec-494d-8d75-ca5123b827ac");

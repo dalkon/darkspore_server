@@ -53,6 +53,9 @@ namespace Game {
 			void game_creature_resetCreature(HTTP::Session& session, HTTP::Response& response);
 			void game_creature_unlockCreature(HTTP::Session& session, HTTP::Response& response);
 			void game_creature_getCreature(HTTP::Session& session, HTTP::Response& response);
+			void game_creature_getTemplate(HTTP::Session& session, HTTP::Response& response);
+
+			void game_deck_updateDecks(HTTP::Session& session, HTTP::Response& response);
 
 			// survey
 			void survey_survey_getSurveyList(HTTP::Session& session, HTTP::Response& response);
@@ -60,7 +63,7 @@ namespace Game {
 		private:
 			void add_broadcasts(pugi::xml_node& node);
 
-			void add_common_keys(pugi::xml_node& node);
+			void add_common_keys(pugi::xml_node& node, bool success = true);
 			void add_common_keys(rapidjson::Document& document);
 		
 		private:

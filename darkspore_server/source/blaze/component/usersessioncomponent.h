@@ -3,7 +3,7 @@
 #define _BLAZE_COMPONENT_USERSESSION_HEADER
 
 // Include
-#include "../tdf.h"
+#include "blaze/tdf.h"
 
 // Blaze
 namespace Blaze {
@@ -21,6 +21,8 @@ namespace Blaze {
 		private:
 			static void UpdateNetworkInfo(Client* client, Header header);
 			static void UpdateUserSessionClientData(Client* client, Header header);
+
+			static void WriteUserSessionExtendedData(Client* client, TDF::Packet& packet);
 	};
 }
 

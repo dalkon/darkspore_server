@@ -32,6 +32,7 @@ namespace HTTP {
 			std::string parameter(const std::string& name) const;
 			int64_t parameteri(const std::string& name) const;
 			uint64_t parameteru(const std::string& name) const;
+			double parameterd(const std::string& name) const;
 			bool parameterb(const std::string& name) const;
 
 			void set_parameter(const std::string& name, const std::string& value);

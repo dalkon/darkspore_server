@@ -5,6 +5,7 @@
 // Include
 #include "game.h"
 #include "squad.h"
+#include "room.h"
 
 #include <cstdint>
 #include <string>
@@ -175,8 +176,8 @@ namespace Game {
 			const std::string& get_auth_token() const { return mAuthToken; }
 			void set_auth_token(const std::string& authToken) { mAuthToken = authToken; }
 
-			const GameInfoPtr& get_game_info() const { return mGameInfo; }
-			void set_game_info(const GameInfoPtr& gameInfo) { mGameInfo = gameInfo; }
+			const Game::Ptr& get_game() const { return mGame; }
+			void set_game(const Game::Ptr& game) { mGame = game; }
 
 			auto get_id() const { return mAccount.id; }
 
@@ -187,16 +188,22 @@ namespace Game {
 			bool UpdateState(uint32_t newState);
 
 			// Creature
-			Creature* GetCreatureById(uint32_t id);
-			const Creature* GetCreatureById(uint32_t id) const;
+			Creature::Ptr GetCreatureById(uint32_t id) const;
 
 			void UnlockCreature(uint32_t templateId);
 
+			// Squads
+			void UpdateSquad(uint32_t slot, const std::string& creatureStringList, bool pvp);
+
 			// Upgrades
-			void UnlockUpgrade(uint32_t unlockId);
+			bool UnlockUpgrade(uint32_t unlockId);
 
 			// Auth
 			void Logout();
+
+			// Rooms
+			const RoomPtr& GetRoom() const;
+			void SetRoom(const RoomPtr& room);
 
 			// Storage
 			bool Load();
@@ -215,7 +222,8 @@ namespace Game {
 			std::string mName;
 			std::string mAuthToken;
 
-			GameInfoPtr mGameInfo;
+			Game::Ptr mGame;
+			RoomPtr mRoom;
 
 			uint32_t mId = 0;
 			uint32_t mState = 0;
@@ -223,7 +231,7 @@ namespace Game {
 
 	using UserPtr = std::shared_ptr<User>;
 
-	// UserManager
+	// UserManager | TODO: move to Application?
 	class UserManager {
 		public:
 			static UserPtr GetUserByEmail(const std::string& username);

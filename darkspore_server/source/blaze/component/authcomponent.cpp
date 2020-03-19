@@ -2,9 +2,59 @@
 // Include
 #include "authcomponent.h"
 #include "usersessioncomponent.h"
-#include "../client.h"
-#include "../../utils/functions.h"
+
+#include "blaze/client.h"
+#include "blaze/functions.h"
+#include "utils/functions.h"
+
 #include <iostream>
+
+enum PacketID : uint16_t {
+	CreateAccount = 0x0A,
+	UpdateAccount = 0x14,
+	UpdateParentalEmail = 0x1C,
+	ListUserEntitlements2 = 0x1D,
+	GetAccount = 0x1E,
+	GrantEntitlement = 0x1F,
+	ListEntitlements = 0x20,
+	HasEntitlement = 0x21,
+	GetUseCount = 0x22,
+	DecrementUseCount = 0x23,
+	GetAuthToken = 0x24,
+	GetHandoffToken = 0x25,
+	GetPasswordRules = 0x26,
+	GrantEntitlement2 = 0x27,
+	Login = 0x28,
+	AcceptTOS = 0x29,
+	GetTOSInfo = 0x2A,
+	ModifyEntitlements2 = 0x2B,
+	ConsumeCode = 0x2C,
+	ForgottenPassword = 0x2D,
+	GetTermsAndConditions = 0x2E,
+	GetPrivacyPolicy = 0x2F,
+	ListPersonaEntitlements2 = 0x30,
+	SilentLogin = 0x32,
+	CheckAgeRequirement = 0x33,
+	ExpressLogin = 0x3C,
+	Logout = 0x46,
+	CreatePersona = 0x50,
+	GetPersona = 0x5A,
+	ListPersonas = 0x64,
+	LoginPersona = 0x6E,
+	LogoutPersona = 0x78,
+	DeletePersona = 0x8C,
+	DisablePersona = 0x8D,
+	ListDeviceAccounts = 0x8F,
+	XboxCreateAccount = 0x96,
+	XboxAssociateAccount = 0xA0,
+	XboxLogin = 0xAA,
+	PS3CreateAccount = 0xB4,
+	PS3AssociateAccount = 0xBE,
+	PS3Login = 0xC8,
+	ValidateSessionKey = 0xD2,
+	WalUserSession = 0xE6,
+	DeviceLoginGuest = 0x12C //(What?)
+};
 
 /*
 	Packet IDs
@@ -52,7 +102,9 @@
 		0xD2 = ValidateSessionKey
 		0xE6 = WalUserSession
 		0x12C = DeviceLoginGuest (What?)
+*/
 
+/*
 	Union types (0-4 means the value when creating the union)
 		ADDR
 
@@ -72,8 +124,8 @@
 
 	Blaze types
 		0x04 = Integer (Time, U64)
-		0x08 = Vector3
-		0x0C = Vector2
+		0x08 = ObjectId
+		0x0C = ObjectType
 		0x10 = Integer List
 		0x14 = Union
 		0x18 = Struct
@@ -305,44 +357,44 @@
 namespace Blaze {
 	// AuthComponent
 	void AuthComponent::Parse(Client* client, const Header& header) {
-		switch (header.command) {
-			case 0x1D:
+		switch (static_cast<PacketID>(header.command)) {
+			case PacketID::ListUserEntitlements2:
 				ListUserEntitlements(client, header);
 				break;
 
-			case 0x24:
+			case PacketID::GetAuthToken:
 				GetAuthToken(client, header);
 				break;
 
-			case 0x28:
+			case PacketID::Login:
 				Login(client, header);
 				break;
 
-			case 0x29:
+			case PacketID::AcceptTOS:
 				AcceptTOS(client, header);
 				break;
 
-			case 0x2A:
+			case PacketID::GetTOSInfo:
 				GetTOSInfo(client, header);
 				break;
 
-			case 0x2E:
+			case PacketID::GetTermsAndConditions:
 				GetTermsAndConditions(client, header);
 				break;
 
-			case 0x2F:
+			case PacketID::GetPrivacyPolicy:
 				GetPrivacyPolicy(client, header);
 				break;
 
-			case 0x32:
+			case PacketID::SilentLogin:
 				SilentLogin(client, header);
 				break;
 
-			case 0x46:
+			case PacketID::Logout:
 				Logout(client, header);
 				break;
 
-			case 0x6E:
+			case PacketID::LoginPersona:
 				LoginPersona(client, header);
 				break;
 
@@ -356,143 +408,140 @@ namespace Blaze {
 		client->get_user()->set_auth_token(token);
 
 		TDF::Packet packet;
-		packet.PutString(nullptr, "AUTH", token);
+		packet.put_string("AUTH", token);
 
 		DataBuffer outBuffer;
 		packet.Write(outBuffer);
 
-		Header header;
-		header.component = Component::Authentication;
-		header.command = 0x24;
-		header.error_code = 0;
-
-		client->reply(header, outBuffer);
+		client->reply({
+			.component = Component::Authentication,
+			.command = PacketID::GetAuthToken
+		}, outBuffer);
 	}
 
-	void AuthComponent::SendLogin(Client* client, Header header) {
+	void AuthComponent::SendLogin(Client* client) {
+		Header header {
+			.component = Component::Authentication,
+			.command = PacketID::Login
+		};
+
 		const auto& user = client->get_user();
-		if (!user) {
-			// Send some error
-			return;
-		}
+		if (user) {
+			uint64_t currentTime = utils::get_unix_time();
 
-		uint64_t currentTime = utils::get_unix_time();
+			TDF::Packet packet;
+			packet.put_integer("NTOS", 0);
+			packet.put_string("PCTK", "");
 
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "NTOS", 0);
-		packet.PutString(nullptr, "PCTK", "");
-		{
-			auto& plstList = packet.CreateList(nullptr, "PLST", TDF::Type::Struct);
+			packet.push_list("PLST", TDF::Type::Struct);
 			{
-				auto& pdtlStruct = packet.CreateStruct(&plstList, "");
-				packet.PutString(&pdtlStruct, "DSNM", user->get_name());
-				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
-				packet.PutInteger(&pdtlStruct, "PID", user->get_id());
-				packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Active);
-				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
+				PersonaDetails personaDetails;
+				personaDetails.name = user->get_name();
+				personaDetails.last = currentTime;
+				personaDetails.id = user->get_id();
+				personaDetails.status = PersonaStatus::Active;
+
+				packet.push_struct("");
+				personaDetails.Write(packet);
+				packet.pop();
 			}
+			packet.pop();
+
+			packet.put_string("PRIV", "");
+			packet.put_string("SKEY", "");
+			packet.put_integer("SPAM", 0);
+			packet.put_string("THST", "");
+			packet.put_string("TURI", "");
+			packet.put_integer("UID", client->get_id());
+
+			client->reply(std::move(header), packet);
+		} else {
+			header.error_code = ErrorCode::InvalidUser;
+			client->reply(std::move(header));
 		}
-		packet.PutString(nullptr, "PRIV", "");
-		packet.PutString(nullptr, "SKEY", "");
-		packet.PutInteger(nullptr, "SPAM", 1);
-		packet.PutString(nullptr, "THST", "");
-		packet.PutString(nullptr, "TURI", "");
-		packet.PutInteger(nullptr, "UID", client->get_id());
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = 0x28;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
 	}
 
-	void AuthComponent::SendLoginPersona(Client* client, Header header) {
+	void AuthComponent::SendLoginPersona(Client* client) {
+		Header header {
+			.component = Component::Authentication,
+			.command = PacketID::LoginPersona
+		};
+
 		const auto& user = client->get_user();
-		if (!user) {
-			// Send some error
-			return;
+		if (user) {
+			uint64_t currentTime = utils::get_unix_time();
+			uint32_t userId = user->get_id();
+
+			SessionInfo sessionInfo;
+			sessionInfo.blazeId = userId;
+			sessionInfo.firstLogin = false;
+			sessionInfo.key = "";
+			sessionInfo.lastLogin = currentTime;
+			sessionInfo.uid = client->get_id(); // change this to blaze id perhaps?
+
+			PersonaDetails& personaDetails = sessionInfo.personaDetails;
+			personaDetails.name = user->get_name();
+			personaDetails.last = currentTime;
+			personaDetails.id = userId;
+			personaDetails.status = PersonaStatus::Active;
+
+			TDF::Packet packet;
+			sessionInfo.Write(packet);
+
+			client->reply(std::move(header), packet);
+		} else {
+			header.error_code = ErrorCode::InvalidUser;
+			client->reply(std::move(header));
 		}
-		
-		uint64_t currentTime = utils::get_unix_time();
-
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "BUID", user->get_id()); // blaze user id?
-		packet.PutInteger(nullptr, "FRST", 0);
-		packet.PutString(nullptr, "KEY", "");
-		packet.PutInteger(nullptr, "LLOG", currentTime);
-		packet.PutString(nullptr, "MAIL", user->get_username());
-		{
-			auto& pdtlStruct = packet.CreateStruct(nullptr, "PDTL");
-			packet.PutString(&pdtlStruct, "DSNM", user->get_name());
-			packet.PutInteger(&pdtlStruct, "LAST", currentTime);
-			packet.PutInteger(&pdtlStruct, "PID", user->get_id());
-			packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Active);
-			packet.PutInteger(&pdtlStruct, "XREF", 0);
-			packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
-		}
-		packet.PutInteger(nullptr, "UID", client->get_id());
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = 0x6E;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
 	}
 
-	void AuthComponent::SendFullLogin(Client* client, Header header) {
+	void AuthComponent::SendFullLogin(Client* client) {
+		Header header {
+			.component = Component::Authentication,
+			.command = PacketID::Login // ExpressLogin originally
+		};
+
 		const auto& user = client->get_user();
-		if (!user) {
-			// Send some error
-			return;
+		if (user) {
+			uint64_t currentTime = utils::get_unix_time();
+			uint32_t userId = user->get_id();
+
+			SessionInfo sessionInfo;
+			sessionInfo.blazeId = userId;
+			sessionInfo.firstLogin = false;
+			sessionInfo.key = "";
+			sessionInfo.lastLogin = currentTime;
+			sessionInfo.uid = client->get_id(); // change this to blaze id perhaps?
+
+			PersonaDetails& personaDetails = sessionInfo.personaDetails;
+			personaDetails.name = user->get_name();
+			personaDetails.last = currentTime;
+			personaDetails.id = userId;
+			personaDetails.status = PersonaStatus::Active;
+
+			TDF::Packet packet;
+			packet.put_integer("AGUP", 0);
+			packet.put_integer("NTOS", 0);
+			packet.put_string("PCTK", "");
+			packet.put_string("PRIV", "");
+
+			packet.push_struct("SESS");
+			sessionInfo.Write(packet);
+			packet.pop();
+
+			packet.put_integer("SPAM", 0);
+			packet.put_string("THST", "");
+			packet.put_string("TURI", "");
+
+			client->reply(std::move(header), packet);
+		} else {
+			header.error_code = ErrorCode::InvalidUser;
+			client->reply(std::move(header));
 		}
-
-		uint64_t currentTime = utils::get_unix_time();
-
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "AGUP", 0);
-		packet.PutInteger(nullptr, "NTOS", 0);
-		packet.PutString(nullptr, "PCTK", "");
-		packet.PutString(nullptr, "PRIV", "");
-		{
-			auto& sessStruct = packet.CreateStruct(nullptr, "SESS");
-			packet.PutInteger(&sessStruct, "BUID", user->get_id());
-			packet.PutInteger(&sessStruct, "FRST", 0);
-			packet.PutString(&sessStruct, "KEY", "");
-			packet.PutInteger(&sessStruct, "LLOG", currentTime);
-			packet.PutString(&sessStruct, "MAIL", user->get_username());
-			{
-				auto& pdtlStruct = packet.CreateStruct(&sessStruct, "PDTL");
-				packet.PutString(&pdtlStruct, "DSNM", user->get_name());
-				packet.PutInteger(&pdtlStruct, "LAST", currentTime);
-				packet.PutInteger(&pdtlStruct, "PID", user->get_id());
-				packet.PutInteger(&pdtlStruct, "STAS", PersonaStatus::Active);
-				packet.PutInteger(&pdtlStruct, "XREF", 0);
-				packet.PutInteger(&pdtlStruct, "XTYP", ExternalRefType::Unknown);
-			}
-			packet.PutInteger(&sessStruct, "UID", client->get_id());
-		}
-		packet.PutInteger(nullptr, "SPAM", 0);
-		packet.PutString(nullptr, "THST", "");
-		packet.PutString(nullptr, "TURI", "");
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = 0x3C;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
 	}
 
-	void AuthComponent::SendConsoleLogin(Client* client, Header header) {
+	void AuthComponent::SendConsoleLogin(Client* client) {
+		/*
 		const auto& user = client->get_user();
 		if (!user) {
 			// Send some error
@@ -531,15 +580,14 @@ namespace Blaze {
 		packet.Write(outBuffer);
 
 		header.component = Component::Authentication;
-		header.command = 0x28;
+		header.command = PacketID::Login;
 		header.error_code = 0;
 
 		client->reply(std::move(header), outBuffer);
+		*/
 	}
 
 	void AuthComponent::SendTOSInfo(Client* client, Header header) {
-		auto& request = client->get_request();
-
 		TDF::Packet packet;
 		packet.PutInteger(nullptr, "EAMC", 0);
 		packet.PutInteger(nullptr, "PMC", 0);
@@ -551,15 +599,13 @@ namespace Blaze {
 		packet.Write(outBuffer);
 
 		header.component = Component::Authentication;
-		header.command = 0x2A;
+		header.command = PacketID::GetTOSInfo;
 		header.error_code = 0;
 
 		client->reply(std::move(header), outBuffer);
 	}
 
 	void AuthComponent::SendTermsAndConditions(Client* client, Header header) {
-		auto& request = client->get_request();
-
 		std::string testConditions = "Hello this is something";
 
 		TDF::Packet packet;
@@ -571,15 +617,13 @@ namespace Blaze {
 		packet.Write(outBuffer);
 
 		header.component = Component::Authentication;
-		header.command = 0x2E;
+		header.command = PacketID::GetTermsAndConditions;
 		header.error_code = 0;
 
 		client->reply(std::move(header), outBuffer);
 	}
 
 	void AuthComponent::SendPrivacyPolicy(Client* client, Header header) {
-		auto& request = client->get_request();
-
 		std::string testConditions = "Hello this is stuff about privacy";
 
 		TDF::Packet packet;
@@ -591,7 +635,7 @@ namespace Blaze {
 		packet.Write(outBuffer);
 
 		header.component = Component::Authentication;
-		header.command = 0x2F;
+		header.command = PacketID::GetPrivacyPolicy;
 		header.error_code = 0;
 
 		client->reply(std::move(header), outBuffer);
@@ -861,12 +905,18 @@ namespace Blaze {
 	}
 
 	void AuthComponent::GetAuthToken(Client* client, Header header) {
-		std::cout << "Send auth token" << std::endl;
-		SendAuthToken(client, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+		const auto& user = client->get_user();
+		if (user) {
+			std::cout << "Send real auth token" << std::endl;
+			SendAuthToken(client, std::to_string(user->get_id()));
+		} else {
+			std::cout << "Send fake auth token" << std::endl;
+			SendAuthToken(client, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+		}
 	}
 
 	void AuthComponent::Login(Client* client, Header header) {
-		auto& request = client->get_request();
+		const auto& request = client->get_request();
 
 		std::string username = request["MAIL"].GetString();
 		std::string password = request["PASS"].GetString();
@@ -874,13 +924,13 @@ namespace Blaze {
 		const auto& user = Game::UserManager::GetUserByEmail(username);
 		if (user && user->get_password() == password) {
 			client->set_user(user);
-			SendLogin(client, std::move(header));
+			SendLogin(client);
 		} else {
 			std::cout << "User '" << username << "' not found." << std::endl;
 
 			header.component = Component::Authentication;
-			header.command = 0x28;
-			header.error_code = 0x000B;
+			header.command = PacketID::Login;
+			header.error_code = ErrorCode::InvalidUser;
 
 			client->reply(std::move(header));
 		}
@@ -934,7 +984,7 @@ namespace Blaze {
 	void AuthComponent::LoginPersona(Client* client, Header header) {
 		std::cout << "Login persona" << std::endl;
 
-		SendLoginPersona(client, std::move(header));
+		SendLoginPersona(client);
 
 		const auto& user = client->get_user();
 		if (user) {
