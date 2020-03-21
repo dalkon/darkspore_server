@@ -410,13 +410,10 @@ namespace Blaze {
 		TDF::Packet packet;
 		packet.put_string("AUTH", token);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
 		client->reply({
 			.component = Component::Authentication,
 			.command = PacketID::GetAuthToken
-		}, outBuffer);
+		}, packet);
 	}
 
 	void AuthComponent::SendLogin(Client* client) {
@@ -587,58 +584,46 @@ namespace Blaze {
 		*/
 	}
 
-	void AuthComponent::SendTOSInfo(Client* client, Header header) {
+	void AuthComponent::SendTOSInfo(Client* client) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "EAMC", 0);
-		packet.PutInteger(nullptr, "PMC", 0);
-		packet.PutString(nullptr, "PRIV", "");
-		packet.PutString(nullptr, "THST", "");
-		packet.PutString(nullptr, "TURI", "");
+		packet.put_integer("EAMC", 0);
+		packet.put_integer("PMC", 0);
+		packet.put_string("PRIV", "");
+		packet.put_string("THST", "");
+		packet.put_string("TURI", "");
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = PacketID::GetTOSInfo;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+		client->reply({
+			.component = Component::Authentication,
+			.command = PacketID::GetTOSInfo
+		}, packet);
 	}
 
-	void AuthComponent::SendTermsAndConditions(Client* client, Header header) {
+	void AuthComponent::SendTermsAndConditions(Client* client) {
 		std::string testConditions = "Hello this is something";
 
 		TDF::Packet packet;
-		packet.PutString(nullptr, "LDVC", "Something");
-		packet.PutInteger(nullptr, "TCOL", testConditions.length());
-		packet.PutString(nullptr, "TCOT", testConditions);
+		packet.put_string("LDVC", "Something");
+		packet.put_integer("TCOL", testConditions.length());
+		packet.put_string("TCOT", testConditions);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = PacketID::GetTermsAndConditions;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+		client->reply({
+			.component = Component::Authentication,
+			.command = PacketID::GetTermsAndConditions
+		}, packet);
 	}
 
-	void AuthComponent::SendPrivacyPolicy(Client* client, Header header) {
+	void AuthComponent::SendPrivacyPolicy(Client* client) {
 		std::string testConditions = "Hello this is stuff about privacy";
 
 		TDF::Packet packet;
-		packet.PutString(nullptr, "LDVC", "Something2");
-		packet.PutInteger(nullptr, "TCOL", testConditions.length());
-		packet.PutString(nullptr, "TCOT", testConditions);
+		packet.put_string("LDVC", "Something2");
+		packet.put_integer("TCOL", testConditions.length());
+		packet.put_string("TCOT", testConditions);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		header.component = Component::Authentication;
-		header.command = PacketID::GetPrivacyPolicy;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+		client->reply({
+			.component = Component::Authentication,
+			.command = PacketID::GetPrivacyPolicy
+		}, packet);
 	}
 
 	void AuthComponent::ListUserEntitlements(Client* client, Header header) {
@@ -1006,16 +991,16 @@ namespace Blaze {
 
 	void AuthComponent::GetTOSInfo(Client* client, Header header) {
 		std::cout << "Get Terms of service" << std::endl;
-		SendTOSInfo(client, std::move(header));
+		SendTOSInfo(client);
 	}
 
 	void AuthComponent::GetTermsAndConditions(Client* client, Header header) {
 		std::cout << "Get Terms and conditions" << std::endl;
-		SendTermsAndConditions(client, std::move(header));
+		SendTermsAndConditions(client);
 	}
 
 	void AuthComponent::GetPrivacyPolicy(Client* client, Header header) {
 		std::cout << "Get Privacy policy" << std::endl;
-		SendPrivacyPolicy(client, std::move(header));
+		SendPrivacyPolicy(client);
 	}
 }

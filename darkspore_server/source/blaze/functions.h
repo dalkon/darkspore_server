@@ -166,6 +166,60 @@ namespace Blaze {
 
 		void Write(TDF::Packet& packet) const;
 	};
+
+	struct UserIdentification {
+		std::string name;
+
+		int64_t id;
+
+		uint32_t localization;
+
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct PlaygroupInfo {
+		// UNUSED (xbox only but darkspore isn't on xbox)
+		// std::vector<uint8_t> xnnc;
+		// std::vector<uint8_t> xses;
+
+		std::map<std::string, std::string> attributes;
+
+		std::string uuid;
+		std::string ukey;
+		std::string name;
+
+		int64_t ownerId;
+
+		uint32_t playgroupId;
+
+		uint16_t memberLimit;
+
+		uint8_t hostSlotId; // maybe? nothing other than slots seem to use u8
+
+		PlaygroupJoinState state;
+		GameNetworkTopology ntop;
+		PresenceMode pres;
+
+		bool uprs;
+		bool enbv;
+
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct PlaygroupMemberInfo {
+		std::map<std::string, std::string> attributes;
+
+		// PNET
+
+		UserIdentification user;
+
+		uint32_t jtim;
+		uint32_t permissions;
+
+		uint8_t slot;
+
+		void Write(TDF::Packet& packet) const;
+	};
 }
 
 #endif

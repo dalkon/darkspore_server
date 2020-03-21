@@ -567,6 +567,15 @@ namespace Game {
 	// UserManager
 	std::map<std::string, UserPtr> UserManager::sUsersByEmail;
 
+	UserPtr UserManager::GetUserById(int64_t id) {
+		for (const auto& [_, user] : sUsersByEmail) {
+			if (user->get_id() == id) {
+				return user;
+			}
+		}
+		return nullptr;
+	}
+
 	UserPtr UserManager::GetUserByEmail(const std::string& username) {
 		UserPtr user;
 

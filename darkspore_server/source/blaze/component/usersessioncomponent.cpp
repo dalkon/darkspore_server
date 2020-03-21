@@ -118,7 +118,7 @@ namespace Blaze {
 		}
 	}
 
-	void UserSessionComponent::NotifyUserSessionExtendedDataUpdate(Client* client, uint64_t userId) {
+	void UserSessionComponent::NotifyUserSessionExtendedDataUpdate(Client* client, int64_t userId) {
 		std::cout << "UserSession: User extended data" << std::endl;
 
 		TDF::Packet packet;
@@ -150,18 +150,14 @@ namespace Blaze {
 		}
 		packet.PutInteger(nullptr, "USID", userId);
 		*/
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
 
-		Header header;
-		header.component = Component::UserSessions;
-		header.command = 0x01;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		client->notify({
+			.component = Component::UserSessions,
+			.command = 0x01
+		}, packet);
 	}
 
-	void UserSessionComponent::NotifyUserAdded(Client* client, uint64_t userId, const std::string& userName) {
+	void UserSessionComponent::NotifyUserAdded(Client* client, int64_t userId, const std::string& userName) {
 		const auto& user = client->get_user();
 		if (!user) {
 			return;
@@ -169,48 +165,35 @@ namespace Blaze {
 
 		std::cout << "UserSession: Add user" << std::endl;
 
-		auto& request = client->get_request();
+		UserIdentification userIdentification;
+		userIdentification.localization = client->data().lang;
+		userIdentification.id = userId;
+		userIdentification.name = userName;
 
 		TDF::Packet packet;
-		{
-			packet.push_struct("DATA");
-			WriteUserSessionExtendedData(client, packet);
-			packet.pop();
-		} {
-			auto& userStruct = packet.CreateStruct(nullptr, "USER");
-			packet.PutInteger(&userStruct, "AID", userId);
-			packet.PutInteger(&userStruct, "ALOC", client->data().lang);
-			packet.PutBlob(&userStruct, "EXBB", nullptr, 0);
-			packet.PutInteger(&userStruct, "EXID", 0);
-			packet.PutInteger(&userStruct, "ID", userId);
-			packet.PutString(&userStruct, "NAME", userName);
-		}
+		packet.push_struct("DATA");
+		WriteUserSessionExtendedData(client, packet);
+		packet.pop();
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
+		packet.push_struct("USER");
+		userIdentification.Write(packet);
+		packet.pop();
 
-		Header header;
-		header.component = Component::UserSessions;
-		header.command = 0x02;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		client->notify({
+			.component = Component::UserSessions,
+			.command = 0x02
+		}, packet);
 	}
 
-	void UserSessionComponent::NotifyUserUpdated(Client* client, uint64_t userId) {
+	void UserSessionComponent::NotifyUserUpdated(Client* client, int64_t userId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "FLGS", SessionState::Authenticated);
-		packet.PutInteger(nullptr, "ID", userId);
+		packet.put_integer("FLGS", SessionState::Authenticated);
+		packet.put_integer("ID", userId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::UserSessions;
-		header.command = 0x05;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		client->notify({
+			.component = Component::UserSessions,
+			.command = 0x05
+		}, packet);
 	}
 
 	void UserSessionComponent::UpdateNetworkInfo(Client* client, Header header) {

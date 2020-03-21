@@ -217,4 +217,66 @@ namespace Blaze {
 		packet.put_object_id("SRCE", source);
 		packet.put_integer("TIME", time);
 	}
+
+	// UserIdentification
+	void UserIdentification::Write(TDF::Packet& packet) const {
+		packet.put_integer("AID", id);
+		packet.put_integer("ALOC", localization);
+		packet.put_blob("EXBB", nullptr, 0); // blob, unused?
+		packet.put_integer("EXID", 0); // uint64_t, unused?
+		packet.put_integer("ID", id);
+		packet.put_string("NAME", name);
+	}
+
+	// PlaygroupInfo
+	void PlaygroupInfo::Write(TDF::Packet& packet) const {
+		packet.push_map("ATTR", TDF::Type::Integer, TDF::Type::String);
+		for (const auto& [key, value] : attributes) {
+			packet.put_string(key, value);
+		}
+		packet.pop();
+
+		packet.put_integer("ENBV", enbv ? 1 : 0);
+
+		packet.push_union("HNET", NetworkAddressMember::Unset);
+		// TODO: check if this is neccesary
+		packet.pop();
+
+		packet.put_integer("HSID", hostSlotId);
+		packet.put_integer("JOIN", state);
+		packet.put_integer("MLIM", memberLimit);
+		packet.put_string("NAME", name);
+		packet.put_integer("NTOP", ntop);
+		packet.put_integer("OWNR", ownerId);
+		packet.put_integer("PGID", playgroupId);
+		packet.put_integer("PRES", pres);
+		packet.put_string("UKEY", ukey);
+		packet.put_integer("UPRS", uprs ? 1 : 0);
+		packet.put_string("UUID", uuid);
+		packet.put_integer("VOIP", VoipTopology::Disabled);
+		packet.put_blob("XNNC", nullptr, 0);
+		packet.put_blob("XSES", nullptr, 0);
+	}
+
+	// PlaygroupMemberInfo
+	void PlaygroupMemberInfo::Write(TDF::Packet& packet) const {
+		packet.push_map("ATTR", TDF::Type::Integer, TDF::Type::String);
+		for (const auto& [key, value] : attributes) {
+			packet.put_string(key, value);
+		}
+		packet.pop();
+
+		packet.put_integer("JTIM", jtim);
+		packet.put_integer("PERM", permissions);
+
+		packet.push_union("PNET", NetworkAddressMember::Unset);
+		// TODO: check if this is neccesary
+		packet.pop();
+
+		packet.put_integer("SID", slot);
+
+		packet.push_struct("USER");
+		user.Write(packet);
+		packet.pop();
+	}
 }

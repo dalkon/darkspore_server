@@ -33,9 +33,9 @@ namespace Blaze {
 			static void SendFullLogin(Client* client);
 			static void SendConsoleLogin(Client* client);
 
-			static void SendTOSInfo(Client* client, Header header);
-			static void SendTermsAndConditions(Client* client, Header header);
-			static void SendPrivacyPolicy(Client* client, Header header);
+			static void SendTOSInfo(Client* client);
+			static void SendTermsAndConditions(Client* client);
+			static void SendPrivacyPolicy(Client* client);
 
 		private:
 			static void ListUserEntitlements(Client* client, Header header);

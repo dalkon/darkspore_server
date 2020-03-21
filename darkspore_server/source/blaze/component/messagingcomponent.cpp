@@ -6,6 +6,8 @@
 #include "blaze/functions.h"
 #include "utils/functions.h"
 
+#include "game/user.h"
+
 #include <iostream>
 
 /*
@@ -92,7 +94,7 @@ namespace Blaze {
 		}
 		packet.pop();
 
-		NotifyMessage(client);
+		NotifyMessage(client, message);
 
 		client->reply({
 			.component = Component::Messaging,
@@ -100,23 +102,24 @@ namespace Blaze {
 		}, packet);
 	}
 
-	void MessagingComponent::NotifyMessage(Client* client) {
-		ServerMessage serverMessage;
-		serverMessage.flags = 0;
-		serverMessage.messageId = 1;
-		serverMessage.name = "Unknown";
-		serverMessage.time = static_cast<uint32_t>(utils::get_unix_time());
-		
-		ClientMessage& clientMessage = serverMessage.message;
-		clientMessage.attributes.emplace(1, "testing 123");
+	void MessagingComponent::NotifyMessage(Client* client, const ClientMessage& clientMessage) {
+		const auto& user = Game::UserManager::GetUserById(std::get<2>(clientMessage.target));
+		if (user) {
+			ServerMessage serverMessage;
+			serverMessage.flags = 0;
+			serverMessage.messageId = 1;
+			serverMessage.name = user->get_name();
+			serverMessage.time = static_cast<uint32_t>(utils::get_unix_time());
+			serverMessage.message = clientMessage;
 
-		TDF::Packet packet;
-		serverMessage.Write(packet);
+			TDF::Packet packet;
+			serverMessage.Write(packet);
 
-		client->notify({
-			.component = Component::Messaging,
-			.command = 0x01
-		}, packet);
+			client->notify({
+				.component = Component::Messaging,
+				.command = 0x01
+			}, packet);
+		}
 	}
 
 	void MessagingComponent::OnSendMessage(Client* client, Header header) {

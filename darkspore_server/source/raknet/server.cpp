@@ -785,8 +785,7 @@ namespace RakNet {
 		}
 
 		SendHelloPlayer(client);
-		SendPlayerJoined(client);
-		SendPartyMergeComplete(client);
+		SendDebugPing(client);
 
 		/*
 		data=
@@ -855,8 +854,10 @@ namespace RakNet {
 				SendObjectCreate(client, 0x0000000A, static_cast<uint32_t>(Game::CreatureID::BlitzAlpha));
 				SendPlayerCharacterDeploy(client, 0x0000000A);
 
+				SendPartyMergeComplete(client);
+
 				// This causes the next state to activate... but also disconnects you
-				SendPlayerDeparted(client);
+				// SendPlayerDeparted(client);
 
 				/*
 				auto& gameStateData = client->GetGameStateData();
@@ -985,7 +986,7 @@ namespace RakNet {
 				auto& gameStateData = client->GetGameStateData();
 				gameStateData.var = 5.0;
 				gameStateData.state = static_cast<uint32_t>(GameState::Spaceship);
-				gameStateData.type = Blaze::GameType::Tutorial;
+				gameStateData.type = Blaze::GameType::Chain;
 
 				SendLabsPlayerUpdate(client, true);
 				SendGameState(client, gameStateData);

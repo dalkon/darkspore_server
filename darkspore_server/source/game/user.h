@@ -234,6 +234,7 @@ namespace Game {
 	// UserManager | TODO: move to Application?
 	class UserManager {
 		public:
+			static UserPtr GetUserById(int64_t id);
 			static UserPtr GetUserByEmail(const std::string& username);
 			static UserPtr GetUserByAuthToken(const std::string& authToken);
 

@@ -4,6 +4,7 @@
 
 // Include
 #include "blaze/tdf.h"
+#include "blaze/functions.h"
 
 // Blaze
 namespace Blaze {
@@ -18,7 +19,7 @@ namespace Blaze {
 			static void OnSendMessageResponse(Client* client);
 
 			// Notifications
-			static void NotifyMessage(Client* client);
+			static void NotifyMessage(Client* client, const ClientMessage& clientMessage);
 
 		private:
 			static void OnSendMessage(Client* client, Header header);
