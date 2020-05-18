@@ -3,6 +3,9 @@
 #include "authcomponent.h"
 #include "usersessioncomponent.h"
 
+#include "sporenet/instance.h"
+#include "sporenet/user.h"
+
 #include "blaze/client.h"
 #include "blaze/functions.h"
 #include "utils/functions.h"
@@ -906,7 +909,7 @@ namespace Blaze {
 		std::string username = request["MAIL"].GetString();
 		std::string password = request["PASS"].GetString();
 
-		const auto& user = Game::UserManager::GetUserByEmail(username);
+		const auto& user = SporeNet::Get().GetUserManager().GetUserByEmail(username);
 		if (user && user->get_password() == password) {
 			client->set_user(user);
 			SendLogin(client);

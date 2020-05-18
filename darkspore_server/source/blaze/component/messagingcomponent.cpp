@@ -2,11 +2,14 @@
 // Include
 #include "messagingcomponent.h"
 
+#include "sporenet/instance.h"
+#include "sporenet/user.h"
+
+#include "game/gamemanager.h"
+
 #include "blaze/client.h"
 #include "blaze/functions.h"
 #include "utils/functions.h"
-
-#include "game/user.h"
 
 #include <iostream>
 
@@ -103,12 +106,14 @@ namespace Blaze {
 	}
 
 	void MessagingComponent::NotifyMessage(Client* client, const ClientMessage& clientMessage) {
-		const auto& user = Game::UserManager::GetUserById(std::get<2>(clientMessage.target));
-		if (user) {
+		int64_t gameId = std::get<2>(clientMessage.target);
+
+		const auto& game = Game::GameManager::GetGame(static_cast<uint32_t>(gameId));
+		if (game) {
 			ServerMessage serverMessage;
 			serverMessage.flags = 0;
 			serverMessage.messageId = 1;
-			serverMessage.name = user->get_name();
+			serverMessage.name = "Testing";
 			serverMessage.time = static_cast<uint32_t>(utils::get_unix_time());
 			serverMessage.message = clientMessage;
 

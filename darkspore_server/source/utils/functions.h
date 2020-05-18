@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <pugixml.hpp>
 
 // utils
@@ -36,13 +37,17 @@ namespace utils {
 		return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c;
 	}
 
-	// Time
+	// Time & Date
 	uint64_t get_unix_time();
+	std::string get_utc_date_string();
 
 	// Files
 	std::string get_file_text(const std::string& path);
 
 	// Strings
+	bool string_iequals(const std::string& lhs, const std::string& rhs);
+	bool string_iequals(std::string_view lhs, std::string_view rhs);
+
 	void string_replace(std::string& str, const std::string& old_str, const std::string& new_str);
 
 	std::vector<std::string> explode_string(const std::string& str, char delim, int32_t limit = -1);
@@ -95,6 +100,7 @@ namespace utils {
 		return value;
 	}
 
+	// TODO: move xml & js stuff
 	// XML
 	void xml_add_text_node(pugi::xml_node& node, const std::string& name, const std::string& value);
 	std::string xml_get_text_node(const pugi::xml_node& node, const std::string& name);
@@ -109,6 +115,16 @@ namespace utils {
 		return to_number<T>(xml_get_text_node(node, name));
 	}
 
+	template<typename T>
+	std::enable_if_t<std::is_enum_v<T>, void> xml_add_text_node(pugi::xml_node& node, const std::string& name, T value) {
+		xml_add_text_node(node, name, std::to_string(static_cast<std::underlying_type_t<T>>(value)));
+	}
+
+	template<typename T>
+	std::enable_if_t<std::is_enum_v<T>, T> xml_get_text_node(const pugi::xml_node& node, const std::string& name) {
+		return static_cast<T>(to_number<std::underlying_type_t<T>>(xml_get_text_node(node, name)));
+	}
+
 	// Hashes
 	constexpr uint32_t hash_id(const char* pStr) {
 		uint32_t rez = 0x811C9DC5u;
@@ -119,6 +135,10 @@ namespace utils {
 			++pStr;
 		}
 		return rez;
+	}
+
+	constexpr uint32_t hash_id(std::string_view pStr) {
+		return hash_id(pStr.data());
 	}
 
 	// Functions

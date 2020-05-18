@@ -3,18 +3,164 @@
 #define _RAKNET_TYPES_HEADER
 
 // Include
-#include "game/creature.h"
-#include "game/object.h"
-
 #include <BitStream.h>
 #include <cstdint>
 #include <array>
+#include <bitset>
+
+// TODO: find somewhere to place this
+namespace Ability {
+	enum : uint32_t {
+		Strength = 0,
+		Dexterity,
+		Mind,
+		MaxHealthIncrease,
+		MaxHealth,
+		MaxMana,
+		DamageReduction,
+		PhysicalDefense,
+		PhysicalDamageReduction,
+		EnergyDefense,
+		CriticalRating,
+		NonCombatSpeed,
+		CombatSpeed,
+		DamageBuff,
+		Silence,
+		Immobilized,
+		DefenseBoostBasicDamage,
+		PhysicalDamageIncrease,
+		PhysicalDamageIncreaseFlat,
+		AutoCrit,
+		BehindDirectDamageIncrease,
+		BehindOrSideDirectDamageIncrease,
+		CriticalDamageIncrease,
+		AttackSpeedScale,
+		CooldownScale,
+		Frozen,
+		ProjectileSpeedIncrease,
+		AoeResistance,
+		EnergyDamageBuff,
+		Intangible,
+		HealingReduction,
+		EnergyDamageIncrease,
+		EnergyDamageIncreaseFlat,
+		Immune,
+		StealthDetection,
+		LifeSteal,
+		RejectModifier,
+		AoeDamage,
+		TechnologyTypeDamage,
+		SpacetimeTypeDamage,
+		LifeTypeDamage,
+		ElementsTypeDamage,
+		SupernaturalTypeDamage,
+		TechnologyTypeResistance,
+		SpacetimeTypeResistance,
+		LifeTypeResistance,
+		ElementsTypeResistance,
+		SupernaturalTypeResistance,
+		MovementSpeedBuff,
+		ImmuneToDebuffs,
+		BuffDuration,
+		DebuffDuration,
+		ManaSteal,
+		DebuffDurationIncrease,
+		EnergyDamageReduction,
+		Incorporeal,
+		DotDamageIncrease,
+		MindControlled,
+		SwapDisabled,
+		ImmuneToRandomTeleport,
+		ImmuneToBanish,
+		ImmuneToKnockback,
+		AoeRadius,
+		PetDamage,
+		PetHealth,
+		CrystalFind,
+		DNADropped,
+		RangeIncrease,
+		OrbEffectiveness,
+		OverdriveBuildup,
+		OverdriveDuration,
+		LootFind,
+		Surefooted,
+		ImmuneToStunned,
+		ImmuneToSleep,
+		ImmuneToTerrified,
+		ImmuneToSilence,
+		ImmuneToCursed,
+		ImmuneToPoisonOrDisease,
+		ImmuneToBurning,
+		ImmuneToRooted,
+		ImmuneToSlow,
+		ImmuneToPull,
+		DotDamageDoneIncrease,
+		AggroIncrease,
+		AggroDecrease,
+		PhysicalDamageDoneIncrease,
+		PhysicalDamageDoneByAbilityIncrease,
+		EnergyDamageDoneIncrease,
+		EnergyDamageDoneByAbilityIncrease,
+		ChannelTimeDecrease,
+		CrowdControlDurationDecrease,
+		DotDurationDecrease,
+		AoeDurationIncrease,
+		HealIncrease,
+		OnLockdown,
+		HoTDoneIncrease,
+		ProjectileDamageIncrease,
+		DeployBonusInvincibilityTime,
+		PhysicalDamageDecreaseFlat,
+		EnergyDamageDecreaseFlat,
+		MinWeaponDamage,
+		MaxWeaponDamage,
+		MinWeaponDamagePercent,
+		MaxWeaponDamagePercent,
+		DirectAttackDamage,
+		DirectAttackDamagePercent,
+		GetHitAnimDisabled,
+		XPBoost,
+		InvisibleToSecurityTeleporters,
+		BodyScale,
+		Count
+	};
+}
 
 // RakNet
 namespace RakNet {
+	// types
 	using tObjID = uint32_t;
 	using asset = uint32_t;
 
+	// labsPlayerBits
+	enum labsPlayerBits {
+		// Characters (creatures)
+		CharacterBits = 1 << 0,
+		CharacterLeft = CharacterBits << 0,
+		CharacterCenter = CharacterBits << 1,
+		CharacterRight = CharacterBits << 2,
+		CharacterMask = CharacterLeft | CharacterCenter | CharacterRight,
+
+		// Crystals (catalysts)
+		CrystalBits = 1 << 3,
+		CrystalTopLeft = CrystalBits << 0,
+		CrystalTopCenter = CrystalBits << 1,
+		CrystalTopRight = CrystalBits << 2,
+		CrystalMidLeft = CrystalBits << 3,
+		CrystalMidCenter = CrystalBits << 4,
+		CrystalMidRight = CrystalBits << 5,
+		CrystalBottomLeft = CrystalBits << 6,
+		CrystalBottomCenter = CrystalBits << 7,
+		CrystalBottomRight = CrystalBits << 8,
+		CrystalMask = CrystalTopLeft | CrystalTopCenter | CrystalTopRight |
+			CrystalMidLeft | CrystalMidCenter | CrystalMidRight |
+			CrystalBottomLeft | CrystalBottomCenter | CrystalBottomRight,
+
+		// Player data
+		PlayerBits = 1 << 12
+	};
+
+	//
 	template<typename T>
 	std::enable_if_t<std::is_integral_v<T>, T> bswap(T t) {
 		constexpr auto size = sizeof(T);
@@ -104,11 +250,25 @@ namespace RakNet {
 	}
 #pragma warning(pop)
 
+	// cSPVector2
+	struct cSPVector2 {
+		float x = 0.f;
+		float y = 0.f;
+
+		cSPVector2() = default;
+		cSPVector2(float _x, float _y);
+
+		void WriteTo(BitStream& stream) const;
+	};
+
 	// cSPVector3
 	struct cSPVector3 {
 		float x = 0.f;
 		float y = 0.f;
 		float z = 0.f;
+
+		cSPVector3() = default;
+		cSPVector3(float _x, float _y, float _z);
 
 		void WriteTo(BitStream& stream) const;
 	};
@@ -215,46 +375,56 @@ namespace RakNet {
 	};
 
 	// labsPlayer
-	struct labsPlayer {
-		// properties
-		uint32_t mDataBits = 0;
+	class labsPlayer {
+		public:
+			enum {
+				Characters = 3,
 
-		// fields
-		bool mbDataSetup = false;
-		int32_t mCurrentDeckIndex = 0;
-		int32_t mQueuedDeckIndex = 0;
-		std::array<labsCharacter, 3> mCharacters;
-		uint8_t mPlayerIndex = 0;
-		uint8_t mTeam = 0;
-		uint64_t mPlayerOnlineId = 0;
-		uint32_t mStatus = 0;
-		float mStatusProgress = 0.f;
-		tObjID mCurrentCreatureId = 0;
-		float mEnergyPoints = 0.f;
-		bool mbIsCharged = false;
-		int32_t mDNA = 0;
+				Status = 7,
+				StatusProgress = 8,
 
-		std::array<labsCrystal, 9> mCrystals;
-		std::array<bool, 8> mCrystalBonuses;
+				FieldCount = 24,
+			};
 
-		uint32_t mAvatarLevel = 0;
-		float mAvatarXP = 0.f;
-		uint32_t mChainProgression = 0;
-		bool mLockCamera = false;
-		bool mbLockedOverdrive = false;
-		bool mbLockedCrystals = false;
-		uint32_t mLockedAbilityMin;
-		uint32_t mLockedDeckIndexMin;
-		uint32_t mDeckScore;
+			labsPlayer();
 
-		//
-		labsPlayer(bool fullUpdate);
+			void SetUpdateBits(uint8_t bitIndex);
+			void SetUpdateBits(std::initializer_list<uint8_t>&& bitIndexes);
+			void ResetUpdateBits();
 
-		void SetCharacter(labsCharacter&& character, uint32_t slot);
-		void SetCrystal(labsCrystal&& crystal, uint32_t slot);
+			void WriteTo(BitStream& stream) const;
+			void WriteReflection(BitStream& stream) const;
 
-		void WriteTo(BitStream& stream) const;
-		void WriteReflection(BitStream& stream) const;
+		public:
+			bool mbDataSetup = false;
+			int32_t mCurrentDeckIndex = 0;
+			int32_t mQueuedDeckIndex = 0;
+			std::array<labsCharacter, 3> mCharacters;
+			uint8_t mPlayerIndex = 0;
+			uint8_t mTeam = 0;
+			uint64_t mPlayerOnlineId = 0;
+			uint32_t mStatus = 0;
+			float mStatusProgress = 0.f;
+			tObjID mCurrentCreatureId = 0;
+			float mEnergyPoints = 0.f;
+			bool mbIsCharged = false;
+			int32_t mDNA = 0;
+
+			std::array<labsCrystal, 9> mCrystals;
+			std::array<bool, 8> mCrystalBonuses;
+
+			uint32_t mAvatarLevel = 0;
+			float mAvatarXP = 0.f;
+			uint32_t mChainProgression = 0;
+			bool mLockCamera = false;
+			bool mbLockedOverdrive = false;
+			bool mbLockedCrystals = false;
+			uint32_t mLockedAbilityMin;
+			uint32_t mLockedDeckIndexMin;
+			uint32_t mDeckScore;
+
+		private:
+			std::bitset<FieldCount> mReflectionBits;
 	};
 
 	// cGameObjectCreateData
@@ -313,7 +483,6 @@ namespace RakNet {
 		uint32_t sourceMarkerKey_markerId;
 
 		sporelabsObject();
-		sporelabsObject(cGameObjectCreateData& data);
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;
@@ -354,6 +523,70 @@ namespace RakNet {
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;
+	};
+
+	// DifficultyTuning
+	struct DifficultyTuning {
+		std::array<float, 2> HealthPercentIncrease;
+		std::array<float, 2> DamagePercentIncrease;
+		std::array<float, 2> ItemLevelRange;
+		std::array<float, 2> RatingConversion;
+
+		std::array<int32_t, 2> ExpectedAvatarLevel;
+
+		cSPVector2 GearScoreRange;
+		cSPVector2 GearScoreMax;
+
+		float StarModeHealthMult;
+		float StarModeDamageMult;
+		float StarModeEliteChanceAdd;
+		float StarModeSuggestedLevelAdd;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// ChainVoteData
+	class ChainVoteData {
+		public:
+			ChainVoteData();
+
+			float GetTimeRemaining() const;
+			void SetTimeRemaining(float milliseconds);
+
+			uint32_t GetLevel() const;
+			void SetLevel(uint32_t level);
+
+			uint32_t GetLevelIndex() const;
+			void SetLevelByIndex(uint32_t index);
+
+			uint32_t GetMarkerSet() const;
+			uint32_t GetMinorDifficulty() const;
+			uint32_t GetMajorDifficulty() const;
+
+			uint32_t GetStarLevel() const;
+			void SetStarLevel(uint32_t starLevel);
+
+			bool IsCompleted() const;
+			void SetCompleted(bool completed);
+
+			void SetTest(uint32_t val) { mPlayerAsset = val; }
+
+			void WriteTo(RakNet::BitStream& stream) const;
+
+		private:
+			std::array<uint32_t, 6> mEnemyNouns;
+			std::array<uint32_t, 2> mLevelNouns;
+
+			float mTimeRemaining = 0.f;
+
+			uint32_t mLevel = 0;
+			uint32_t mLevelIndex = 0;
+			uint32_t mStarLevel = 0;
+
+			uint32_t mPlayerAsset = 0;
+
+			bool mCompletedLevel = false;
 	};
 }
 

@@ -1,6 +1,10 @@
 
 // Include
 #include "client.h"
+#include "server.h"
+
+#include "game/instance.h"
+
 #include <iostream>
 
 bool IsValidStateChange(GameState fromState, GameState toState) {
@@ -72,8 +76,11 @@ std::string to_string(GameState gameState) {
 
 // RakNet
 namespace RakNet {
-	Client::Client(const SystemAddress& systemAddress) : mSystemAddress(systemAddress) {
+	Client::Client(Server& server, const SystemAddress& systemAddress)
+		: mServer(server), mSystemAddress(systemAddress) {}
 
+	const Game::PlayerPtr& Client::GetPlayer() const {
+		return mPlayer;
 	}
 
 	GameStateData& Client::GetGameStateData() {
@@ -96,5 +103,17 @@ namespace RakNet {
 			std::cout << "Invalid state change from " << to_string(mGameState) << " to " << to_string(newState) << std::endl;
 		}
 		return result;
+	}
+
+	int64_t Client::GetBlazeId() const {
+		return mBlazeId;
+	}
+
+	void Client::SetBlazeId(int64_t id) {
+		auto& game = mServer.GetGame();
+		game.RemovePlayer(mBlazeId);
+
+		mBlazeId = id;
+		mPlayer = game.AddPlayer(mBlazeId, mId);
 	}
 }

@@ -5,8 +5,11 @@
 #define PACKET_LOGGING
 
 // Include
-#include "blaze/types.h"
+#include "predefined.h"
+#include "types.h"
 #include "client.h"
+
+#include "blaze/types.h"
 
 #ifdef PACKET_LOGGING
 #	include <PacketLogger.h>
@@ -19,10 +22,6 @@
 #include <vector>
 #include <map>
 #include <array>
-
-namespace Game {
-	class Game;
-}
 
 // RakNet
 namespace RakNet {
@@ -133,22 +132,10 @@ namespace RakNet {
 		void WriteTo(RakNet::BitStream& stream) const;
 	};
 
-	struct ChainVoteData {
-		std::array<uint32_t, 8> mLevelAssets;
-
-		uint32_t mPlayerAsset = 0;
-
-		ChainVoteData() {
-			mLevelAssets.fill(0);
-		}
-
-		void WriteTo(RakNet::BitStream& stream) const;
-	};
-
 	// Server
 	class Server {
 		public:
-			Server(Game::Game& game);
+			Server(Game::Instance& game);
 			~Server();
 
 			void start(uint16_t port);
@@ -157,78 +144,83 @@ namespace RakNet {
 
 			void run_one();
 
+			Game::Instance& GetGame();
+
 		private:
 			void ParseRakNetPackets(Packet* packet, uint8_t packetType);
 			void ParseSporeNetPackets(Packet* packet, uint8_t packetType);
 
-			Client::Ptr AddClient(Packet* packet);
+			ClientPtr AddClient(Packet* packet);
 			void RemoveClient(Packet* packet);
-			Client::Ptr GetClient(Packet* packet) const;
+			ClientPtr GetClient(Packet* packet) const;
 
-			void Send(BitStream& stream, const Client::Ptr& client);
-
+			void Send(BitStream& stream, const ClientPtr& client);
+			
 			// RakNet
 			void OnNewIncomingConnection(Packet* packet);
 
 			// SporeNet
-			void OnHelloPlayerRequest(const Client::Ptr& client);
-			void OnPlayerStatusUpdate(const Client::Ptr& client);
-			void OnActionCommandMsgs(const Client::Ptr& client);
-			void OnChainPlayerMsgs(const Client::Ptr& client);
-			void OnDebugPing(const Client::Ptr& client);
+			void OnHelloPlayerRequest(const ClientPtr& client);
+			void OnPlayerStatusUpdate(const ClientPtr& client);
+			void OnActionCommandMsgs(const ClientPtr& client);
+			void OnChainPlayerMsgs(const ClientPtr& client);
+			void OnDebugPing(const ClientPtr& client);
 
-			void SendHelloPlayer(const Client::Ptr& client);
-			void SendReconnectPlayer(const Client::Ptr& client, GameState gameState);
-			void SendConnected(const Client::Ptr& client);
-			void SendPlayerJoined(const Client::Ptr& client);
-			void SendPlayerDeparted(const Client::Ptr& client);
-			void SendPlayerStatusUpdate(const Client::Ptr& client, uint8_t playerState);
-			void SendGameState(const Client::Ptr& client, const GameStateData& data);
-			void SendPlayerCharacterDeploy(const Client::Ptr& client, uint32_t id);
-			void SendLabsPlayerUpdate(const Client::Ptr& client, bool fullUpdate);
-			void SendObjectCreate(const Client::Ptr& client, uint32_t id, uint32_t noun);
-			void SendObjectUpdate(const Client::Ptr& client);
-			void SendObjectDelete(const Client::Ptr& client);
-			void SendActionCommandResponse(const Client::Ptr& client);
-			void SendObjectPlayerMove(const Client::Ptr& client);
-			void SendObjectTeleport(const Client::Ptr& client);
-			void SendForcePhysicsUpdate(const Client::Ptr& client);
-			void SendPhysicsChanged(const Client::Ptr& client);
-			void SendLocomotionDataUpdate(const Client::Ptr& client);
-			void SendLocomotionDataUnreliableUpdate(const Client::Ptr& client);
-			void SendAttributeDataUpdate(const Client::Ptr& client);
-			void SendCombatantDataUpdate(const Client::Ptr& client);
-			void SendInteractableDataUpdate(const Client::Ptr& client);
-			void SendAgentBlackboardUpdate(const Client::Ptr& client);
-			void SendLootDataUpdate(const Client::Ptr& client);
-			void SendServerEvent(const Client::Ptr& client);
-			void SendModifierCreated(const Client::Ptr& client);
-			void SendModifierUpdated(const Client::Ptr& client);
-			void SendModifierDeleted(const Client::Ptr& client);
-			void SendGamePrepareForStart(const Client::Ptr& client);
-			void SendGameStart(const Client::Ptr& client);
-			void SendArenaGameMessages(const Client::Ptr& client);
-			void SendChainVoteMessages(const Client::Ptr& client);
-			void SendObjectivesInitForLevel(const Client::Ptr& client, const std::vector<ObjectiveData>& objectives);
-			void SendDirectorState(const Client::Ptr& client);
-			void SendPartyMergeComplete(const Client::Ptr& client);
-			void SendReloadLevel(const Client::Ptr& client);
+			void PrepareGameStart(const ClientPtr& client, uint8_t unknown, uint32_t squadId);
 
-			void SendQuickGame(const Client::Ptr& client);
-			void SendChainGame(const Client::Ptr& client);
-			void SendJuggernautGame(const Client::Ptr& client);
-			void SendKillRaceGame(const Client::Ptr& client);
-			void SendCinematic(const Client::Ptr& client);
-			void SendTutorial(const Client::Ptr& client);
+			// Packet commands
+			void SendHelloPlayer(const ClientPtr& client);
+			void SendReconnectPlayer(const ClientPtr& client, GameState gameState);
+			void SendConnected(const ClientPtr& client);
+			void SendPlayerJoined(const ClientPtr& client);
+			void SendPlayerDeparted(const ClientPtr& client);
+			void SendPlayerStatusUpdate(const ClientPtr& client, uint8_t playerState);
+			void SendGameState(const ClientPtr& client, const GameStateData& data);
+			void SendPlayerCharacterDeploy(const ClientPtr& client, const Game::PlayerPtr& player, uint32_t creatureIndex);
+			void SendLabsPlayerUpdate(const ClientPtr& client, const Game::PlayerPtr& player);
+			void SendObjectCreate(const ClientPtr& client, const Game::ObjectPtr& object);
+			void SendObjectUpdate(const ClientPtr& client, const Game::ObjectPtr& object);
+			void SendObjectDelete(const ClientPtr& client, const Game::ObjectPtr& object);
+			void SendActionCommandResponse(const ClientPtr& client);
+			void SendObjectPlayerMove(const ClientPtr& client);
+			void SendObjectTeleport(const ClientPtr& client);
+			void SendForcePhysicsUpdate(const ClientPtr& client);
+			void SendPhysicsChanged(const ClientPtr& client);
+			void SendLocomotionDataUpdate(const ClientPtr& client);
+			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client);
+			void SendAttributeDataUpdate(const ClientPtr& client);
+			void SendCombatantDataUpdate(const ClientPtr& client);
+			void SendInteractableDataUpdate(const ClientPtr& client);
+			void SendAgentBlackboardUpdate(const ClientPtr& client);
+			void SendLootDataUpdate(const ClientPtr& client);
+			void SendServerEvent(const ClientPtr& client, ServerEvent&& serverEvent);
+			void SendModifierCreated(const ClientPtr& client);
+			void SendModifierUpdated(const ClientPtr& client);
+			void SendModifierDeleted(const ClientPtr& client);
+			void SendGamePrepareForStart(const ClientPtr& client);
+			void SendGameStart(const ClientPtr& client);
+			void SendArenaGameMessages(const ClientPtr& client);
+			void SendChainVoteMessages(const ClientPtr& client, uint8_t value);
+			void SendObjectivesInitForLevel(const ClientPtr& client, const std::vector<ObjectiveData>& objectives);
+			void SendDirectorState(const ClientPtr& client);
+			void SendPartyMergeComplete(const ClientPtr& client);
+			void SendReloadLevel(const ClientPtr& client);
 
-			void SendDebugPing(const Client::Ptr& client);
+			void SendQuickGame(const ClientPtr& client);
+			void SendChainGame(const ClientPtr& client, uint8_t state);
+			void SendJuggernautGame(const ClientPtr& client);
+			void SendKillRaceGame(const ClientPtr& client);
+			void SendCinematic(const ClientPtr& client);
+			void SendTutorial(const ClientPtr& client);
 
-			void SendTestPacket(const Client::Ptr& client, MessageID id, const std::vector<uint8_t>& data);
+			void SendDebugPing(const ClientPtr& client);
+
+			void SendTestPacket(const ClientPtr& client, MessageID id, const std::vector<uint8_t>& data);
 
 		private:
-			Game::Game& mGame;
+			Game::Instance& mGame;
 
-			std::map<SystemAddress, Client::Ptr> mClients;
+			std::map<SystemAddress, ClientPtr> mClients;
 
 			std::thread mThread;
 			std::mutex mMutex;

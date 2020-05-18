@@ -3,6 +3,8 @@
 #define _RAKNET_CLIENT_HEADER
 
 // Include
+#include "predefined.h"
+
 #include "blaze/types.h"
 #include <RakPeerInterface.h>
 
@@ -48,9 +50,9 @@ namespace RakNet {
 
 	class Client {
 		public:
-			using Ptr = std::shared_ptr<Client>;
+			Client(Server& server, const SystemAddress& systemAddress);
 
-			Client(const SystemAddress& systemAddress);
+			const Game::PlayerPtr& GetPlayer() const;
 
 			GameStateData& GetGameStateData();
 			const GameStateData& GetGameStateData() const;
@@ -58,17 +60,23 @@ namespace RakNet {
 			GameState GetGameState() const;
 			bool SetGameState(GameState newState);
 
-			// TEMPORARY
-			uint8_t mStatus = 0;
+			int64_t GetBlazeId() const;
+			void SetBlazeId(int64_t id);
 
 		private:
 			// Client To Server
 			
 
 		private:
+			Server& mServer;
+
+			Game::PlayerPtr mPlayer;
+
 			SystemAddress mSystemAddress;
 
 			uint64_t mLastPing;
+			int64_t mBlazeId;
+
 			uint8_t mId;
 
 			GameStateData mGameStateData;
@@ -77,6 +85,8 @@ namespace RakNet {
 
 			friend class Server;
 	};
+
+	using ClientPtr = std::shared_ptr<Client>;
 }
 
 #endif

@@ -13,6 +13,13 @@ namespace HTTP {
 		mIoService(io_service),
 		mAcceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
 	{
+		boost::beast::error_code error;
+		mAcceptor.set_option(boost::asio::socket_base::reuse_address(true), error);
+		if (error) {
+			std::cout << error.message() << std::endl;
+			return;
+		}
+
 		do_accept();
 		set_router(nullptr);
 	}

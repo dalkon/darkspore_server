@@ -3,6 +3,50 @@
 #include "types.h"
 #include "utils/functions.h"
 
+#include <numbers>
+
+// Campaign level order
+constexpr const char* levelNames[] {
+	// tutorial
+	"Darkspore_Tutorial_cryos_1_v2"
+
+	// 1-1 to 1-4
+	"zelems_1",
+	"zelems_3",
+	"nocturna_4",
+	"nocturna_1",
+
+	// 2-1 to 2-4
+	"verdanth_1",
+	"verdanth_3",
+	"zelems_2",
+	"zelems_4",
+
+	// 3-1 to 3-4
+	"cryos_4",
+	"cryos_3",
+	"verdanth_2",
+	"verdanth_4",
+
+	// 4-1 to 4-4
+	"infinity_2",
+	"infinity_3",
+	"cryos_1",
+	"cryos_2",
+
+	// 5-1 to 5-4
+	"nocturna_3",
+	"nocturna_2",
+	"infinity_1",
+	"infinity_4",
+
+	// 6-1 to 6-4
+	"scaldron_1",
+	"scaldron_2",
+	"scaldron_3",
+	"scaldron_4"
+};
+
 /*
 	ServerEvent types (append .ServerEventDef)
 		character_filter_exit_bio
@@ -274,61 +318,90 @@ namespace Hash {
 }
 #undef DEFINE_TYPE_HASH
 
-// TODO: add array support
-class soft_reflection {
+// reflection_serializer | Fields = max amount of fields
+template<uint8_t FieldCount>
+class reflection_serializer {
+	static_assert(FieldCount > 0x00 && FieldCount <= 0xFF, "Fields must be above 0");
+
 	public:
-		soft_reflection(RakNet::BitStream& stream) : mStream(stream) {};
+		reflection_serializer(RakNet::BitStream& stream)
+			: mStream(stream), mStartOffset(std::numeric_limits<BitSize_t>::max()), mWriteBits(0) {};
 
-		void begin(uint32_t length) {
-			if (mLength != 0) {
-				// Cannot reset an active reflection.
-				return;
-			}
-
-			auto real_length = length & 0xFF;
-			if (!real_length) {
-				// No
+		void begin() {
+			if (mStartOffset != std::numeric_limits<BitSize_t>::max()) {
 				return;
 			}
 
 			mStartOffset = mStream.GetWriteOffset();
-			mCurrentIndex = 0;
-			mLength = real_length;
-			mLengthBits = 0;
+			mWriteBits = 0;
 
-			if (mLength <= 8) {
-				mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits(sizeof(uint8_t)));
-			} else if (mLength <= 16) {
-				mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits(sizeof(uint16_t)));
+			if constexpr (FieldCount <= 8) {
+				mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits<BitSize_t>(sizeof(uint8_t)));
+			} else if constexpr (FieldCount <= 16) {
+				mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits<BitSize_t>(sizeof(uint16_t)));
 			}
 		}
 
 		void end() {
-			if (mLength > 16) {
+			if constexpr (FieldCount > 16) {
 				Write<uint8_t>(mStream, 0xFF);
 			} else {
 				auto offset = mStream.GetWriteOffset();
 				mStream.SetWriteOffset(mStartOffset);
-				if (mLength > 8) {
-					Write<uint16_t>(mStream, mLengthBits);
-				} else if (mLength > 0) {
-					Write<uint8_t>(mStream, mLengthBits);
+				if constexpr (FieldCount <= 8) {
+					Write<uint16_t>(mStream, mWriteBits);
+				} else if constexpr (FieldCount <= 16) {
+					Write<uint8_t>(mStream, static_cast<uint8_t>(mWriteBits));
 				}
 				mStream.SetWriteOffset(offset);
 			}
 
-			mLength = 0;
-			mCurrentIndex = 0xFF;
+			mStartOffset = std::numeric_limits<BitSize_t>::max();
 		}
 
-		template<typename T>
-		void write(T&& value) {
-			if (mLength <= 16) {
-				return;
+		template<uint8_t Field, typename T, size_t S>
+		void write(const std::array<T, S>& value) {
+			static_assert(Field >= 0 && Field < FieldCount, "Field must be within range of FieldCount.");
+			if constexpr (FieldCount > 16) {
+				Write<uint8_t>(mStream, Field);
+			} else {
+				mWriteBits |= 1 << Field;
 			}
 
-			if (mCurrentIndex < 0xFF) {
-				Write<uint8_t>(mStream, mCurrentIndex++);
+			for (const auto& value : value) {
+				if constexpr (std::is_class_v<T>) {
+					value.WriteTo(mStream);
+				} else {
+					Write<T>(mStream, value);
+				}
+			}
+		}
+
+		template<uint8_t Field, typename T>
+		void write(const T& value) {
+			static_assert(Field >= 0 && Field < FieldCount, "Field must be within range of FieldCount.");
+			if constexpr (FieldCount > 16) {
+				Write<uint8_t>(mStream, Field);
+			} else {
+				mWriteBits |= 1 << Field;
+			}
+
+			if constexpr (std::is_class_v<T>) {
+				value.WriteTo(mStream);
+			} else {
+				Write<T>(mStream, value);
+			}
+		}
+
+		template<typename T, size_t S>
+		void write(uint8_t field, const std::array<T, S>& value) {
+			if constexpr (FieldCount > 16) {
+				Write<uint8_t>(mStream, field);
+			} else {
+				mWriteBits |= 1 << field;
+			}
+
+			for (const auto& value : value) {
 				if constexpr (std::is_class_v<T>) {
 					value.WriteTo(mStream);
 				} else {
@@ -338,12 +411,13 @@ class soft_reflection {
 		}
 
 		template<typename T>
-		void write(uint32_t memberField, T&& value) {
-			if (mLength > 16 || memberField > 16) {
-				return;
+		void write(uint8_t field, const T& value) {
+			if constexpr (FieldCount > 16) {
+				Write<uint8_t>(mStream, field);
+			} else {
+				mWriteBits |= 1 << field;
 			}
 
-			mLengthBits |= (1 << memberField);
 			if constexpr (std::is_class_v<T>) {
 				value.WriteTo(mStream);
 			} else {
@@ -354,11 +428,9 @@ class soft_reflection {
 	private:
 		RakNet::BitStream& mStream;
 
-		BitSize_t mStartOffset = 0;
+		BitSize_t mStartOffset;
 
-		uint32_t mCurrentIndex = 0;
-		uint32_t mLength = 0;
-		uint16_t mLengthBits = 0;
+		uint16_t mWriteBits;
 };
 
 class reflection {
@@ -479,7 +551,19 @@ namespace Hash {
 }
 
 namespace RakNet {
+	// cSPVector2
+	cSPVector2::cSPVector2(float _x, float _y)
+		: x(_x), y(_y) {}
+
+	void cSPVector2::WriteTo(BitStream& stream) const {
+		Write<float>(stream, x);
+		Write<float>(stream, y);
+	}
+
 	// cSPVector3
+	cSPVector3::cSPVector3(float _x, float _y, float _z)
+		: x(_x), y(_y), z(_z) {}
+
 	void cSPVector3::WriteTo(BitStream& stream) const {
 		Write<float>(stream, x);
 		Write<float>(stream, y);
@@ -520,15 +604,16 @@ namespace RakNet {
 	}
 
 	void cAIDirector::WriteReflection(BitStream& stream) const {
-		reflection::write<7>(stream, std::make_tuple(
-			mbBossSpawned,
-			mbBossHorde,
-			mbCaptainSpawned,
-			mbBossComplete,
-			mbHordeSpawned,
-			mBossId,
-			mActiveHordeWaves
-		));
+		reflection_serializer<7> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mbBossSpawned);
+		reflector.write<1>(mbBossHorde);
+		reflector.write<2>(mbCaptainSpawned);
+		reflector.write<3>(mbBossComplete);
+		reflector.write<4>(mbHordeSpawned);
+		reflector.write<5>(mBossId);
+		reflector.write<6>(mActiveHordeWaves);
+		reflector.end();
 	}
 
 	// labsCharacter
@@ -556,15 +641,6 @@ namespace RakNet {
 			3FC : mMaxManaPoints
 			400 : mGearScore
 			404 : mGearScoreFlattened
-
-		reflection fields
-			0 : int, version
-			1 : asset, nounDef
-			2 : ? skipped ? (uint64_t, assetID)
-			3 : uint32_t, mCreatureType
-			4 : ? skipped ? (uint64_t, mDeployCooldownMs)
-			5 : uint32_t, mAbilityPoints
-			6 : uint32_t, mAbilityRanks
 	*/
 
 	void labsCharacter::WriteTo(BitStream& stream) const {
@@ -620,17 +696,28 @@ namespace RakNet {
 	}
 
 	void labsCharacter::WriteReflection(BitStream& stream) const {
-		// FIXME: current problem
-		reflection::write<127>(stream, std::make_tuple(
-			version, nounDef,
-			assetID, mCreatureType,
-			mDeployCooldownMs, mAbilityPoints,
-			mAbilityRanks, mHealthPoints,
-			mMaxHealthPoints, mManaPoints,
-			mMaxManaPoints, mGearScore,
-			mGearScoreFlattened
-			// partsAttributes
-		));
+		reflection_serializer<124> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(version);
+		reflector.write<1>(nounDef);
+		reflector.write<2>(assetID);
+		reflector.write<3>(mCreatureType);
+		reflector.write<4>(mDeployCooldownMs);
+		reflector.write<5>(mAbilityPoints);
+		reflector.write<6>(mAbilityRanks);
+		reflector.write<7>(mHealthPoints);
+		reflector.write<8>(mMaxHealthPoints);
+		reflector.write<9>(mManaPoints);
+		reflector.write<10>(mMaxManaPoints);
+		reflector.write<11>(mGearScore);
+		reflector.write<12>(mGearScoreFlattened);
+
+		uint8_t field = 13;
+		for (auto value : partsAttributes) {
+			reflector.write(field++, value);
+		}
+
+		reflector.end();
 	}
 
 	// labsCrystal
@@ -808,41 +895,30 @@ namespace RakNet {
 	}
 
 	void labsCrystal::WriteReflection(BitStream& stream) const {
-		reflection::write<2>(stream, std::make_tuple(crystalNoun, level));
+		reflection_serializer<2> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(crystalNoun);
+		reflector.write<1>(level);
+		reflector.end();
 	}
 
 	// labsPlayer
-	labsPlayer::labsPlayer(bool fullUpdate) : mDataBits(fullUpdate ? 0x1000 : 0x0000) {}
-
-	void labsPlayer::SetCharacter(labsCharacter&& character, uint32_t slot) {
-		if (slot >= mCharacters.size()) {
-			return;
-		}
-
-		uint32_t slotBits = 1 << slot;
-		if (character.nounDef == 0) {
-			mDataBits &= ~slotBits;
-		} else {
-			mDataBits |= slotBits;
-		}
-
-		mCharacters[slot] = std::move(character);
+	labsPlayer::labsPlayer() {
+		mReflectionBits.set();
 	}
 
-	void labsPlayer::SetCrystal(labsCrystal&& crystal, uint32_t slot) {
-		if (slot >= mCrystals.size()) {
-			return;
-		}
+	void labsPlayer::SetUpdateBits(uint8_t bitIndex) {
+		mReflectionBits.set(bitIndex);
+	}
 
-		uint32_t slotBits = 1 << (slot + 3);
-		if (crystal.crystalNoun == 0) {
-			mDataBits &= ~slotBits;
-		} else {
-			mDataBits |= slotBits;
+	void labsPlayer::SetUpdateBits(std::initializer_list<uint8_t>&& bitIndexes) {
+		for (uint8_t bitIndex : bitIndexes) {
+			mReflectionBits.set(bitIndex);
 		}
+	}
 
-		mCrystals[slot] = std::move(crystal);
-		// Check bonuses
+	void labsPlayer::ResetUpdateBits() {
+		mReflectionBits.reset();
 	}
 
 	void labsPlayer::WriteTo(BitStream& stream) const {
@@ -870,11 +946,11 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1278));
 		Write(stream, mPlayerIndex);
 
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12DC));
-		Write(stream, mTeam);
-
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1280));
 		Write(stream, mPlayerOnlineId);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12DC));
+		Write(stream, mTeam);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12E0));
 		Write<tObjID>(stream, mCurrentCreatureId);
@@ -923,20 +999,35 @@ namespace RakNet {
 	}
 
 	void labsPlayer::WriteReflection(BitStream& stream) const {
-		reflection::write<24>(stream, std::make_tuple(
-			mbDataSetup, mCurrentDeckIndex,
-			mQueuedDeckIndex,
-			mCharacters, mPlayerIndex, mTeam,
-			mPlayerOnlineId, mStatus,
-			mStatusProgress, mCurrentCreatureId,
-			mEnergyPoints, mbIsCharged, mDNA,
-			mCrystals, mCrystalBonuses,
-			mAvatarLevel, mAvatarXP,
-			mChainProgression, mLockCamera,
-			mbLockedOverdrive, mbLockedCrystals,
-			mLockedAbilityMin, mLockedDeckIndexMin,
-			mDeckScore
-		));
+		reflection_serializer<FieldCount> reflector(stream);
+		reflector.begin();
+		if (mReflectionBits.any()) {
+			if (mReflectionBits.test(0)) { reflector.write<0>(mbDataSetup); }
+			if (mReflectionBits.test(1)) { reflector.write<1>(mCurrentDeckIndex); }
+			if (mReflectionBits.test(2)) { reflector.write<2>(mQueuedDeckIndex); }
+			if (mReflectionBits.test(3)) { reflector.write<3>(mCharacters); }
+			if (mReflectionBits.test(4)) { reflector.write<4>(mPlayerIndex); }
+			if (mReflectionBits.test(5)) { reflector.write<5>(mTeam); }
+			if (mReflectionBits.test(6)) { reflector.write<6>(mPlayerOnlineId); }
+			if (mReflectionBits.test(7)) { reflector.write<7>(mStatus); }
+			if (mReflectionBits.test(8)) { reflector.write<8>(mStatusProgress); }
+			if (mReflectionBits.test(9)) { reflector.write<9>(mCurrentCreatureId); }
+			if (mReflectionBits.test(10)) { reflector.write<10>(mEnergyPoints); }
+			if (mReflectionBits.test(11)) { reflector.write<11>(mbIsCharged); }
+			if (mReflectionBits.test(12)) { reflector.write<12>(mDNA); }
+			if (mReflectionBits.test(13)) { reflector.write<13>(mCrystals); }
+			if (mReflectionBits.test(14)) { reflector.write<14>(mCrystalBonuses); }
+			if (mReflectionBits.test(15)) { reflector.write<15>(mAvatarLevel); }
+			if (mReflectionBits.test(16)) { reflector.write<16>(mAvatarXP); }
+			if (mReflectionBits.test(17)) { reflector.write<17>(mChainProgression); }
+			if (mReflectionBits.test(18)) { reflector.write<18>(mLockCamera); }
+			if (mReflectionBits.test(19)) { reflector.write<19>(mbLockedOverdrive); }
+			if (mReflectionBits.test(20)) { reflector.write<20>(mbLockedCrystals); }
+			if (mReflectionBits.test(21)) { reflector.write<21>(mLockedAbilityMin); }
+			if (mReflectionBits.test(22)) { reflector.write<22>(mLockedDeckIndexMin); }
+			if (mReflectionBits.test(23)) { reflector.write<23>(mDeckScore); }
+		}
+		reflector.end();
 	}
 
 	// cGameObjectCreateData
@@ -964,12 +1055,19 @@ namespace RakNet {
 	}
 
 	void cGameObjectCreateData::WriteReflection(BitStream& stream) const {
-		reflection::write<10>(stream, std::make_tuple(
-			noun, position,
-			rotXDegrees, rotYDegrees, rotZDegrees,
-			assetId, scale, team,
-			hasCollision, playerControlled
-		));
+		reflection_serializer<10> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(noun);
+		reflector.write<1>(position);
+		reflector.write<2>(rotXDegrees);
+		reflector.write<3>(rotYDegrees);
+		reflector.write<4>(rotZDegrees);
+		reflector.write<5>(assetId);
+		reflector.write<6>(scale);
+		reflector.write<7>(team);
+		reflector.write<8>(hasCollision);
+		reflector.write<9>(playerControlled);
+		reflector.end();
 	}
 
 	// sporelabsObject
@@ -979,18 +1077,17 @@ namespace RakNet {
 			0x9A = mark not worth xp
 			0x2CC = is dead
 	*/
-	sporelabsObject::sporelabsObject() {}
-	sporelabsObject::sporelabsObject(cGameObjectCreateData& data) :
-		mTeam(data.team), mbPlayerControlled(data.playerControlled),
+	sporelabsObject::sporelabsObject() :
+		mTeam(1), mbPlayerControlled(false),
 		mInputSyncStamp(0), mPlayerIdx(0),
-		mLinearVelocity {}, mAngularVelocity {},
-		mPosition(data.position), mOrientation {},
-		mScale(data.scale), mMarkerScale(1.f),
+		mLinearVelocity(0, 0, 0), mAngularVelocity(0, 0, 0),
+		mPosition(0, 0, 0), mOrientation {},
+		mScale(1.f), mMarkerScale(1.f),
 		mLastAnimationState(0), mLastAnimationPlayTimeMs(0),
 		mOverrideMoveIdleAnimationState(0),
 		mGraphicsState(0), mGraphicsStateStartTimeMs(0),
 		mNewGraphicsStateStartTimeMs(0),
-		mVisible(true), mbHasCollision(data.hasCollision),
+		mVisible(true), mbHasCollision(false),
 		mMovementType(0), mDisableRepulsion(false),
 		mInteractableState(0), sourceMarkerKey_markerId(0) {}
 
@@ -1049,20 +1146,32 @@ namespace RakNet {
 	}
 
 	void sporelabsObject::WriteReflection(BitStream& stream) const {
-		reflection::write<23>(stream, std::make_tuple(
-			mTeam, mbPlayerControlled,
-			mInputSyncStamp, mPlayerIdx,
-			mLinearVelocity, mAngularVelocity,
-			mPosition, mOrientation,
-			mScale, mMarkerScale,
-			mLastAnimationState, mLastAnimationPlayTimeMs,
-			mOverrideMoveIdleAnimationState, mGraphicsState,
-			mGraphicsStateStartTimeMs, mNewGraphicsStateStartTimeMs,
-			mVisible, mbHasCollision,
-			mOwnerID, mMovementType,
-			mDisableRepulsion, mInteractableState,
-			sourceMarkerKey_markerId
-		));
+		reflection_serializer<23> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mTeam);
+		reflector.write<1>(mbPlayerControlled);
+		reflector.write<2>(mInputSyncStamp);
+		reflector.write<3>(mPlayerIdx);
+		reflector.write<4>(mLinearVelocity);
+		reflector.write<5>(mAngularVelocity);
+		reflector.write<6>(mPosition);
+		reflector.write<7>(mOrientation);
+		reflector.write<8>(mScale);
+		reflector.write<9>(mMarkerScale);
+		reflector.write<10>(mLastAnimationState);
+		reflector.write<11>(mLastAnimationPlayTimeMs);
+		reflector.write<12>(mOverrideMoveIdleAnimationState);
+		reflector.write<13>(mGraphicsState);
+		reflector.write<14>(mGraphicsStateStartTimeMs);
+		reflector.write<15>(mNewGraphicsStateStartTimeMs);
+		reflector.write<16>(mVisible);
+		reflector.write<17>(mbHasCollision);
+		reflector.write<18>(mOwnerID);
+		reflector.write<19>(mMovementType);
+		reflector.write<20>(mDisableRepulsion);
+		reflector.write<21>(mInteractableState);
+		reflector.write<22>(sourceMarkerKey_markerId);
+		reflector.end();
 	}
 
 	// cAgentBlackboard
@@ -1089,13 +1198,14 @@ namespace RakNet {
 	}
 
 	void cAgentBlackboard::WriteReflection(BitStream& stream) const {
-		reflection::write<5>(stream, std::make_tuple(
-			targetId,
-			mbInCombat,
-			mStealthType,
-			mbTargetable,
-			mNumAttackers
-		));
+		reflection_serializer<5> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(targetId);
+		reflector.write<1>(mbInCombat);
+		reflector.write<2>(mStealthType);
+		reflector.write<3>(mbTargetable);
+		reflector.write<4>(mNumAttackers);
+		reflector.end();
 	}
 
 	// ServerEvent
@@ -1143,33 +1253,249 @@ namespace RakNet {
 	}
 
 	void ServerEvent::WriteReflection(BitStream& stream) const {
-		reflection::write<26>(stream, std::make_tuple(
-			simpleSwarmEffectID,
-			objectFxIndex,
-			bRemove,
-			bHardStop,
-			bForceAttach,
-			bCritical,
-			ServerEventDef,
-			objectId,
-			secondaryObjectId,
-			attackerId,
-			position,
-			facing,
-			orientation,
-			targetPoint,
-			textValue,
-			clientEventID,
-			clientIgnoreFlags,
-			lootReferenceId,
-			lootInstanceId,
-			lootRigblockId,
-			lootSuffixAssetId,
-			lootPrefixAssetId1,
-			lootPrefixAssetId2,
-			lootItemLevel,
-			lootRarity,
-			lootCreationTime
-		));
+		reflection_serializer<26> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(simpleSwarmEffectID);
+		reflector.write<1>(objectFxIndex);
+		reflector.write<2>(bRemove);
+		reflector.write<3>(bHardStop);
+		reflector.write<4>(bForceAttach);
+		reflector.write<5>(bCritical);
+		reflector.write<6>(ServerEventDef);
+		reflector.write<7>(objectId);
+		reflector.write<8>(secondaryObjectId);
+		reflector.write<9>(attackerId);
+		reflector.write<10>(position);
+		reflector.write<11>(facing);
+		reflector.write<12>(orientation);
+		reflector.write<13>(targetPoint);
+		reflector.write<14>(textValue);
+		reflector.write<15>(clientEventID);
+		reflector.write<16>(clientIgnoreFlags);
+		reflector.write<17>(lootReferenceId);
+		reflector.write<18>(lootInstanceId);
+		reflector.write<19>(lootRigblockId);
+		reflector.write<20>(lootSuffixAssetId);
+		reflector.write<21>(lootPrefixAssetId1);
+		reflector.write<22>(lootPrefixAssetId2);
+		reflector.write<23>(lootItemLevel);
+		reflector.write<24>(lootRarity);
+		reflector.write<25>(lootCreationTime);
+		reflector.end();
+	}
+
+	// DifficultyTuning
+	void DifficultyTuning::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x48);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x00));
+		Write<float>(stream, HealthPercentIncrease[0]);
+		Write<float>(stream, HealthPercentIncrease[1]);
+
+		Write<float>(stream, DamagePercentIncrease[0]);
+		Write<float>(stream, DamagePercentIncrease[1]);
+
+		Write<float>(stream, ItemLevelRange[0]);
+		Write<float>(stream, ItemLevelRange[1]);
+
+		GearScoreRange.WriteTo(stream);
+		GearScoreMax.WriteTo(stream);
+
+		Write<int32_t>(stream, ExpectedAvatarLevel[0]);
+		Write<int32_t>(stream, ExpectedAvatarLevel[1]);
+
+		Write<float>(stream, RatingConversion[0]);
+		Write<float>(stream, RatingConversion[1]);
+
+		Write<float>(stream, StarModeHealthMult);
+		Write<float>(stream, StarModeDamageMult);
+		Write<float>(stream, StarModeEliteChanceAdd);
+		Write<float>(stream, StarModeSuggestedLevelAdd);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void DifficultyTuning::WriteReflection(BitStream& stream) const {
+		reflection_serializer<11> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(HealthPercentIncrease);
+		reflector.write<1>(DamagePercentIncrease);
+		reflector.write<2>(ItemLevelRange);
+		reflector.write<3>(GearScoreRange);
+		reflector.write<4>(GearScoreMax);
+		reflector.write<5>(ExpectedAvatarLevel);
+		reflector.write<6>(RatingConversion);
+		reflector.write<7>(StarModeHealthMult);
+		reflector.write<8>(StarModeDamageMult);
+		reflector.write<9>(StarModeEliteChanceAdd);
+		reflector.write<10>(StarModeSuggestedLevelAdd);
+		reflector.end();
+	}
+
+	// ChainVoteData
+	ChainVoteData::ChainVoteData() {
+		// mEnemyNouns.fill(0);
+		// mLevelNouns.fill(0);
+		mEnemyNouns.fill(utils::hash_id("nct_minn_su_drainer.noun"));
+		mLevelNouns[0] = 0x12345678;
+		mLevelNouns[1] = 0xFEDCBA09;
+	}
+
+	float ChainVoteData::GetTimeRemaining() const {
+		return mTimeRemaining;
+	}
+
+	void ChainVoteData::SetTimeRemaining(float milliseconds) {
+		mTimeRemaining = milliseconds;
+	}
+
+	uint32_t ChainVoteData::GetLevel() const {
+		return mLevel;
+	}
+
+	void ChainVoteData::SetLevel(uint32_t level) {
+		mLevel = level;
+		mLevelIndex = 0;
+	}
+
+	uint32_t ChainVoteData::GetLevelIndex() const {
+		return mLevelIndex;
+	}
+
+	void ChainVoteData::SetLevelByIndex(uint32_t index) {
+		if (index >= std::extent_v<decltype(levelNames)>) {
+			return;
+		}
+
+		std::string levelName = levelNames[index];
+		levelName += ".Level";
+
+		mLevel = utils::hash_id(levelName);
+		mLevelIndex = index;
+	}
+
+	uint32_t ChainVoteData::GetMarkerSet() const {
+		std::string markerSet = "levelshop";
+		// std::string markerSet = "default";
+
+		std::string levelName = levelNames[mLevelIndex];
+		levelName += "_" + markerSet + ".Markerset";
+		return utils::hash_id(levelName);
+	}
+
+	uint32_t ChainVoteData::GetMinorDifficulty() const {
+		return ((mLevelIndex - 1) % 4) + 1;
+	}
+
+	uint32_t ChainVoteData::GetMajorDifficulty() const {
+		return ((mLevelIndex - 1) / 4) + 1;
+	}
+
+	uint32_t ChainVoteData::GetStarLevel() const {
+		return mStarLevel;
+	}
+
+	void ChainVoteData::SetStarLevel(uint32_t starLevel) {
+		mStarLevel = starLevel;
+	}
+
+	bool ChainVoteData::IsCompleted() const {
+		return mCompletedLevel;
+	}
+
+	void ChainVoteData::SetCompleted(bool completed) {
+		mCompletedLevel = completed;
+	}
+
+	void ChainVoteData::WriteTo(RakNet::BitStream& stream) const {
+		// This data is set directly into the state machine?
+
+		/*
+			0x00 - 0x13 = memcpy'd in client ()
+			0x4D - 0x8E = memcpy'd in client (Maybe DifficultyTuning)
+		*/
+
+		/*
+			Player progress
+				6500 = start mission
+				6800 = on chainvote data sent?
+		*/
+
+		constexpr auto size = bytes_to_bits(0x151);
+
+		uint32_t minorDifficulty;
+		uint32_t majorDifficulty;
+		if (mLevelIndex > 0) {
+			minorDifficulty = GetMinorDifficulty();
+			majorDifficulty = GetMajorDifficulty();
+		} else {
+			minorDifficulty = 0;
+			majorDifficulty = 0;
+		}
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x00));
+		if (mCompletedLevel) {
+			// this is different somehow.
+			Write<uint32_t>(stream, minorDifficulty);
+			Write<uint32_t>(stream, majorDifficulty);
+			Write<uint32_t>(stream, mStarLevel);
+			Write<float>(stream, 30 * 60 * 1000.f); // time remaining?
+		} else {
+			Write<uint32_t>(stream, mLevel);
+			Write<uint32_t>(stream, majorDifficulty);
+			Write<uint32_t>(stream, mStarLevel);
+			Write<float>(stream, 30 * 60 * 1000.f); // time remaining?
+		}
+
+		Write<bool>(stream, mCompletedLevel);
+		for (const auto enemy : mEnemyNouns) {
+			Write<uint32_t>(stream, enemy);
+		}
+
+		// TODO: understand this. (same function tests these as the enemy nouns)
+		for (const auto data : mLevelNouns) {
+			Write<uint32_t>(stream, data);
+		}
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x39));
+		Write<uint32_t>(stream, 0); // party value?, used in sub_5313B0
+		Write<uint32_t>(stream, utils::hash_id("fmv_02_zelems.vp6")); // some value
+		Write<uint32_t>(stream, utils::hash_id("fmv_02_zelems.vp6")); // some value
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x45));
+		Write<uint32_t>(stream, 1); // Unknown so far, arg0 of sub_4E4910 (hash lookup)
+		Write<uint32_t>(stream, 0); // tests against "mCompletedLevel" for something, but this is not a boolean.
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x4D));
+		Write<uint32_t>(stream, mPlayerAsset);
+		Write<uint32_t>(stream, 0x12345678);
+
+#if 1
+		for (size_t i = 0; i < 0x39; ++i) {
+			Write<uint8_t>(stream, 0xDD);
+		}
+#else
+		WriteDebugData(stream, 0x39);
+#endif
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0xD9));
+		Write<uint32_t>(stream, 0); // overrides party value
+		Write<uint32_t>(stream, utils::hash_id("fmv_03_nocturna.vp6")); // ignored?
+		Write<uint32_t>(stream, utils::hash_id("fmv_03_nocturna.vp6")); // ignored?
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0xE9));
+		Write<uint32_t>(stream, mLevel); // some hash, finds text in labsplanet.locale
+
+		for (size_t i = 0; i < 0x68; ++i) {
+			Write<uint8_t>(stream, 0xDD);
+		}
+
+		stream.SetWriteOffset(writeOffset + size);
 	}
 }

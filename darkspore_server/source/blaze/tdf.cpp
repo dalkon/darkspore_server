@@ -115,7 +115,6 @@ namespace Blaze {
 
 		void Parser::Read(DataBuffer& buffer) {
 			rapidjson::Document(rapidjson::kObjectType).Swap(mDocument);
-			// mDocument.SetObject();
 			while (!buffer.eof()) {
 				ReadValue(buffer, mDocument);
 			}

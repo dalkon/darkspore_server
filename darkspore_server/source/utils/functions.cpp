@@ -5,12 +5,23 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <array>
 
 // utils
 namespace utils {
 	// Time
 	uint64_t get_unix_time() {
 		return std::chrono::milliseconds(std::time(nullptr)).count();
+	}
+
+	std::string get_utc_date_string() {
+		thread_local std::array<char, 256> date;
+
+		auto t = std::time(nullptr);
+		auto gmt = std::gmtime(&t);
+		auto len = std::strftime(date.data(), date.size(), "%a, %d %b %Y %H:%M:%S %Z", gmt);
+
+		return std::string(date.data(), len);
 	}
 
 	// Files
@@ -31,6 +42,18 @@ namespace utils {
 	}
 
 	// Strings
+	bool string_iequals(const std::string& lhs, const std::string& rhs) {
+		return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char a, char b) {
+			return const_tolower(a) == const_tolower(b);
+		});
+	}
+
+	bool string_iequals(std::string_view lhs, std::string_view rhs) {
+		return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char a, char b) {
+			return const_tolower(a) == const_tolower(b);
+		});
+	}
+
 	void string_replace(std::string& str, const std::string& old_str, const std::string& new_str) {
 		auto position = str.find(old_str);
 		if (position != std::string::npos) {

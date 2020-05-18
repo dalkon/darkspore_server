@@ -1,7 +1,9 @@
 
 // Include
 #include "roomscomponent.h"
-#include "main.h"
+
+#include "sporenet/instance.h"
+#include "sporenet/room.h"
 
 #include "blaze/client.h"
 #include "utils/functions.h"
@@ -333,11 +335,11 @@ namespace Blaze {
 			return;
 		}
 
-		Game::RoomPtr room;
+		SporeNet::RoomPtr room;
 		if (roomId == 0) {
 			room = user->GetRoom();
 		} else {
-			room = GetApp().GetRoomManager().GetRoom(roomId);
+			room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
 		}
 
 		if (!room) {
@@ -349,7 +351,7 @@ namespace Blaze {
 		room->AddUser(user);
 
 		//
-		uint32_t userId = user->get_id();
+		auto userId = user->get_id();
 		roomId = room->GetId();
 
 		const auto& category = room->GetCategory();
@@ -380,22 +382,16 @@ namespace Blaze {
 		packet.put_integer("RMID", roomId);
 		packet.pop();
 
-		//
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
+		NotifyRoomMemberJoined(client, roomId, userId);
 
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x14;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
-
-		NotifyRoomMemberJoined(client, userId, roomId);
+		client->reply({
+			.component = Component::Rooms,
+			.command = 0x14
+		}, packet);
 	}
 
 	void RoomsComponent::NotifyRoomViewUpdated(Client* client, uint32_t viewId) {
-		const auto& roomView = GetApp().GetRoomManager().GetRoomView(viewId);
+		const auto& roomView = SporeNet::Get().GetRoomManager().GetRoomView(viewId);
 		if (roomView) {
 			TDF::Packet packet;
 			roomView->WriteTo(packet);
@@ -411,7 +407,7 @@ namespace Blaze {
 	}
 	
 	void RoomsComponent::NotifyRoomViewAdded(Client* client, uint32_t viewId) {
-		const auto& roomView = GetApp().GetRoomManager().GetRoomView(viewId);
+		const auto& roomView = SporeNet::Get().GetRoomManager().GetRoomView(viewId);
 		if (roomView) {
 			TDF::Packet packet;
 			roomView->WriteTo(packet);
@@ -444,7 +440,7 @@ namespace Blaze {
 	}
 
 	void RoomsComponent::NotifyRoomCategoryUpdated(Client* client, uint32_t categoryId) {
-		const auto& roomCategory = GetApp().GetRoomManager().GetRoomCategory(categoryId);
+		const auto& roomCategory = SporeNet::Get().GetRoomManager().GetRoomCategory(categoryId);
 		if (roomCategory) {
 			TDF::Packet packet;
 			roomCategory->WriteTo(packet);
@@ -462,7 +458,7 @@ namespace Blaze {
 	}
 
 	void RoomsComponent::NotifyRoomCategoryAdded(Client* client, uint32_t categoryId) {
-		const auto& roomCategory = GetApp().GetRoomManager().GetRoomCategory(categoryId);
+		const auto& roomCategory = SporeNet::Get().GetRoomManager().GetRoomCategory(categoryId);
 		if (roomCategory) {
 			TDF::Packet packet;
 			roomCategory->WriteTo(packet);
@@ -495,7 +491,7 @@ namespace Blaze {
 	}
 
 	void RoomsComponent::NotifyRoomUpdated(Client* client, uint32_t roomId) {
-		const auto& room = GetApp().GetRoomManager().GetRoom(roomId);
+		const auto& room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
 		if (room) {
 			TDF::Packet packet;
 			room->WriteTo(packet);
@@ -513,7 +509,7 @@ namespace Blaze {
 	}
 
 	void RoomsComponent::NotifyRoomAdded(Client* client, uint32_t roomId) {
-		const auto& room = GetApp().GetRoomManager().GetRoom(roomId);
+		const auto& room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
 		if (room) {
 			TDF::Packet packet;
 			room->WriteTo(packet);
@@ -671,8 +667,8 @@ namespace Blaze {
 
 		bool update = request["UPDT"].GetUint() != 0;
 		if (update) {
-			Game::RoomViewPtr roomView;
-			Game::RoomCategoryPtr roomCategory;
+			SporeNet::RoomViewPtr roomView;
+			SporeNet::RoomCategoryPtr roomCategory;
 
 			auto room = user->GetRoom();
 			if (room) {
@@ -680,7 +676,7 @@ namespace Blaze {
 				roomView = roomCategory->GetView();
 				roomViewId = roomView->GetId();
 			} else {
-				Game::RoomManager& manager = GetApp().GetRoomManager();
+				SporeNet::RoomManager& manager = SporeNet::Get().GetRoomManager();
 				room = manager.CreateRoom();
 
 				roomCategory = manager.CreateRoomCategory();

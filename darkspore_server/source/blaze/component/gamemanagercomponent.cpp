@@ -15,6 +15,166 @@
 #	undef GetObject
 #endif
 
+/* GOOD:
+
+[11:16:29.242]  |             GID = 2 (0x00000002)
+[11:16:29.242]  |             GNAM = "Dalkon's Game"
+[11:16:29.243]  |             GPVH = 1 (0x0000000000000001)
+[11:16:29.243]  |             GSET = 260 (0x00000104)
+[11:16:29.244]  |             GSET = 260 (0x00000104)
+[11:16:29.244]  |             GSID = 1 (0x0000000000000001)
+[11:16:29.245]  |             GSTA = INITIALIZING (1) (0x00000001)
+[11:16:29.245]  |             GTYP = ""
+[11:16:29.248]  |                     IP = 3232235632 (0xC0A80070)
+[11:16:29.248]  |                     PORT = 3659 (0x0E4B)
+[11:16:29.249]  |                   }
+[11:16:29.249]  |                     IP = 0 (0x00000000)
+[11:16:29.250]  |                     PORT = 3659 (0x0E4B)
+[11:16:29.250]  |                   }
+[11:16:29.250]  |                 }
+[11:16:29.251]  |               }
+[11:16:29.251]  |             ]
+[11:16:29.251]  |             HSES = 13666 (0x00003562)
+[11:16:29.252]  |             IGNO = false
+[11:16:29.252]  |             ]
+[11:16:29.253]  |             MCAP = 1 (0x0001)
+[11:16:29.253]  |               DBPS = 100 (0x00000064)
+[11:16:29.254]  |               NATT = NAT_TYPE_OPEN (0) (0x00000000)
+[11:16:29.254]  |               UBPS = 100 (0x00000064)
+[11:16:29.254]  |             }
+[11:16:29.255]  |             NRES = true
+[11:16:29.255]  |             NTOP = CLIENT_SERVER_DEDICATED (1) (0x00000001)
+[11:16:29.255]  |             PGID = ""
+[11:16:29.257]  |             }
+[11:16:29.258]  |               HPID = 2 (0x0000000000000002)
+[11:16:29.258]  |               HSLT = 1 (0x01)
+[11:16:29.259]  |             }
+[11:16:29.259]  |             PRES = PRESENCE_MODE_STANDARD (1) (0x00000001)
+[11:16:29.260]  |             PSAS = "ams"
+[11:16:29.260]  |             QCAP = 0 (0x0000)
+[11:16:29.260]  |             SEED = 0 (0x00000000)
+[11:16:29.261]  |             TCAP = 0 (0x0000)
+[11:16:29.261]  |               HPID = 2 (0x0000000000000002)
+[11:16:29.261]  |               HSLT = 0 (0x00)
+[11:16:29.262]  |             }
+[11:16:29.262]  |               [0] = 0 (0x0000)
+[11:16:29.263]  |             ]
+[11:16:29.263]  |             UUID = "71bc4bdb-82ec-494d-8d75-ca5123b827ac"
+[11:16:29.263]  |             VOIP = VOIP_DISABLED (0) (0x00000000)
+[11:16:29.264]  |             VSTR = "5.3.0.127"
+[11:16:29.264]  |             }
+[11:16:29.265]  |             }
+[11:16:29.265]  |           }
+[11:16:29.267]  |               }
+[11:16:29.268]  |               EXID = 0 (0x0000000000000000)
+[11:16:29.268]  |               GID = 2 (0x00000002)
+[11:16:29.268]  |               LOC = 1701729619 (0x656E5553)
+[11:16:29.269]  |               NAME = "Dalkon"
+[11:16:29.269]  |               ]
+[11:16:29.270]  |               PID = 2 (0x0000000000000002)
+[11:16:29.270]  |                     IP = 0 (0x00000000)
+[11:16:29.270]  |                     PORT = 0 (0x0000)
+[11:16:29.271]  |                   }
+[11:16:29.271]  |                     IP = 0 (0x00000000)
+[11:16:29.271]  |                     PORT = 3659 (0x0E4B)
+[11:16:29.272]  |                   }
+[11:16:29.272]  |                 }
+[11:16:29.273]  |               }
+[11:16:29.273]  |               SID = 0 (0x00)
+[11:16:29.274]  |               SLOT = SLOT_PUBLIC (0) (0x00000000)
+[11:16:29.274]  |               STAT = ACTIVE_CONNECTED (4) (0x00000004)
+[11:16:29.274]  |               TIDX = 65535 (0xFFFF)
+[11:16:29.275]  |               TIME = 1584872189 (0x000000005E773AFD)
+[11:16:29.275]  |               UGID = 0/0/0
+[11:16:29.275]  |               UID = 2 (0x00000002)
+[11:16:29.277]  |             }
+[11:16:29.278]  |           ]
+[11:16:29.278]  |               DCTX = CREATE_GAME_SETUP_CONTEXT (0) (0x00000000)
+[11:16:29.279]  |             }
+[11:16:29.279]  |           }
+
+*/
+
+/* BAD:
+
+[11:27:58.590]  |             GID = 1 (0x00000001)
+[11:27:58.590]  |             GNAM = "Dalkon's Game"
+[11:27:58.591]  |             GPVH = 1 (0x0000000000000001)
+[11:27:58.591]  |             GSET = 260 (0x00000104)
+[11:27:58.591]  |             GSET = 260 (0x00000104)
+[11:27:58.592]  |             GSID = 1 (0x0000000000000001)
+[11:27:58.592]  |             GSTA = INITIALIZING (1) (0x00000001)
+[11:27:58.592]  |             GTYP = ""
+[11:27:58.593]  |                     IP = 3232235632 (0xC0A80070)
+[11:27:58.593]  |                     PORT = 3659 (0x0E4B)
+[11:27:58.594]  |                   }
+[11:27:58.595]  |                     IP = 0 (0x00000000)
+[11:27:58.596]  |                     PORT = 3659 (0x0E4B)
+[11:27:58.596]  |                   }
+[11:27:58.597]  |                 }
+[11:27:58.597]  |               }
+[11:27:58.598]  |             ]
+[11:27:58.598]  |             HSES = 13666 (0x00003562)
+[11:27:58.598]  |             IGNO = false
+[11:27:58.599]  |             ]
+[11:27:58.599]  |             MCAP = 1 (0x0001)
+[11:27:58.600]  |               DBPS = 100 (0x00000064)
+[11:27:58.600]  |               NATT = NAT_TYPE_OPEN (0) (0x00000000)
+[11:27:58.600]  |               UBPS = 100 (0x00000064)
+[11:27:58.601]  |             }
+[11:27:58.601]  |             NRES = true
+[11:27:58.601]  |             NTOP = CLIENT_SERVER_DEDICATED (1) (0x00000001)
+[11:27:58.602]  |             PGID = ""
+[11:27:58.602]  |             }
+[11:27:58.603]  |               HPID = 2 (0x0000000000000002)
+[11:27:58.603]  |               HSLT = 1 (0x01)
+[11:27:58.604]  |             }
+[11:27:58.606]  |             PRES = PRESENCE_MODE_STANDARD (1) (0x00000001)
+[11:27:58.606]  |             PSAS = "ams"
+[11:27:58.607]  |             QCAP = 0 (0x0000)
+[11:27:58.607]  |             SEED = 0 (0x00000000)
+[11:27:58.607]  |             TCAP = 0 (0x0000)
+[11:27:58.608]  |               HPID = 2 (0x0000000000000002)
+[11:27:58.608]  |               HSLT = 0 (0x00)
+[11:27:58.608]  |             }
+[11:27:58.609]  |               [0] = 0 (0x0000)
+[11:27:58.609]  |             ]
+[11:27:58.610]  |             UUID = "71bc4bdb-82ec-494d-8d75-ca5123b827ac"
+[11:27:58.610]  |             VOIP = VOIP_DISABLED (0) (0x00000000)
+[11:27:58.610]  |             VSTR = "5.3.0.127"
+[11:27:58.611]  |             }
+[11:27:58.611]  |             }
+[11:27:58.611]  |           }
+[11:27:58.612]  |               }
+[11:27:58.612]  |               EXID = 0 (0x0000000000000000)
+[11:27:58.613]  |               GID = 1 (0x00000001)
+[11:27:58.613]  |               LOC = 1701729619 (0x656E5553)
+[11:27:58.614]  |               NAME = "Dalkon"
+[11:27:58.614]  |               ]
+[11:27:58.616]  |               PID = 2 (0x0000000000000002)
+[11:27:58.616]  |                     IP = 3232235632 (0xC0A80070)
+[11:27:58.617]  |                     PORT = 3659 (0x0E4B)
+[11:27:58.617]  |                   }
+[11:27:58.618]  |                     IP = 0 (0x00000000)
+[11:27:58.618]  |                     PORT = 3659 (0x0E4B)
+[11:27:58.618]  |                   }
+[11:27:58.619]  |                 }
+[11:27:58.619]  |               }
+[11:27:58.619]  |               SID = 0 (0x00)
+[11:27:58.620]  |               SLOT = SLOT_PUBLIC (0) (0x00000000)
+[11:27:58.620]  |               STAT = ACTIVE_CONNECTED (4) (0x00000004)
+[11:27:58.621]  |               TIDX = 65535 (0xFFFF)
+[11:27:58.621]  |               TIME = 1584872878 (0x000000005E773DAE)
+[11:27:58.621]  |               UGID = 0/0/0
+[11:27:58.622]  |               UID = 2 (0x00000002)
+[11:27:58.622]  |             }
+[11:27:58.623]  |           ]
+[11:27:58.624]  |               DCTX = CREATE_GAME_SETUP_CONTEXT (0) (0x00000000)
+[11:27:58.626]  |             }
+[11:27:58.626]  |           }
+
+*/
+
 /*
 	STAT
 		0 = Boot
@@ -508,7 +668,7 @@ namespace Blaze {
 			0x18
 			0x10
 		*/
-		auto& request = client->get_request();
+		const auto& request = client->get_request();
 
 		const auto& user = client->get_user();
 		if (!user) {
@@ -521,18 +681,50 @@ namespace Blaze {
 		}
 
 		auto clientId = client->get_id();
+		auto userId = user->get_id();
 
-		auto gameId = game->GetId();
 		const auto& gameInfo = game->GetInfo();
 
-		bool gameIgnore = request["IGNO"].GetUint();
-		std::string playgroupId = request["PGID"].GetString();
-		uint32_t tCap = request["TCAP"].GetUint();
-		std::string versionString = request["VSTR"].GetString();
-
-		std::cout << "Playgroup ID: " << playgroupId << std::endl;
+		std::cout << "Playgroup ID: " << gameInfo.playgroupId << std::endl;
 
 		TDF::Packet packet;
+		
+		// Game data
+#if 1
+		packet.push_struct("GAME");
+		gameInfo.Write(packet);
+		packet.pop();
+
+		packet.push_list("PROS", TDF::Type::Struct);
+		{
+			ReplicatedGamePlayer player;
+			player.gameId = game->GetId();
+			player.localization = client->data().lang;
+			player.name = user->get_name();
+			player.id = userId;
+			player.hostNetwork = gameInfo.hostNetwork;
+			player.slot = 1;
+			player.slotType = Slot::Public;
+			player.state = PlayerState::Connected;
+			player.tIndex = 0xFFFF;
+			player.time = utils::get_unix_time();
+			player.uid = userId;
+
+			packet.push_struct("");
+			player.Write(packet);
+			packet.pop();
+		}
+		packet.pop();
+
+		packet.push_union("REAS", NetworkAddressMember::XboxClientAddress);
+		{
+			packet.push_struct("VALU");
+			packet.put_integer("DCTX", DatalessSetup::CreateGame);
+			// packet.put_integer("ERR", 0);
+			packet.pop();
+		}
+		packet.pop();
+#else
 		{
 			auto& gameStruct = packet.CreateStruct(nullptr, "GAME");
 			{
@@ -549,7 +741,7 @@ namespace Blaze {
 					packet.PutInteger(&capList, "", value);
 				}
 			}
-			packet.PutInteger(&gameStruct, "GID", gameId);
+			packet.PutInteger(&gameStruct, "GID", gameInfo.id);
 			packet.PutString(&gameStruct, "GNAM", gameInfo.name);
 			packet.PutInteger(&gameStruct, "GPVH", 1);
 			packet.PutInteger(&gameStruct, "GSET", gameInfo.settings);
@@ -563,30 +755,30 @@ namespace Blaze {
 					auto& valuStruct = packet.CreateStruct(&hnetList, "");
 					{
 						auto& exipStruct = packet.CreateStruct(&valuStruct, "EXIP");
-						packet.PutInteger(&exipStruct, "IP", gameInfo.externalIP.address);
-						packet.PutInteger(&exipStruct, "PORT", gameInfo.externalIP.port);
+						packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
+						packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
 					} {
 						auto& inipStruct = packet.CreateStruct(&valuStruct, "INIP");
-						packet.PutInteger(&inipStruct, "IP", gameInfo.internalIP.address);
-						packet.PutInteger(&inipStruct, "PORT", gameInfo.internalIP.port);
+						packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
+						packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
 					}
 #else
 					auto& hnetMemberUnion = packet.CreateUnion(&hnetList, "", NetworkAddressMember::IpPairAddress);
 					auto& valuStruct = packet.CreateStruct(&hnetMemberUnion, "VALU");
 					{
 						auto& exipStruct = packet.CreateStruct(&valuStruct, "EXIP");
-						packet.PutInteger(&exipStruct, "IP", gameInfo.externalIP.address);
-						packet.PutInteger(&exipStruct, "PORT", gameInfo.externalIP.port);
+						packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
+						packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
 					} {
 						auto& inipStruct = packet.CreateStruct(&valuStruct, "INIP");
-						packet.PutInteger(&inipStruct, "IP", gameInfo.internalIP.address);
-						packet.PutInteger(&inipStruct, "PORT", gameInfo.internalIP.port);
+						packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
+						packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
 					}
 #endif
 				}
 			}
 			packet.PutInteger(&gameStruct, "HSES", 13666);
-			packet.PutInteger(&gameStruct, "IGNO", gameIgnore);
+			packet.PutInteger(&gameStruct, "IGNO", gameInfo.ignore ? 1 : 0);
 			packet.PutInteger(&gameStruct, "MCAP", gameInfo.maxPlayers);
 			{
 				auto& nqosStruct = packet.CreateStruct(&gameStruct, "NQOS");
@@ -596,38 +788,39 @@ namespace Blaze {
 			}
 			packet.PutInteger(&gameStruct, "NRES", gameInfo.resetable ? 0 : 1);
 			packet.PutInteger(&gameStruct, "NTOP", gameInfo.networkTopology);
-			packet.PutString(&gameStruct, "PGID", playgroupId); // b6852db1-ba37-4b40-aea3-0bd16efba4f9
+			packet.PutString(&gameStruct, "PGID", gameInfo.playgroupId); // b6852db1-ba37-4b40-aea3-0bd16efba4f9
 			packet.PutBlob(&gameStruct, "PGSR", nullptr, 0);
 			{
 				auto& phstStruct = packet.CreateStruct(&gameStruct, "PHST");
 				packet.PutInteger(&phstStruct, "HPID", user->get_id()); // host player id?
 				packet.PutInteger(&phstStruct, "HSLT", 1);
 			}
-			packet.PutInteger(&gameStruct, "PRES", gameInfo.presenceMode);
+			packet.PutInteger(&gameStruct, "PRES", gameInfo.presence);
 			packet.PutString(&gameStruct, "PSAS", "ams");
 			packet.PutInteger(&gameStruct, "QCAP", gameInfo.queueCapacity);
 			packet.PutInteger(&gameStruct, "SEED", 0);
-			packet.PutInteger(&gameStruct, "TCAP", tCap);
+			packet.PutInteger(&gameStruct, "TCAP", gameInfo.tcap);
 			{
 				auto& thstStruct = packet.CreateStruct(&gameStruct, "THST");
-				packet.PutInteger(&thstStruct, "HPID", gameId);
+				packet.PutInteger(&thstStruct, "HPID", gameInfo.id);
 				packet.PutInteger(&thstStruct, "HSLT", 0);
 			} {
 				auto& tidsList = packet.CreateList(&gameStruct, "TIDS", TDF::Type::Integer); // u16 list?
 				packet.PutInteger(&tidsList, "", 0);
 			}
 			packet.PutString(&gameStruct, "UUID", "71bc4bdb-82ec-494d-8d75-ca5123b827ac"); // 714b05dc-93bc-49ac-961c-cb38b574f30a
-			packet.PutInteger(&gameStruct, "VOIP", gameInfo.voipTopology);
-			packet.PutString(&gameStruct, "VSTR", versionString);
+			packet.PutInteger(&gameStruct, "VOIP", VoipTopology::Disabled);
+			packet.PutString(&gameStruct, "VSTR", gameInfo.version);
 			packet.PutBlob(&gameStruct, "XNNC", nullptr, 0);
 			packet.PutBlob(&gameStruct, "XSES", nullptr, 0);
-		} {
+		}
+		{
 			auto& prosList = packet.CreateList(nullptr, "PROS", TDF::Type::Struct);
 			{
 				auto& playerStruct = packet.CreateStruct(&prosList, "");
 				packet.PutBlob(&playerStruct, "BLOB", nullptr, 0);
 				packet.PutInteger(&playerStruct, "EXID", 0);
-				packet.PutInteger(&playerStruct, "GID", gameId);
+				packet.PutInteger(&playerStruct, "GID", game->GetId());
 				packet.PutInteger(&playerStruct, "LOC", client->data().lang);
 				packet.PutString(&playerStruct, "NAME", user->get_name());
 				{
@@ -639,12 +832,12 @@ namespace Blaze {
 					auto& valuStruct = packet.CreateStruct(&pnetUnion, "VALU");
 					{
 						auto& exipStruct = packet.CreateStruct(&valuStruct, "INIP");
-						packet.PutInteger(&exipStruct, "IP", gameInfo.internalIP.address);
-						packet.PutInteger(&exipStruct, "PORT", gameInfo.internalIP.port);
+						packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.inip.address);
+						packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.inip.port);
 					} {
 						auto& inipStruct = packet.CreateStruct(&valuStruct, "EXIP");
-						packet.PutInteger(&inipStruct, "IP", gameInfo.externalIP.address);
-						packet.PutInteger(&inipStruct, "PORT", gameInfo.externalIP.port);
+						packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.exip.address);
+						packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.exip.port);
 					}
 				}
 				packet.PutInteger(&playerStruct, "SID", 0);
@@ -661,16 +854,11 @@ namespace Blaze {
 			packet.PutInteger(&valuStruct, "DCTX", DatalessSetup::CreateGame);
 			// packet.PutInteger(&valuStruct, "ERR", 0);
 		}
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x14;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+#endif
+		client->notify({
+			.component = Component::GameManager,
+			.command = 0x14
+		}, packet);
 	}
 
 	void GameManagerComponent::NotifyPlayerJoining(Client* client, uint32_t gameId) {
@@ -708,12 +896,12 @@ namespace Blaze {
 				auto& valuStruct = packet.CreateStruct(&pnetUnion, "VALU");
 				{
 					auto& inipStruct = packet.CreateStruct(&valuStruct, "INIP");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.internalIP.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.internalIP.port);
+					packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
+					packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
 				} {
 					auto& exipStruct = packet.CreateStruct(&valuStruct, "EXIP");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.externalIP.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.externalIP.port);
+					packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
+					packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
 				}
 			}
 			packet.PutInteger(&pdatStruct, "SID", 0);
@@ -849,12 +1037,12 @@ namespace Blaze {
 				auto& hnetList = packet.CreateList(&dataStruct, "HNET", TDF::Type::Struct, true);
 				{
 					auto& inipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.internalIP.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.internalIP.port);
+					packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
+					packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
 				} {
 					auto& exipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.externalIP.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.externalIP.port);
+					packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
+					packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
 				}
 			}
 			packet.PutInteger(&dataStruct, "HSES", 0);
@@ -875,7 +1063,7 @@ namespace Blaze {
 				packet.PutInteger(&phstStruct, "HPID", user->get_id()); // blaze id? i64
 				packet.PutInteger(&phstStruct, "HSLT", 1); // host slot? u8
 			}
-			packet.PutInteger(&dataStruct, "PRES", gameInfo.presenceMode);
+			packet.PutInteger(&dataStruct, "PRES", gameInfo.presence);
 			packet.PutString(&dataStruct, "PSAS", "ams");
 			packet.PutInteger(&dataStruct, "QCAP", gameInfo.queueCapacity);
 			packet.PutInteger(&dataStruct, "SEED", 1);
@@ -889,7 +1077,7 @@ namespace Blaze {
 				packet.PutInteger(&tidsList, "", 1);
 			}
 			packet.PutString(&dataStruct, "UUID", "71bc4bdb-82ec-494d-8d75-ca5123b827ac"); // 714b05dc-93bc-49ac-961c-cb38b574f30a
-			packet.PutInteger(&dataStruct, "VOIP", gameInfo.voipTopology);
+			packet.PutInteger(&dataStruct, "VOIP", VoipTopology::Disabled);
 			packet.PutString(&dataStruct, "VSTR", versionString);
 			packet.PutBlob(&dataStruct, "XNNC", nullptr, 0);
 			packet.PutBlob(&dataStruct, "XSES", nullptr, 0);
@@ -961,8 +1149,6 @@ namespace Blaze {
 		std::string gameUrl = request["GURL"].GetString();
 		bool gameIgnore = request["IGNO"].GetUint();
 
-		std::string playgroupId = request["PGID"].GetString();
-
 		uint32_t rgId = request["RGID"].GetUint();
 		uint32_t slot = request["SLOT"].GetUint();
 		uint32_t tidx = request["TIDX"].GetUint();
@@ -994,18 +1180,18 @@ namespace Blaze {
 				auto& hnetList = packet.CreateList(&greqStruct, "HNET", TDF::Type::Struct, true);
 				{
 					auto& exipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.externalIP.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.externalIP.port);
+					packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
+					packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
 				} {
 					auto& inipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.internalIP.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.internalIP.port);
+					packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
+					packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
 				}
 			}
 			packet.PutInteger(&greqStruct, "IGNO", gameIgnore);
 			packet.PutInteger(&greqStruct, "NRES", gameInfo.resetable ? 0 : 1);
 			packet.PutInteger(&greqStruct, "NTOP", gameInfo.networkTopology);
-			packet.PutString(&greqStruct, "PGID", playgroupId);
+			packet.PutString(&greqStruct, "PGID", gameInfo.playgroupId);
 			packet.PutBlob(&greqStruct, "PGSC", nullptr, 0);
 			{
 				auto& pcapList = packet.CreateList(&greqStruct, "PCAP", TDF::Type::Integer);
@@ -1014,7 +1200,7 @@ namespace Blaze {
 				}
 			}
 			packet.PutInteger(&greqStruct, "PMAX", gameInfo.maxPlayers);
-			packet.PutInteger(&greqStruct, "PRES", gameInfo.presenceMode);
+			packet.PutInteger(&greqStruct, "PRES", gameInfo.presence);
 			packet.PutInteger(&greqStruct, "QCAP", gameInfo.queueCapacity);
 			packet.PutInteger(&greqStruct, "RGID", rgId);
 			{
@@ -1031,7 +1217,7 @@ namespace Blaze {
 				packet.PutInteger(&tidsList, "", 1);
 			}
 			packet.PutInteger(&greqStruct, "TIDX", tidx);
-			packet.PutInteger(&greqStruct, "VOIP", gameInfo.voipTopology);
+			packet.PutInteger(&greqStruct, "VOIP", VoipTopology::Disabled);
 			packet.PutString(&greqStruct, "VSTR", versionString);
 		}
 		packet.PutString(nullptr, "MID", "1");
@@ -1160,18 +1346,19 @@ namespace Blaze {
 			return;
 		}
 
-		auto game = Game::GameManager::CreateGame();
+		const auto& game = Game::GameManager::CreateGame();
 		if (!game) {
 			// Should never happen?
 			return;
 		}
 
+		const auto& request = client->get_request();
+
 		user->set_game(game);
 
-		auto gameId = game->GetId();
-		auto& gameInfo = game->GetInfo();
+		auto userId = user->get_id();
 
-		const auto& request = client->get_request();
+		auto& gameInfo = game->GetInfo();
 
 		// Attributes
 		for (const auto& attribute : request["ATTR"]["_Content"].GetObject()) {
@@ -1185,33 +1372,49 @@ namespace Blaze {
 
 		// IPs
 		const auto& hnetData = request["HNET"]["_Content"];
-		gameInfo.internalIP = {
-			.address = hnetData[0]["IP"].GetUint(),
-			.port = static_cast<uint16_t>(hnetData[0]["PORT"].GetUint())
-		};
-
-		gameInfo.externalIP = {
-			.address = hnetData[1]["IP"].GetUint(),
-			.port = static_cast<uint16_t>(hnetData[1]["PORT"].GetUint())
-		};
+		gameInfo.hostNetwork.inip.Read(hnetData[0]);
+		gameInfo.hostNetwork.exip.Read(hnetData[1]);
 
 		// Other
 		gameInfo.name = request["GNAM"].GetString();
+		gameInfo.settings = request["GSET"].GetUint();
 		gameInfo.type = request["GTYP"].GetString();
-
-		gameInfo.settings = request["GSET"].GetUint64();
-
 		gameInfo.ignore = request["IGNO"].GetUint() != 0;
+		gameInfo.playgroupId = request["PGID"].GetString();
+		gameInfo.tcap = request["TCAP"].GetUint();
+		gameInfo.version = request["VSTR"].GetString();
 
-		gameInfo.presenceMode = static_cast<PresenceMode>(request["PRES"].GetUint());
+		gameInfo.presence = static_cast<PresenceMode>(request["PRES"].GetUint());
 		gameInfo.state = GameState::Initializing;
 		gameInfo.networkTopology = static_cast<GameNetworkTopology>(request["NTOP"].GetUint());
-		gameInfo.voipTopology = static_cast<VoipTopology>(request["VOIP"].GetUint());
 
-		gameInfo.maxPlayers = std::max<uint16_t>(1, request["PMAX"].GetUint());
+		gameInfo.maxPlayers = request["PMAX"].GetUint();
 		gameInfo.queueCapacity = request["QCAP"].GetUint();
 
 		gameInfo.resetable = request["NRES"].GetUint() != 0;
+
+		// Raw data
+		gameInfo.gpvh = 1;
+		gameInfo.gsid = 1;
+		gameInfo.hses = 13666;
+		gameInfo.psas = "ams";
+		gameInfo.seed = 0;
+		gameInfo.uuid = "71bc4bdb-82ec-494d-8d75-ca5123b827ac";
+		gameInfo.tids.push_back(0);
+
+		NetworkQosData& networkQos = gameInfo.networkQos;
+		networkQos.dbps = 100;
+		networkQos.type = NatType::Open;
+		networkQos.ubps = 100;
+
+		HostInfo& pHost = gameInfo.pHost;
+		pHost.id = userId;
+		pHost.slot = 0;
+
+		// if TIDX == 0 then no team?
+		HostInfo& tHost = gameInfo.tHost; // Team host?
+		tHost.id = userId;
+		tHost.slot = 0;
 
 		/////////////////
 
@@ -1221,12 +1424,12 @@ namespace Blaze {
 		NotifyGameStateChange(client, gameId, gameInfo.state);
 		NotifyGameSetup(client);
 #else
-		SendCreateGame(client, gameId);
+		SendCreateGame(client, gameInfo.id);
 
-		NotifyGameCreated(client, gameId);
+		NotifyGameCreated(client, gameInfo.id);
 		NotifyCreateDynamicDedicatedServerGame(client);
-		NotifyGameStateChange(client, gameId, gameInfo.state);
-		NotifyGameReset(client);
+		NotifyGameStateChange(client, gameInfo.id, gameInfo.state);
+		// NotifyGameReset(client);
 		NotifyGameSetup(client);
 #endif
 		// NotifyPlayerJoining(client, gameId);
@@ -1234,13 +1437,20 @@ namespace Blaze {
 	}
 
 	void GameManagerComponent::UpdateMeshConnection(Client* client, Header header) {
-		auto& request = client->get_request();
-		auto& targetData = request["TARG"]["_Content"][0];
+		const auto& request = client->get_request();
+		const auto& targetList = request["TARG"]["_Content"];
 
 		uint32_t gameId = request["GID"].GetUint();
-		uint32_t personaId = targetData["PID"].GetUint();
+		for (const auto& target : targetList.GetArray()) {
+			PlayerConnectionStatus connectionStatus;
+			connectionStatus.Read(target);
 
-		PlayerState playerState = static_cast<PlayerState>(targetData["STAT"].GetUint());
+			std::cout << "ConnectionStatus: " << connectionStatus.flags << ", " << connectionStatus.id << ", " << (int)connectionStatus.status << std::endl;
+		}
+
+		uint32_t personaId = targetList[0]["PID"].GetUint();
+
+		PlayerState playerState = static_cast<PlayerState>(targetList[0]["STAT"].GetUint());
 		ClientType type = client->data().type;
 
 		if (playerState == PlayerState::Connecting) {
@@ -1272,7 +1482,7 @@ namespace Blaze {
 		client->reply(std::move(header));
 	}
 
-	void GameManagerComponent::WriteGameData(Client* client, const Game::Game& game, TDF::Packet& packet, const std::string& playgroupId) {
+	void GameManagerComponent::WriteGameData(Client* client, const Game::Instance& game, TDF::Packet& packet, const std::string& playgroupId) {
 		if (!client) {
 			return;
 		}
@@ -1284,9 +1494,6 @@ namespace Blaze {
 
 		// Get request data
 		const auto& request = client->get_request();
-
-		auto tCap = request["TCAP"].GetUint();
-		auto versionString = request["VSTR"].GetString();
 
 		// Client data
 		auto clientId = client->get_id();
@@ -1330,19 +1537,8 @@ namespace Blaze {
 		// Host network data
 		packet.push_list("HNET", TDF::Type::Struct, true);
 		{
-			// TODO: function to write ip stuff
 			packet.push_struct("");
-			{
-				packet.push_struct("EXIP");
-				packet.put_integer("IP", gameInfo.externalIP.address);
-				packet.put_integer("PORT", gameInfo.externalIP.port);
-				packet.pop();
-			} {
-				packet.push_struct("INIP");
-				packet.put_integer("IP", gameInfo.internalIP.address);
-				packet.put_integer("PORT", gameInfo.internalIP.port);
-				packet.pop();
-			}
+			gameInfo.hostNetwork.Write(packet);
 			packet.pop();
 		}
 		packet.pop();
@@ -1373,11 +1569,11 @@ namespace Blaze {
 		}
 		packet.pop();
 
-		packet.put_integer("PRES", gameInfo.presenceMode);
+		packet.put_integer("PRES", gameInfo.presence);
 		packet.put_string("PSAS", "ams");
 		packet.put_integer("QCAP", gameInfo.queueCapacity);
-		packet.put_integer("SEED", 0);
-		packet.put_integer("TCAP", tCap);
+		packet.put_integer("SEED", gameInfo.seed);
+		packet.put_integer("TCAP", gameInfo.tcap);
 
 		// Team host/leader? wtf is this?
 		packet.push_struct("THST");
@@ -1395,8 +1591,8 @@ namespace Blaze {
 		packet.pop();
 
 		packet.put_string("UUID", "71bc4bdb-82ec-494d-8d75-ca5123b827ac"); // 714b05dc-93bc-49ac-961c-cb38b574f30a
-		packet.put_integer("VOIP", gameInfo.voipTopology);
-		packet.put_string("VSTR", versionString);
+		packet.put_integer("VOIP", VoipTopology::Disabled);
+		packet.put_string("VSTR", gameInfo.version);
 		packet.put_blob("XNNC", nullptr, 0);
 		packet.put_blob("XSES", nullptr, 0);
 
@@ -1433,7 +1629,7 @@ namespace Blaze {
 		*/
 	}
 
-	void GameManagerComponent::WriteGameRequest(Client* client, const Game::Game& game, TDF::Packet& packet) {
+	void GameManagerComponent::WriteGameRequest(Client* client, const Game::Instance& game, TDF::Packet& packet) {
 		if (!client) {
 			return;
 		}
@@ -1493,13 +1689,13 @@ namespace Blaze {
 		packet.push_list("HNET", TDF::Type::Struct, true);
 		{
 			packet.push_struct("EXIP");
-			packet.put_integer("IP", gameInfo.externalIP.address);
-			packet.put_integer("PORT", gameInfo.externalIP.port);
+			packet.put_integer("IP", gameInfo.hostNetwork.exip.address);
+			packet.put_integer("PORT", gameInfo.hostNetwork.exip.port);
 			packet.pop();
 		} {
 			packet.push_struct("INIP");
-			packet.put_integer("IP", gameInfo.internalIP.address);
-			packet.put_integer("PORT", gameInfo.internalIP.port);
+			packet.put_integer("IP", gameInfo.hostNetwork.inip.address);
+			packet.put_integer("PORT", gameInfo.hostNetwork.inip.port);
 			packet.pop();
 		}
 		packet.pop();
@@ -1518,7 +1714,7 @@ namespace Blaze {
 		packet.pop();
 
 		packet.put_integer("PMAX", gameInfo.maxPlayers);
-		packet.put_integer("PRES", gameInfo.presenceMode);
+		packet.put_integer("PRES", gameInfo.presence);
 		packet.put_integer("QCAP", gameInfo.queueCapacity);
 		packet.put_integer("RGID", rgId);
 
@@ -1541,7 +1737,7 @@ namespace Blaze {
 		packet.pop();
 
 		packet.put_integer("TIDX", tidx);
-		packet.put_integer("VOIP", gameInfo.voipTopology);
+		packet.put_integer("VOIP", VoipTopology::Disabled);
 		packet.put_string("VSTR", versionString);
 	}
 }

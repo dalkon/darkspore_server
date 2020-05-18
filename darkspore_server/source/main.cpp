@@ -2,6 +2,7 @@
 // Include
 #include "main.h"
 
+#include "sporenet/instance.h"
 #include "http/uri.h"
 #include "game/config.h"
 
@@ -45,9 +46,11 @@ bool Application::OnInit() {
 	// Config
 	Game::Config::Load("config.xml");
 
+	// SporeNet
+	mSporeNet = std::make_unique<SporeNet::Instance>();
+
 	// Game
 	mGameAPI = std::make_unique<Game::API>("5.3.0.127");
-	mRoomManager = std::make_unique<Game::RoomManager>();
 
 	// Blaze
 	mRedirectorServer = std::make_unique<Blaze::Server>(mIoService, 42127);
@@ -71,11 +74,12 @@ bool Application::OnInit() {
 
 int Application::OnExit() {
 	mGameAPI.reset();
-	mRoomManager.reset();
 	mRedirectorServer.reset();
 	mBlazeServer.reset();
 	mHttpServer.reset();
 	mQosServer.reset();
+
+	mSporeNet.reset();
 	return 0;
 }
 
@@ -91,8 +95,8 @@ boost::asio::io_context& Application::get_io_service() {
 	return mIoService;
 }
 
-Game::RoomManager& Application::GetRoomManager() const {
-	return *mRoomManager;
+SporeNet::Instance& Application::GetSporeNet() const {
+	return *mSporeNet;
 }
 
 Game::API* Application::get_game_api() const {

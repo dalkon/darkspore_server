@@ -3,10 +3,11 @@
 #define _MAIN_HEADER
 
 // Include
+#include "predefined.h"
+
 #include "blaze/server.h"
 #include "http/server.h"
 #include "game/api.h"
-#include "game/room.h"
 
 // Application
 class Application {
@@ -24,7 +25,7 @@ class Application {
 
 		boost::asio::io_context& get_io_service();
 
-		Game::RoomManager& GetRoomManager() const;
+		SporeNet::Instance& GetSporeNet() const;
 
 		Game::API* get_game_api() const;
 		Blaze::Server* get_redirector_server() const;
@@ -38,8 +39,9 @@ class Application {
 		boost::asio::io_context mIoService;
 		boost::asio::signal_set mSignals;
 
+		std::unique_ptr<SporeNet::Instance> mSporeNet;
+
 		std::unique_ptr<Game::API> mGameAPI;
-		std::unique_ptr<Game::RoomManager> mRoomManager;
 
 		std::unique_ptr<Blaze::Server> mRedirectorServer;
 		std::unique_ptr<Blaze::Server> mBlazeServer;

@@ -70,8 +70,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)source;E:\DevFolder\LibrarySources\raknet3\Source;E:\DevFolder\C++ Libraries\pugixml\include;E:\DevFolder\C++ Libraries\rapidjson\include;E:\DevFolder\C++ Libraries\openssl-1.1.1b\include;E:\DevFolder\C++ Libraries\boost_1_70_0;$(IncludePath)</IncludePath>
-    <LibraryPath>E:\DevFolder\C++ Libraries\RakNet\lib;E:\DevFolder\C++ Libraries\pugixml\lib;E:\DevFolder\C++ Libraries\openssl-1.1.1b\lib;E:\DevFolder\C++ Libraries\boost_1_70_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)source;E:\DevFolder\LibrarySources\raknet3\Source;E:\DevFolder\C++ Libraries\pugixml\include;E:\DevFolder\C++ Libraries\rapidjson\include;E:\DevFolder\C++ Libraries\openssl-1.1.1b\include;E:\DevFolder\C++ Libraries\boost_1_72_0;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\DevFolder\C++ Libraries\RakNet\lib;E:\DevFolder\C++ Libraries\pugixml\lib;E:\DevFolder\C++ Libraries\openssl-1.1.1b\lib;E:\DevFolder\C++ Libraries\boost_1_72_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -118,11 +118,10 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_WIN32_WINNT=0x0601;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;BOOST_NETWORK_ENABLE_HTTPS;RAPIDJSON_HAS_STDSTRING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0601;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;BOOST_NETWORK_ENABLE_HTTPS;BOOST_ASIO_DISABLE_CONCEPTS;RAPIDJSON_HAS_STDSTRING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalOptions>/experimental:newLambdaProcessor- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,16 +149,12 @@
     <ClInclude Include="source\game\api.h" />
     <ClInclude Include="source\game\character.h" />
     <ClInclude Include="source\game\config.h" />
-    <ClInclude Include="source\game\creature.h" />
-    <ClInclude Include="source\game\game.h" />
     <ClInclude Include="source\game\gamemanager.h" />
+    <ClInclude Include="source\game\instance.h" />
     <ClInclude Include="source\game\object.h" />
     <ClInclude Include="source\game\objectmanager.h" />
     <ClInclude Include="source\game\party.h" />
     <ClInclude Include="source\game\player.h" />
-    <ClInclude Include="source\game\room.h" />
-    <ClInclude Include="source\game\squad.h" />
-    <ClInclude Include="source\game\user.h" />
     <ClInclude Include="source\http\multipart.h" />
     <ClInclude Include="source\http\router.h" />
     <ClInclude Include="source\http\server.h" />
@@ -167,9 +162,15 @@
     <ClInclude Include="source\http\uri.h" />
     <ClInclude Include="source\main.h" />
     <ClInclude Include="source\network\client.h" />
+    <ClInclude Include="source\predefined.h" />
     <ClInclude Include="source\raknet\client.h" />
     <ClInclude Include="source\raknet\server.h" />
     <ClInclude Include="source\raknet\types.h" />
+    <ClInclude Include="source\sporenet\creature.h" />
+    <ClInclude Include="source\sporenet\instance.h" />
+    <ClInclude Include="source\sporenet\room.h" />
+    <ClInclude Include="source\sporenet\squad.h" />
+    <ClInclude Include="source\sporenet\user.h" />
     <ClInclude Include="source\tcptest.h" />
     <ClInclude Include="source\utils\functions.h" />
     <ClInclude Include="source\utils\log.h" />
@@ -192,16 +193,12 @@
     <ClCompile Include="source\game\api.cpp" />
     <ClCompile Include="source\game\character.cpp" />
     <ClCompile Include="source\game\config.cpp" />
-    <ClCompile Include="source\game\creature.cpp" />
-    <ClCompile Include="source\game\game.cpp" />
     <ClCompile Include="source\game\gamemanager.cpp" />
+    <ClCompile Include="source\game\instance.cpp" />
     <ClCompile Include="source\game\object.cpp" />
     <ClCompile Include="source\game\objectmanager.cpp" />
     <ClCompile Include="source\game\party.cpp" />
     <ClCompile Include="source\game\player.cpp" />
-    <ClCompile Include="source\game\room.cpp" />
-    <ClCompile Include="source\game\squad.cpp" />
-    <ClCompile Include="source\game\user.cpp" />
     <ClCompile Include="source\http\multipart.cpp" />
     <ClCompile Include="source\http\router.cpp" />
     <ClCompile Include="source\http\server.cpp" />
@@ -212,6 +209,11 @@
     <ClCompile Include="source\raknet\client.cpp" />
     <ClCompile Include="source\raknet\server.cpp" />
     <ClCompile Include="source\raknet\types.cpp" />
+    <ClCompile Include="source\sporenet\creature.cpp" />
+    <ClCompile Include="source\sporenet\instance.cpp" />
+    <ClCompile Include="source\sporenet\room.cpp" />
+    <ClCompile Include="source\sporenet\squad.cpp" />
+    <ClCompile Include="source\sporenet\user.cpp" />
     <ClCompile Include="source\tcptest.cpp" />
     <ClCompile Include="source\utils\functions.cpp" />
     <ClCompile Include="source\utils\log.cpp" />
