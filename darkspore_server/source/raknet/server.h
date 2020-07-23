@@ -164,6 +164,7 @@ namespace RakNet {
 			void OnPlayerStatusUpdate(const ClientPtr& client);
 			void OnActionCommandMsgs(const ClientPtr& client);
 			void OnChainPlayerMsgs(const ClientPtr& client);
+			void OnCrystalDragMessage(const ClientPtr& client);
 			void OnDebugPing(const ClientPtr& client);
 
 			void PrepareGameStart(const ClientPtr& client, uint8_t unknown, uint32_t squadId);
@@ -191,9 +192,10 @@ namespace RakNet {
 			void SendAttributeDataUpdate(const ClientPtr& client);
 			void SendCombatantDataUpdate(const ClientPtr& client);
 			void SendInteractableDataUpdate(const ClientPtr& client);
-			void SendAgentBlackboardUpdate(const ClientPtr& client);
-			void SendLootDataUpdate(const ClientPtr& client);
+			void SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, cAgentBlackboard&& agentBlackboard);
+			void SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, cLootData&& lootData);
 			void SendServerEvent(const ClientPtr& client, ServerEvent&& serverEvent);
+			void SendCombatEvent(const ClientPtr& client, CombatEvent&& combatEvent);
 			void SendModifierCreated(const ClientPtr& client);
 			void SendModifierUpdated(const ClientPtr& client);
 			void SendModifierDeleted(const ClientPtr& client);

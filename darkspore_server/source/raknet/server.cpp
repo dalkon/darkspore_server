@@ -118,109 +118,6 @@ Dungeon state:
 		LOW_PRIORITY
 */
 
-/* exp table?
-1	100
-2	200
-3	3000
-4	6000
-5	9000
-6	12000
-7	15000
-8	18000
-9	21000
-10	24500
-11	28500
-12	33000
-13	38000
-14	43000
-15	48000
-16	53000
-17	58000
-18	63000
-19	68000
-20	73000
-21	78000
-22	83000
-23	88000
-24	93500
-25	99500
-26	106000
-27	113000
-28	120500
-29	128500
-30	137000
-31	146000
-32	155500
-33	165500
-34	176000
-35	187000
-36	198500
-37	210500
-38	223000
-39	236000
-40	249500
-41	263500
-42	278000
-43	293000
-44	308500
-45	324500
-46	341000
-47	358000
-48	375500
-49	393500
-50	412000
-51	431000
-52	451000
-53	471500
-54	492500
-55	514000
-56	536000
-57	558500
-58	581500
-59	605000
-60	629000
-61	653500
-62	678500
-63	704500
-64	731500
-65	759500
-66	788500
-67	818500
-68	849500
-69	881500
-70	914500
-71	948500
-72	983500
-73	1019500
-74	1056500
-75	1094500
-76	1133500
-77	1173500
-78	1214500
-79	1256500
-80	1299500
-81	1343500
-82	1388500
-83	1434500
-84	1481500
-85	1529500
-86	1578500
-87	1628500
-88	1679500
-89	1731500
-90	1784500
-91	1839500
-92	1896500
-93	1955500
-94	2016500
-95	2080500
-96	2149500
-97	2225500
-98	2310500
-99	2410500
-100	2510500
-*/
-
 // Abilities
 /*
 namespace Ability {
@@ -530,7 +427,9 @@ namespace RakNet {
 #ifdef PACKET_LOGGING
 			mSelf->AttachPlugin(&mLogger);
 #endif
-			if (mSelf->Startup(4, 30, &SocketDescriptor(port, nullptr), 1)) {
+
+			auto socketDescriptor = SocketDescriptor(port, nullptr);
+			if (mSelf->Startup(4, 30, &socketDescriptor, 1)) {
 				mSelf->SetMaximumIncomingConnections(4);
 				mSelf->SetOccasionalPing(true);
 				mSelf->SetUnreliableTimeout(1000);
@@ -580,10 +479,11 @@ namespace RakNet {
 		};
 
 		for (Packet* packet = mSelf->Receive(); packet; mSelf->DeallocatePacket(packet), packet = mSelf->Receive()) {
-			mInStream = BitStream(packet->data, packet->bitSize / 8, false);
+			size_t packetSize = packet->bitSize / 8;
+			mInStream = BitStream(packet->data, packetSize, false);
 
 			uint8_t packetType = GetPacketIdentifier();
-			std::cout << std::endl << "--- packet: "  << (int)packetType << ", length: " << (mInStream.GetNumberOfUnreadBits() / 8) << " gotten from raknet ---" << std::endl << std::endl;
+			std::cout << std::endl << "--- packet: "  << (int)packetType << ", length: " << packetSize << " gotten from raknet ---" << std::endl << std::endl;
 
 			if (packetType < ID_USER_PACKET_ENUM) {
 				ParseRakNetPackets(packet, packetType);
@@ -677,6 +577,11 @@ namespace RakNet {
 				break;
 			}
 
+			case PacketID::CrystalDragMessage: {
+				OnCrystalDragMessage(client);
+				break;
+			}
+
 			case PacketID::DebugPing: {
 				OnDebugPing(client);
 				break;
@@ -696,7 +601,6 @@ namespace RakNet {
 			if (it.second) {
 				auto client = std::make_shared<Client>(*this, it.first->first);
 				client->mId = static_cast<uint8_t>(mClients.size() - 1);
-				// client->mId = static_cast<uint8_t>(mClients.size());
 
 				it.first->second = std::move(client);
 			}
@@ -763,24 +667,18 @@ namespace RakNet {
 			creature_png = string.format("%d_%d_thumb.png", character.assetID, character.version);
 		*/
 
-		auto& playerData = player->GetData();
-		playerData.mbDataSetup = false;
-		playerData.mLockCamera = false;
-		playerData.mAvatarLevel = 50;
-		playerData.mAvatarXP = 50.f;
-		playerData.mCurrentDeckIndex = 0;
-		playerData.mQueuedDeckIndex = 0;
-		playerData.mCurrentCreatureId = 0;
-		playerData.mDNA = 98765;
+		// Use sporenet user data
+		player->Setup(user);
 
 		// Crystals
 		player->SetCrystal(labsCrystal(labsCrystal::AoEDamage, 0, false), 0);
 		player->SetCrystal(labsCrystal(labsCrystal::DamageAura, 1, false), 1);
 		player->SetCrystal(labsCrystal(labsCrystal::ImmuneSleep, 2, false), 2);
+		player->SetCrystal(labsCrystal(labsCrystal::AttackSpeed, 1, true), 3);
 
 		// Game state data... I think?
 		auto& gameStateData = client->GetGameStateData();
-		gameStateData.var = 5.0;
+		gameStateData.var = 0.0;
 		gameStateData.state = static_cast<uint32_t>(GameState::Spaceship);
 		gameStateData.type = Blaze::GameType::Chain;
 
@@ -829,28 +727,30 @@ namespace RakNet {
 		SendLabsPlayerUpdate(client, player);
 		switch (value) {
 			case 0x02: {
-				// SendDirectorState(packet);
-				/*
-				SendArenaGameMessages(packet);
-				SendObjectivesInitForLevel(packet, { ObjectiveData {
-					.objectiveHash = utils::hash_id("DontUseHealthObelisks"),
-					.value0 = 0x01,
-					.value1 = 0x01,
-					.value2 = 0x01,
-					.value3 = 0x01,
-					.description = "Do some stuff bruh"
-				} });
-				*/
+				ObjectiveData objectiveData;
+				objectiveData.objectiveHash = utils::hash_id("DontUseHealthObelisks");
+				objectiveData.value0 = 0x01;
+				objectiveData.value1 = 0x02;
+				objectiveData.value2 = 0x03;
+				objectiveData.value3 = 0x04;
+				objectiveData.description = "Do some stuff bruh";
+
+				SendDirectorState(client);
+				SendObjectivesInitForLevel(client, { objectiveData });
+
+				for (uint32_t i = 0; i < 3; ++i) {
+					const auto& characterObject = player->GetCharacterObject(i);
+					if (characterObject) {
+						characterObject->SetPosition(cSPVector3(i * 2, 0, 0)); // test
+						SendObjectCreate(client, characterObject);
+					}
+				}
+
 				break;
 			}
 
 			case 0x04: {
-				SendDebugPing(client);
-
-				// SendObjectCreate(client, 0x0000000A, static_cast<uint32_t>(SporeNet::CreatureID::BlitzAlpha));
-				// SendPlayerCharacterDeploy(client, 0x0000000A);
-
-				// SendPartyMergeComplete(client);
+				// SendDebugPing(client);
 
 				// This causes the next state to activate... but also disconnects you
 				/*
@@ -899,6 +799,12 @@ namespace RakNet {
 	}
 
 	void Server::OnActionCommandMsgs(const ClientPtr& client) {
+		const auto& player = client->GetPlayer();
+		if (!player) {
+			// No player? Get lost.
+			return;
+		}
+
 		std::cout << "OnActionCommandMsgs" << std::endl;
 
 		uint8_t type;
@@ -937,7 +843,8 @@ namespace RakNet {
 				uint32_t creatureIndex;
 				Read<uint32_t>(mInStream, creatureIndex);
 
-				SendActionCommandResponse(client);
+				SendPlayerCharacterDeploy(client, player, creatureIndex);
+				// SendActionCommandResponse(client);
 
 				/*
 				0xf,
@@ -958,9 +865,43 @@ namespace RakNet {
 				break;
 			}
 
-			case 10: // Who knows
-				//
+			case 10: {
+				uint32_t tmp32;
+				uint16_t tmp16;
+				uint8_t tmp8;
+
+				Read<uint16_t>(mInStream, tmp16);
+				Read<uint8_t>(mInStream, tmp8);
+
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+				Read<uint32_t>(mInStream, tmp32);
+
+				cSPVector3 position;
+				position.ReadFrom(mInStream);
+
+				std::cout << position.x << ", " << position.y << ", " << position.z << std::endl;
+				std::cout << bswap(position.x) << ", " << bswap(position.y) << ", " << bswap(position.z) << std::endl;
+
+				/*
+				0x0, 0xe8, 0x11, 0x0, 0xb0, 0xfe, 0x7f, 0x0, 0x0, 0x0, 0x0, 0xb7, 0x67, 0x23, 0x77, 0x74, 0xfc, 0x19, 0x0, 0xe5, 0x61, 0xf2, 0x76, 0x8f, 0x61, 0xf2, 0x76, 0x5d, 0x38, 0x21, 0x8e, 0x0, 0x0, 0x0, 0x0, 0xea, 0x3, 0x0, 0x0, 0xa0, 0xb5, 0x1a, 0xf, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xdc, 0x2f, 0x1a, 0x77, 0x4c, 0xae, 0xf3, 0x76, 0x98, 0xfe, 0x19, 0x0
+
+				Same pos?
+				0x0, 0xe8, 0x11, 0x0, 0xb0, 0xfe, 0x7f, 0x0, 0x0, 0x0, 0x0, 0xb7, 0x67, 0x23, 0x77, 0x74, 0xfc, 0x19, 0x0, 0xe5, 0x61, 0xf2, 0x76, 0x8f, 0x61, 0xf2, 0x76, 0x5d, 0x38, 0x21, 0x8e, 0x0, 0x0, 0x0, 0x0, 0xea, 0x3, 0x0, 0x0, 0xa0, 0xb5, 0x1a, 0xf, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x68, 0xfc, 0x19, 0x0, 0x78, 0xfc, 0x19, 0x0, 0x98, 0xfe, 0x19, 0x0
+
+				0x0, 0xe8, 0x11, 0x0, 0xb0, 0xfe, 0x7f, 0x0, 0x0, 0x0, 0x0, 0xb7, 0x67, 0x23, 0x77, 0x74, 0xfc, 0x19, 0x0, 0xe5, 0x61, 0xf2, 0x76, 0x8f, 0x61, 0xf2, 0x76, 0x5d, 0x38, 0x21, 0x8e, 0x0, 0x0, 0x0, 0x0, 0xea, 0x3, 0x0, 0x0, 0xa0, 0xb5, 0x1a, 0xf, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x68, 0xfc, 0x19, 0x0, 0x78, 0xfc, 0x19, 0x0, 0x98, 0xfe, 0x19, 0x0
+				*/
 				break;
+			}
 
 			default:
 				break;
@@ -990,7 +931,7 @@ namespace RakNet {
 
 		*/
 
-		std::cout << static_cast<int>(type) << std::endl;
+		std::cout << "OnActionCommandMsgs(" << static_cast<int>(type) << ")" << std::endl;
 		PrintDebugStream(mInStream);
 
 		/*
@@ -1016,15 +957,6 @@ namespace RakNet {
 		switch (bytesToRead) {
 			case 1: {
 				if (value == 0) {
-					SendObjectivesInitForLevel(client, { ObjectiveData {
-						.objectiveHash = utils::hash_id("DontUseHealthObelisks"),
-						.value0 = 0x01,
-						.value1 = 0x02,
-						.value2 = 0x03,
-						.value3 = 0x04,
-						.description = "Do some stuff bruh"
-					} });
-
 					SendChainVoteMessages(client, value);
 					SendChainVoteMessages(client, 1);
 				} else if (value == 2) {
@@ -1050,8 +982,31 @@ namespace RakNet {
 				break;
 			}
 		}
+	}
 
-		SendDebugPing(client);
+	void Server::OnCrystalDragMessage(const ClientPtr& client) {
+		const auto& player = client->GetPlayer();
+		if (!player) {
+			return;
+		}
+
+		uint32_t crystalSlot;
+		Read<uint32_t>(mInStream, crystalSlot);
+
+		uint32_t unk;
+		Read<uint32_t>(mInStream, unk);
+
+		float x, y, z, w;
+		Read<float>(mInStream, x);
+		Read<float>(mInStream, y);
+		Read<float>(mInStream, z);
+		Read<float>(mInStream, w);
+
+		std::cout << "-- CrystalDragMessage --" << std::endl;
+		std::cout << crystalSlot << "(" << unk << ") : " << x << ", " << y << ", " << z << ", " << w << std::endl;
+		std::cout << std::endl << "------------------------" << std::endl;
+
+		// 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x20, 0x41, 0xbd, 0x17, 0x90, 0x42, 0xbd, 0x17, 0xc4, 0xa, 0xa2, 0x17, 0xc8, 0x1a, 0xc8, 0x11
 	}
 	
 	void Server::OnDebugPing(const ClientPtr& client) {
@@ -1081,17 +1036,28 @@ namespace RakNet {
 				break;
 			}
 
-			case GameState::ChainVoting:
-				// SendGamePrepareForStart(client);
+			case GameState::ChainVoting: {
+				SendGamePrepareForStart(client);
+				SendDebugPing(client);
 				break;
+			}
 
 			case GameState::PreDungeon:
-				SendArenaGameMessages(client);
+				SendLabsPlayerUpdate(client, player);
+				// SendArenaGameMessages(client);
 				// SendReconnectPlayer(client, GameState::Dungeon);
 				// SendDebugPing(client);
 				break;
 
 			case GameState::Dungeon:
+				for (uint32_t i = 0; i < 3; ++i) {
+					const auto& characterObject = player->GetCharacterObject(i);
+					if (characterObject) {
+						characterObject->SetPosition(cSPVector3(i * 2, 0, 0));
+						SendObjectCreate(client, characterObject);
+					}
+				}
+
 				SendDirectorState(client);
 				SendPlayerCharacterDeploy(client, player, 0);
 
@@ -1152,18 +1118,10 @@ namespace RakNet {
 			}
 
 			player->SetCharacter(std::move(character), creatureIndex);
-
-			const auto& characterObject = player->GetCharacterObject(creatureIndex);
-			if (characterObject) {
-				characterObject->SetPosition(cSPVector3(2, 0, -2)); // test
-				SendObjectCreate(client, characterObject);
-			}
-
 			creatureIndex++;
 		}
 
-		SendLabsPlayerUpdate(client, player);
-		SendGamePrepareForStart(client);
+		SendDebugPing(client);
 	}
 
 	void Server::SendHelloPlayer(const ClientPtr& client) {
@@ -1401,6 +1359,7 @@ namespace RakNet {
 
 		// write update data (same as in ObjectUpdate
 		// is the u8 value here "team"?
+		/*
 #if 1
 		Write<uint8_t>(outStream, 0x00);
 		Write<uint32_t>(outStream, createData.noun);
@@ -1420,6 +1379,7 @@ namespace RakNet {
 			createData.position.WriteTo(outStream);
 		}
 #endif
+		*/
 		Send(outStream, client);
 	}
 
@@ -1600,18 +1560,30 @@ namespace RakNet {
 		Send(outStream, client);
 	}
 
-	void Server::SendAgentBlackboardUpdate(const ClientPtr& client) {
-		// Packet size: 0x04
+	void Server::SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, cAgentBlackboard&& agentBlackboard) {
+		if (!object) {
+			return;
+		}
+
 		BitStream outStream(8);
 		outStream.Write(PacketID::AgentBlackboardUpdate);
+
+		Write<uint32_t>(outStream, object->GetId());
+		agentBlackboard.WriteReflection(outStream);
 
 		Send(outStream, client);
 	}
 
-	void Server::SendLootDataUpdate(const ClientPtr& client) {
-		// Packet size: 0x04
+	void Server::SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, cLootData&& lootData) {
+		if (!object) {
+			return;
+		}
+
 		BitStream outStream(8);
 		outStream.Write(PacketID::LootDataUpdate);
+
+		Write<uint32_t>(outStream, object->GetId());
+		lootData.WriteReflection(outStream);
 
 		Send(outStream, client);
 	}
@@ -1622,6 +1594,15 @@ namespace RakNet {
 		outStream.Write(PacketID::ServerEvent);
 
 		serverEvent.WriteReflection(outStream);
+
+		Send(outStream, client);
+	}
+
+	void Server::SendCombatEvent(const ClientPtr& client, CombatEvent&& combatEvent) {
+		BitStream outStream(8);
+		outStream.Write(PacketID::CombatEvent);
+
+		combatEvent.WriteReflection(outStream);
 
 		Send(outStream, client);
 	}

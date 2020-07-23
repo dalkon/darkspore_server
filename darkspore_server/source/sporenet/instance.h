@@ -17,11 +17,13 @@ namespace SporeNet {
 			TemplateDatabase& GetTemplateDatabase() const;
 			UserManager& GetUserManager() const;
 			RoomManager& GetRoomManager() const;
+			Vendor& GetVendor() const;
 
 		private:
 			std::unique_ptr<TemplateDatabase> mTemplateDatabase;
 			std::unique_ptr<UserManager> mUserManager;
 			std::unique_ptr<RoomManager> mRoomManager;
+			std::unique_ptr<Vendor> mVendor;
 	};
 
 	static Instance& Get() {

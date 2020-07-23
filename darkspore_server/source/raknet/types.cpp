@@ -5,7 +5,7 @@
 
 #include <numbers>
 
-// Campaign level order
+// Campaign level order (incorrect)
 constexpr const char* levelNames[] {
 	// tutorial
 	"Darkspore_Tutorial_cryos_1_v2"
@@ -349,9 +349,9 @@ class reflection_serializer {
 				auto offset = mStream.GetWriteOffset();
 				mStream.SetWriteOffset(mStartOffset);
 				if constexpr (FieldCount <= 8) {
-					Write<uint16_t>(mStream, mWriteBits);
-				} else if constexpr (FieldCount <= 16) {
 					Write<uint8_t>(mStream, static_cast<uint8_t>(mWriteBits));
+				} else {
+					Write<uint16_t>(mStream, mWriteBits);
 				}
 				mStream.SetWriteOffset(offset);
 			}
@@ -555,6 +555,11 @@ namespace RakNet {
 	cSPVector2::cSPVector2(float _x, float _y)
 		: x(_x), y(_y) {}
 
+	void cSPVector2::ReadFrom(BitStream& stream) {
+		Read<float>(stream, x);
+		Read<float>(stream, y);
+	}
+
 	void cSPVector2::WriteTo(BitStream& stream) const {
 		Write<float>(stream, x);
 		Write<float>(stream, y);
@@ -564,6 +569,12 @@ namespace RakNet {
 	cSPVector3::cSPVector3(float _x, float _y, float _z)
 		: x(_x), y(_y), z(_z) {}
 
+	void cSPVector3::ReadFrom(BitStream& stream) {
+		Read<float>(stream, x);
+		Read<float>(stream, y);
+		Read<float>(stream, z);
+	}
+
 	void cSPVector3::WriteTo(BitStream& stream) const {
 		Write<float>(stream, x);
 		Write<float>(stream, y);
@@ -571,7 +582,15 @@ namespace RakNet {
 	}
 
 	// cSPQuaternion
+	void cSPQuaternion::ReadFrom(BitStream& stream) {
+		Read<float>(stream, x);
+		Read<float>(stream, y);
+		Read<float>(stream, z);
+		Read<float>(stream, w);
+	}
+
 	void cSPQuaternion::WriteTo(BitStream& stream) const {
+		// do we read/write w, x, y, z?
 		Write<float>(stream, x);
 		Write<float>(stream, y);
 		Write<float>(stream, z);
@@ -711,12 +730,12 @@ namespace RakNet {
 		reflector.write<10>(mMaxManaPoints);
 		reflector.write<11>(mGearScore);
 		reflector.write<12>(mGearScoreFlattened);
-
+		/*
 		uint8_t field = 13;
 		for (auto value : partsAttributes) {
 			reflector.write(field++, value);
 		}
-
+		*/
 		reflector.end();
 	}
 
@@ -877,7 +896,7 @@ namespace RakNet {
 			nounName += "_epic";
 		}
 
-		crystalNoun = utils::hash_id((nounName + ".noun").c_str());
+		crystalNoun = utils::hash_id(nounName + ".noun");
 	}
 
 	uint32_t labsCrystal::GetType() const {
@@ -1142,6 +1161,9 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x288));
 		Write(stream, mInteractableState);
 
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x2CC));
+		Write(stream, false);
+
 		stream.SetWriteOffset(writeOffset + size);
 	}
 
@@ -1205,6 +1227,353 @@ namespace RakNet {
 		reflector.write<2>(mStealthType);
 		reflector.write<3>(mbTargetable);
 		reflector.write<4>(mNumAttackers);
+		reflector.end();
+	}
+
+	// cLobParams
+	void cLobParams::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x54);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x18));
+		lobUpDir.WriteTo(stream);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x30));
+		Write(stream, bounceNum);
+		Write(stream, bounceRestitution);
+		Write(stream, groundCollisionOnly);
+		Write(stream, stopBounceOnCreatures);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x3C));
+		planeDir.WriteTo(stream);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x48));
+		Write(stream, planeDirLinearParam);
+		Write(stream, upLinearParam);
+		Write(stream, upQuadraticParam);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void cLobParams::WriteReflection(BitStream& stream) const {
+		reflection_serializer<9> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(planeDirLinearParam);
+		reflector.write<1>(upLinearParam);
+		reflector.write<2>(upQuadraticParam);
+		reflector.write<3>(lobUpDir);
+		reflector.write<4>(planeDir);
+		reflector.write<5>(bounceNum);
+		reflector.write<6>(bounceRestitution);
+		reflector.write<7>(groundCollisionOnly);
+		reflector.write<8>(stopBounceOnCreatures);
+		reflector.end();
+	}
+
+	// cProjectileParams
+	void cProjectileParams::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x3C);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset);
+		Write(stream, mSpeed);
+		Write(stream, mAcceleration);
+		Write(stream, mJinkInfo);
+		Write(stream, mRange);
+		Write(stream, mSpinRate);
+		mDirection.WriteTo(stream);
+		Write(stream, mProjectileFlags);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x24));
+		Write(stream, mHomingDelay);
+		Write(stream, mTurnRate);
+		Write(stream, mTurnAcceleration);
+		Write(stream, mPiercing);
+		Write(stream, mIgnoreGroundCollide);
+		Write(stream, mIgnoreCreatureCollide);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x34));
+		Write(stream, mEccentricity);
+		Write(stream, mCombatantSweepHeight);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void cProjectileParams::WriteReflection(BitStream& stream) const {
+		reflection_serializer<15> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mSpeed);
+		reflector.write<1>(mAcceleration);
+		reflector.write<2>(mJinkInfo);
+		reflector.write<3>(mRange);
+		reflector.write<4>(mSpinRate);
+		reflector.write<5>(mDirection);
+		reflector.write<6>(mProjectileFlags);
+		reflector.write<7>(mHomingDelay);
+		reflector.write<8>(mTurnRate);
+		reflector.write<9>(mTurnAcceleration);
+		reflector.write<10>(mEccentricity);
+		reflector.write<11>(mPiercing);
+		reflector.write<12>(mIgnoreGroundCollide);
+		reflector.write<13>(mIgnoreCreatureCollide);
+		reflector.write<14>(mCombatantSweepHeight);
+		reflector.end();
+	}
+
+	// cLocomotionData
+	void cLocomotionData::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x290);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
+		Write(stream, reflectedLastUpdate);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x44));
+		mProjectileParams.WriteTo(stream);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x84));
+		mExpectedGeoCollision.WriteTo(stream);
+		Write(stream, mTargetObjectId);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x9C));
+		mInitialDirection.WriteTo(stream);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0xD8));
+		Write(stream, lobStartTime);
+		Write(stream, lobPrevSpeedModifier);
+		lobParams.WriteTo(stream);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x138));
+		mOffset.WriteTo(stream);
+		Write(stream, mGoalFlags);
+		mGoalPosition.WriteTo(stream);
+		mPartialGoalPosition.WriteTo(stream);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x178));
+		mFacing.WriteTo(stream);
+		mExternalLinearVelocity.WriteTo(stream);
+		mExternalForce.WriteTo(stream);
+		Write(stream, mAllowedStopDistance);
+		Write(stream, mDesiredStopDistance);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1AC));
+		mTargetPosition.WriteTo(stream);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void cLocomotionData::WriteReflection(BitStream& stream) const {
+		reflection_serializer<18> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(lobStartTime);
+		reflector.write<1>(lobPrevSpeedModifier);
+		reflector.write<2>(lobParams);
+		reflector.write<3>(mProjectileParams);
+		reflector.write<4>(mGoalFlags);
+		reflector.write<5>(mGoalPosition);
+		reflector.write<6>(mPartialGoalPosition);
+		reflector.write<7>(mFacing);
+		reflector.write<8>(mExternalLinearVelocity);
+		reflector.write<9>(mExternalForce);
+		reflector.write<10>(mAllowedStopDistance);
+		reflector.write<11>(mDesiredStopDistance);
+		reflector.write<12>(mTargetObjectId);
+		reflector.write<13>(mTargetPosition);
+		reflector.write<14>(mExpectedGeoCollision);
+		reflector.write<15>(mInitialDirection);
+		reflector.write<16>(mOffset);
+		reflector.write<17>(reflectedLastUpdate);
+		reflector.end();
+	}
+
+	// cAttributeData
+	void cAttributeData::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x634);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x26C));
+		for (size_t i = 0; i < 0x63; ++i) {
+			Write(stream, mAttributes[i]);
+		}
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x400));
+		for (size_t i = 0x63; i < mAttributes.size(); ++i) {
+			Write(stream, mAttributes[i]);
+		}
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x43C));
+		Write(stream, mMinWeaponDamage);
+		Write(stream, mMaxWeaponDamage);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void cAttributeData::WriteReflection(BitStream& stream) const {
+		reflection_serializer<113> reflector(stream);
+		reflector.begin();
+		for (uint32_t i = 0; i < mAttributes.size(); ++i) {
+			reflector.write(i, mAttributes[i]);
+		}
+		reflector.write<111>(mMinWeaponDamage);
+		reflector.write<112>(mMaxWeaponDamage);
+		reflector.end();
+	}
+
+	// cCombatantData
+	void cCombatantData::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x70);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x40));
+		Write(stream, mHitPoints);
+		Write(stream, mManaPoints);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void cCombatantData::WriteReflection(BitStream& stream) const {
+		reflection_serializer<2> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mHitPoints);
+		reflector.write<1>(mManaPoints);
+		reflector.end();
+	}
+
+	// cInteractableData
+	void cInteractableData::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x34);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
+		Write(stream, mNumTimesUsed);
+		Write(stream, mNumUsesAllowed);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x14));
+		Write(stream, mInteractableAbility);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void cInteractableData::WriteReflection(BitStream& stream) const {
+		reflection_serializer<3> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mNumTimesUsed);
+		reflector.write<1>(mNumUsesAllowed);
+		reflector.write<2>(mInteractableAbility);
+		reflector.end();
+	}
+
+	// cLootData
+	void cLootData::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x80);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
+		Write(stream, crystalLevel);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x10));
+		Write(stream, mId);
+		Write(stream, mRigblockAsset);
+		Write(stream, mSuffixAssetId);
+		Write(stream, mPrefixAssetId1);
+		Write(stream, mPrefixAssetId2);
+		Write(stream, mItemLevel);
+		Write(stream, mRarity);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x40));
+		Write(stream, mLootInstanceId);
+		Write(stream, mDNAAmount);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void cLootData::WriteReflection(BitStream& stream) const {
+		reflection_serializer<10> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(crystalLevel);
+		reflector.write<1>(mId);
+		reflector.write<2>(mRigblockAsset);
+		reflector.write<3>(mSuffixAssetId);
+		reflector.write<4>(mPrefixAssetId1);
+		reflector.write<5>(mPrefixAssetId2);
+		reflector.write<6>(mItemLevel);
+		reflector.write<7>(mRarity);
+		reflector.write<8>(mLootInstanceId);
+		reflector.write<9>(mDNAAmount);
+		reflector.end();
+	}
+
+	// GravityForce
+	void GravityForce::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x20);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
+		Write(stream, radius);
+		Write(stream, force);
+		Write(stream, forceForMover);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void GravityForce::WriteReflection(BitStream& stream) const {
+		reflection_serializer<3> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(radius);
+		reflector.write<1>(force);
+		reflector.write<2>(forceForMover);
+		reflector.end();
+	}
+
+	// CombatEvent
+	void CombatEvent::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x28);
+
+		auto writeOffset = stream.GetWriteOffset();
+		stream.AddBitsAndReallocate(size);
+
+		stream.SetWriteOffset(writeOffset);
+		Write(stream, flags);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x04));
+		Write(stream, deltaHealth);
+		Write(stream, absorbedAmount);
+		Write(stream, targetID);
+		Write(stream, sourceID);
+		Write(stream, abilityID);
+		damageDirection.WriteTo(stream);
+		Write(stream, integerHpChange);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void CombatEvent::WriteReflection(BitStream& stream) const {
+		reflection_serializer<8> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(flags);
+		reflector.write<1>(deltaHealth);
+		reflector.write<2>(absorbedAmount);
+		reflector.write<3>(targetID);
+		reflector.write<4>(sourceID);
+		reflector.write<5>(abilityID);
+		reflector.write<6>(damageDirection);
+		reflector.write<7>(integerHpChange);
 		reflector.end();
 	}
 

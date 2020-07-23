@@ -8,170 +8,143 @@
 
 #include <iostream>
 
-/*
-	Packet IDs
-		0x01 = CreatePlaygroup
-		0x02 = DestroyPlaygroup
-		0x03 = JoinPlaygroup
-		0x04 = LeavePlaygroup
-		0x05 = SetPlaygroupAttributes
-		0x06 = SetMemberAttributes
-		0x07 = KickPlaygroupMember
-		0x08 = SetPlaygroupJoinControls
-		0x09 = FinalizePlaygroupCreation
-		0x0A = LookupPlaygroupInfo
-		0x0B = ResetPlaygroupSession
+enum PacketID : uint16_t {
+	CreatePlaygroup = 0x01,
+	DestroyPlaygroup = 0x02,
+	JoinPlaygroup = 0x03,
+	LeavePlaygroup = 0x04,
+	SetPlaygroupAttributes = 0x05,
+	SetMemberAttributes = 0x06,
+	KickPlaygroupMember = 0x07,
+	SetPlaygroupJoinControls = 0x08,
+	FinalizePlaygroupCreation = 0x09,
+	LookupPlaygroupInfo = 0x0A,
+	ResetPlaygroupSession = 0x0B,
 
-	Notification Packet IDs
-		0x32 = NotifyDestroyPlaygroup
-		0x33 = NotifyJoinPlaygroup
-		0x34 = NotifyMemberJoinedPlaygroup
-		0x35 = NotifyMemberRemovedFromPlaygroup
-		0x36 = NotifyPlaygroupAttributesSet
-		0x45 = NotifyMemberAttributesSet
-		0x4F = NotifyLeaderChange
-		0x50 = NotifyMemberPermissionsChange
-		0x55 = NotifyJoinControlsChange
-		0x56 = NotifyXboxSessionInfo
-		0x57 = NotifyXboxSessionChange
-
-	Blaze fields
-		INFO (PlaygroupInfo)
-			ATTR = 0x54
-			ENBV = 0x50
-			HNET = 0x14
-			HSID = 0x48
-			JOIN = 0x1C
-			MLIM = 0x40
-			NAME = 0x24
-			NTOP = 0x1C
-			OWNR = 0x34
-			PGID = 0x38
-			PRES = 0x1C
-			UKEY = 0x24
-			UPRS = 0x50
-			UUID = 0x24
-			VOIP = 0x1C
-			XNNC = 0x20
-			XSES = 0x20
-
-	Notify Packets
-		NotifyDestroyPlaygroup
-			PGID = 0x38
-			REAS = 0x1C
-
-		NotifyJoinPlaygroup
-			INFO = 0x18
-			MLST = 0x58
-			USER = 0x34
-
-		NotifyMemberJoinedPlaygroup
-			MEMB = 0x18
-			PGID = 0x38
-
-		NotifyMemberRemovedFromPlaygroup
-			MLST = 0x34
-			PGID = 0x38
-			REAS = 0x1C
-
-		NotifyPlaygroupAttributesSet
-			ATTR = 0x54
-			PGID = 0x38
-
-		NotifyMemberAttributesSet
-			ATTR = 0x54
-			EID = 0x34
-			PGID = 0x38
-
-		NotifyLeaderChange
-			HSID = 0x48
-			LID = 0x34
-			PGID = 0x38
-
-		NotifyMemberPermissionsChange
-			LID = 0x34
-			PERM = 0x28
-			PGID = 0x38
-
-		NotifyJoinControlsChange
-			OPEN = 0x1C
-			PGID = 0x38
-
-		NotifyXboxSessionInfo
-			PGID = 0x38
-			PRES = 0x50
-			XNNC = 0x20
-			XSES = 0x20
-*/
+	// Notifications
+	NotifyDestroyPlaygroup = 0x32,
+	NotifyJoinPlaygroup = 0x33,
+	NotifyMemberJoinedPlaygroup = 0x34,
+	NotifyMemberRemovedFromPlaygroup = 0x35,
+	NotifyPlaygroupAttributesSet = 0x36,
+	NotifyMemberAttributesSet = 0x45,
+	NotifyLeaderChange = 0x4F,
+	NotifyMemberPermissionsChange = 0x50,
+	NotifyJoinControlsChange = 0x55,
+	NotifyXboxSessionInfo = 0x56,
+	NotifyXboxSessionChange = 0x57
+};
 
 // Blaze
 namespace Blaze {
 	// PlaygroupsComponent
-	void PlaygroupsComponent::Parse(Client* client, const Header& header) {
-		switch (header.command) {
-			case 0x01:
-				CreatePlaygroup(client, header);
-				break;
+	uint16_t PlaygroupsComponent::GetId() const {
+		return Id;
+	}
 
-			case 0x02:
-				DestroyPlaygroup(client, header);
-				break;
+	std::string_view PlaygroupsComponent::GetName() const {
+		return "Playgroups";
+	}
 
-			case 0x03:
-				JoinPlaygroup(client, header);
-				break;
+	std::string_view PlaygroupsComponent::GetReplyPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::CreatePlaygroup: return "createPlaygroup";
+			case PacketID::DestroyPlaygroup: return "destroyPlaygroup";
+			case PacketID::JoinPlaygroup: return "joinPlaygroup";
+			case PacketID::LeavePlaygroup: return "leavePlaygroup";
+			case PacketID::SetPlaygroupAttributes: return "setPlaygroupAttributes";
+			case PacketID::SetMemberAttributes: return "setMemberAttributes";
+			case PacketID::KickPlaygroupMember: return "kickPlaygroupMember";
+			case PacketID::SetPlaygroupJoinControls: return "setPlaygroupJoinControls";
+			case PacketID::FinalizePlaygroupCreation: return "finalizePlaygroupCreation";
+			case PacketID::LookupPlaygroupInfo: return "lookupPlaygroupInfo";
+			case PacketID::ResetPlaygroupSession: return "resetPlaygroupSession";
 
-			case 0x04:
-				LeavePlaygroup(client, header);
-				break;
-
-			case 0x05:
-				SetPlaygroupAttributes(client, header);
-				break;
-
-			case 0x06:
-				SetMemberAttributes(client, header);
-				break;
-
-			case 0x07:
-				KickPlaygroupMember(client, header);
-				break;
-
-			case 0x08:
-				SetPlaygroupJoinControls(client, header);
-				break;
-
-			case 0x09:
-				FinalizePlaygroupCreation(client, header);
-				break;
-
-			case 0x0A:
-				LookupPlaygroupInfo(client, header);
-				break;
-
-			case 0x0B:
-				ResetPlaygroupSession(client, header);
-				break;
-
-			default:
-				std::cout << "Unknown playgroups command: 0x" << std::hex << header.command << std::dec << std::endl;
-				break;
+			default: return "";
 		}
 	}
 
-	void PlaygroupsComponent::NotifyDestroyPlaygroup(Client* client, uint32_t playgroupId, uint32_t reason) {
+	std::string_view PlaygroupsComponent::GetNotificationPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::NotifyDestroyPlaygroup: return "NotifyDestroyPlaygroup";
+			case PacketID::NotifyJoinPlaygroup: return "NotifyJoinPlaygroup";
+			case PacketID::NotifyMemberJoinedPlaygroup: return "NotifyMemberJoinedPlaygroup";
+			case PacketID::NotifyMemberRemovedFromPlaygroup: return "NotifyMemberRemovedFromPlaygroup";
+			case PacketID::NotifyPlaygroupAttributesSet: return "NotifyPlaygroupAttributesSet";
+			case PacketID::NotifyMemberAttributesSet: return "NotifyMemberAttributesSet";
+			case PacketID::NotifyLeaderChange: return "NotifyLeaderChange";
+			case PacketID::NotifyMemberPermissionsChange: return "NotifyMemberPermissionsChange";
+			case PacketID::NotifyJoinControlsChange: return "NotifyJoinControlsChange";
+			case PacketID::NotifyXboxSessionInfo: return "NotifyXboxSessionInfo";
+			case PacketID::NotifyXboxSessionChange: return "NotifyXboxSessionChange";
+
+			default: return "";
+		}
+	}
+
+	bool PlaygroupsComponent::ParsePacket(Request& request) {
+		switch (request.get_command()) {
+			case PacketID::CreatePlaygroup:
+				CreatePlaygroup(request);
+				break;
+
+			case PacketID::DestroyPlaygroup:
+				DestroyPlaygroup(request);
+				break;
+
+			case PacketID::JoinPlaygroup:
+				JoinPlaygroup(request);
+				break;
+
+			case PacketID::LeavePlaygroup:
+				LeavePlaygroup(request);
+				break;
+
+			case PacketID::SetPlaygroupAttributes:
+				SetPlaygroupAttributes(request);
+				break;
+
+			case PacketID::SetMemberAttributes:
+				SetMemberAttributes(request);
+				break;
+
+			case PacketID::KickPlaygroupMember:
+				KickPlaygroupMember(request);
+				break;
+
+			case PacketID::SetPlaygroupJoinControls:
+				SetPlaygroupJoinControls(request);
+				break;
+
+			case PacketID::FinalizePlaygroupCreation:
+				FinalizePlaygroupCreation(request);
+				break;
+
+			case PacketID::LookupPlaygroupInfo:
+				LookupPlaygroupInfo(request);
+				break;
+
+			case PacketID::ResetPlaygroupSession:
+				ResetPlaygroupSession(request);
+				break;
+
+			default:
+				return false;
+		}
+
+		return true;
+	}
+
+	void PlaygroupsComponent::NotifyDestroyPlaygroup(Request& request, uint32_t playgroupId, uint32_t reason) {
 		TDF::Packet packet;
 		packet.put_integer("PGID", playgroupId);
 		packet.put_integer("REAS", reason);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x32
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyDestroyPlaygroup);
 	}
 
-	void PlaygroupsComponent::NotifyJoinPlaygroup(Client* client) {
-		const auto& user = client->get_user();
+	void PlaygroupsComponent::NotifyJoinPlaygroup(Request& request) {
+		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
@@ -202,13 +175,10 @@ namespace Blaze {
 
 		packet.put_integer("USER", userId);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x33
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyJoinPlaygroup);
 	}
 
-	void PlaygroupsComponent::NotifyMemberJoinedPlaygroup(Client* client, uint32_t playgroupId) {
+	void PlaygroupsComponent::NotifyMemberJoinedPlaygroup(Request& request, uint32_t playgroupId) {
 		PlaygroupMemberInfo memberInfo;
 		memberInfo.jtim = 0;
 		memberInfo.permissions = 0;
@@ -226,25 +196,19 @@ namespace Blaze {
 
 		packet.put_integer("PGID", playgroupId);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x34
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyMemberJoinedPlaygroup);
 	}
 
-	void PlaygroupsComponent::NotifyMemberRemovedFromPlaygroup(Client* client, uint32_t playgroupId, uint32_t reason) {
+	void PlaygroupsComponent::NotifyMemberRemovedFromPlaygroup(Request& request, uint32_t playgroupId, uint32_t reason) {
 		TDF::Packet packet;
 		packet.put_integer("MLST", 0);
 		packet.put_integer("PGID", playgroupId);
 		packet.put_integer("REAS", reason);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x35
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyMemberRemovedFromPlaygroup);
 	}
 
-	void PlaygroupsComponent::NotifyPlaygroupAttributesSet(Client* client, uint32_t playgroupId) {
+	void PlaygroupsComponent::NotifyPlaygroupAttributesSet(Request& request, uint32_t playgroupId) {
 		TDF::Packet packet;
 		packet.push_map("ATTR", TDF::Type::String, TDF::Type::String);
 		// playgroup attributes
@@ -252,13 +216,10 @@ namespace Blaze {
 
 		packet.put_integer("PGID", playgroupId);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x36
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyPlaygroupAttributesSet);
 	}
 
-	void PlaygroupsComponent::NotifyMemberAttributesSet(Client* client, uint32_t playgroupId) {
+	void PlaygroupsComponent::NotifyMemberAttributesSet(Request& request, uint32_t playgroupId) {
 		TDF::Packet packet;
 		packet.push_map("ATTR", TDF::Type::String, TDF::Type::String);
 		// member attributes
@@ -267,105 +228,90 @@ namespace Blaze {
 		packet.put_integer("EID", 0); // member id?
 		packet.put_integer("PGID", playgroupId);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x45
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyMemberAttributesSet);
 	}
 
-	void PlaygroupsComponent::NotifyLeaderChange(Client* client, uint32_t playgroupId) {
+	void PlaygroupsComponent::NotifyLeaderChange(Request& request, uint32_t playgroupId) {
 		TDF::Packet packet;
 		packet.put_integer("HSID", 0); // new host(leader) slot id?
 		packet.put_integer("LID", 0); // Leader ID?
 		packet.put_integer("PGID", playgroupId);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x4F
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyLeaderChange);
 	}
 
-	void PlaygroupsComponent::NotifyMemberPermissionsChange(Client* client, uint32_t playgroupId) {
+	void PlaygroupsComponent::NotifyMemberPermissionsChange(Request& request, uint32_t playgroupId) {
 		TDF::Packet packet;
 		packet.put_integer("LID", 0);
 		packet.put_integer("PERM", 0);
 		packet.put_integer("PGID", playgroupId);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x50
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyMemberPermissionsChange);
 	}
 
-	void PlaygroupsComponent::NotifyJoinControlsChange(Client* client, uint32_t playgroupId) {
+	void PlaygroupsComponent::NotifyJoinControlsChange(Request& request, uint32_t playgroupId) {
 		TDF::Packet packet;
 		packet.put_integer("OPEN", PlaygroupJoinState::Open);
 		packet.put_integer("PGID", playgroupId);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x55
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyJoinControlsChange);
 	}
 
-	void PlaygroupsComponent::NotifyXboxSessionInfo(Client* client, uint32_t playgroupId) {
+	void PlaygroupsComponent::NotifyXboxSessionInfo(Request& request, uint32_t playgroupId) {
 		TDF::Packet packet;
 		packet.put_integer("PGID", playgroupId);
 		packet.put_integer("PRES", PresenceMode::Standard);
 		packet.put_blob("XNNC", nullptr, 0);
 		packet.put_blob("XSES", nullptr, 0);
 
-		client->notify({
-			.component = Component::Playgroups,
-			.command = 0x56
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyXboxSessionInfo);
 	}
 
-	void PlaygroupsComponent::NotifyXboxSessionChange(Client* client, uint32_t playgroupId) {
-		NotifyXboxSessionInfo(client, playgroupId);
+	void PlaygroupsComponent::NotifyXboxSessionChange(Request& request, uint32_t playgroupId) {
+		NotifyXboxSessionInfo(request, playgroupId);
 	}
 
-	void PlaygroupsComponent::CreatePlaygroup(Client* client, Header header) {
-		std::cout << "CreatePlaygroup" << std::endl;
+	void PlaygroupsComponent::CreatePlaygroup(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::DestroyPlaygroup(Client* client, Header header) {
-		std::cout << "DestroyPlaygroup" << std::endl;
+	void PlaygroupsComponent::DestroyPlaygroup(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::JoinPlaygroup(Client* client, Header header) {
-		std::cout << "JoinPlaygroup" << std::endl;
+	void PlaygroupsComponent::JoinPlaygroup(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::LeavePlaygroup(Client* client, Header header) {
-		std::cout << "LeavePlaygroup" << std::endl;
+	void PlaygroupsComponent::LeavePlaygroup(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::SetPlaygroupAttributes(Client* client, Header header) {
-		std::cout << "SetPlaygroupAttributes" << std::endl;
+	void PlaygroupsComponent::SetPlaygroupAttributes(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::SetMemberAttributes(Client* client, Header header) {
-		std::cout << "SetMemberAttributes" << std::endl;
+	void PlaygroupsComponent::SetMemberAttributes(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::KickPlaygroupMember(Client* client, Header header) {
-		std::cout << "KickPlaygroupMember" << std::endl;
+	void PlaygroupsComponent::KickPlaygroupMember(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::SetPlaygroupJoinControls(Client* client, Header header) {
-		std::cout << "SetPlaygroupJoinControls" << std::endl;
+	void PlaygroupsComponent::SetPlaygroupJoinControls(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::FinalizePlaygroupCreation(Client* client, Header header) {
-		std::cout << "FinalizePlaygroupCreation" << std::endl;
+	void PlaygroupsComponent::FinalizePlaygroupCreation(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::LookupPlaygroupInfo(Client* client, Header header) {
-		std::cout << "LookupPlaygroupInfo" << std::endl;
+	void PlaygroupsComponent::LookupPlaygroupInfo(Request& request) {
+		//
 	}
 
-	void PlaygroupsComponent::ResetPlaygroupSession(Client* client, Header header) {
-		std::cout << "ResetPlaygroupSession" << std::endl;
+	void PlaygroupsComponent::ResetPlaygroupSession(Request& request) {
+		//
 	}
 }

@@ -22,214 +22,6 @@
 */
 
 /*
-[18:04:43.380]  |           UPDT = 1 (0x00000001)
-[18:04:43.401]  |             GRP = 1 (0x0001)
-[18:04:43.402]  |             LVL = 0 (0x00000000)
-[18:04:43.403]  |             STAT = PRESENCESTATE_ONLINE_CLIENT_MODE1 (3) (0x00000003)
-[18:04:43.405]  |             XTRA = 0 (0x0000)
-[18:04:43.406]  |           }
-[18:04:43.409]  |           }
-loading...
-setting container[object Object]
-loading...
-[18:04:43.430]  |           DISP = ""
-[18:04:43.431]  |           ]
-[18:04:43.432]  |           ]
-[18:04:43.432]  |           MXRM = 1 (0x00000001)
-[18:04:43.433]  |           NAME = "Lobby View #1"
-[18:04:43.434]  |           USRM = 1 (0x00000001)
-[18:04:43.435]  |           VWID = 1 (0x00000001)
-[18:04:43.436]  |           CAPA = 10 (0x0000000A)
-[18:04:43.437]  |           ]
-[18:04:43.438]  |           ]
-[18:04:43.440]  |           CTID = 1 (0x00000001)
-[18:04:43.440]  |           DESC = ""
-[18:04:43.441]  |           DISP = ""
-[18:04:43.442]  |           DISR = ""
-[18:04:43.443]  |           EMAX = 10 (0x0000000A)
-[18:04:43.444]  |           EPCT = 0 (0x0000)
-[18:04:43.445]  |           FLAG = 2 (0x00000002)
-[18:04:43.445]  |           FLAG = 2 (0x00000002)
-[18:04:43.446]  |           ]
-[18:04:43.447]  |           LOCL = ""
-[18:04:43.448]  |           NAME = "Lobby Category #1"
-[18:04:43.450]  |           NEXP = 1 (0x0001)
-[18:04:43.451]  |           PASS = ""
-[18:04:43.453]  |           UCRT = true
-[18:04:43.456]  |           VWID = 1 (0x00000001)
-[18:04:43.457]  |           AREM = true
-[18:04:43.462]  |           ]
-[18:04:43.463]  |           ]
-[18:04:43.465]  |           CAP = 1 (0x00000001)
-[18:04:43.467]  |           CNAM = ""
-[18:04:43.468]  |           CRET = 0 (0x0000000000000000)
-[18:04:43.470]  |           ]
-[18:04:43.472]  |           CRTM = 0 (0x00000000)
-[18:04:43.473]  |           CTID = 0 (0x00000000)
-[18:04:43.473]  |           ENUM = 1 (0x00000001)
-[18:04:43.474]  |           HNAM = "Lobby"
-[18:04:43.476]  |           HOST = 1 (0x0000000000000001)
-[18:04:43.477]  |           NAME = "Lobby #1"
-[18:04:43.478]  |           POPU = 0 (0x00000000)
-[18:04:43.479]  |           PSWD = ""
-[18:04:43.480]  |           PVAL = ""
-[18:04:43.482]  |           RMID = 1 (0x00000001)
-[18:04:43.483]  |           UCRT = true
-[18:04:43.484]  |           DISP = ""
-[18:04:43.486]  |           ]
-[18:04:43.487]  |           ]
-[18:04:43.489]  |           MXRM = 1 (0x00000001)
-[18:04:43.489]  |           NAME = "Lobby View #1"
-[18:04:43.492]  |           USRM = 1 (0x00000001)
-[18:04:43.494]  |           VWID = 1 (0x00000001)
-[18:04:43.497]  |           CAPA = 10 (0x0000000A)
-[18:04:43.500]  |           ]
-[18:04:43.507]  |           ]
-[18:04:43.509]  |           CTID = 1 (0x00000001)
-[18:04:43.511]  |           DESC = ""
-[18:04:43.513]  |           DISP = ""
-[18:04:43.517]  |           DISR = ""
-[18:04:43.517]  |           EMAX = 10 (0x0000000A)
-[18:04:43.518]  |           EPCT = 0 (0x0000)
-[18:04:43.519]  |           FLAG = 2 (0x00000002)
-[18:04:43.520]  |           FLAG = 2 (0x00000002)
-[18:04:43.522]  |           ]
-[18:04:43.523]  |           LOCL = ""
-[18:04:43.524]  |           NAME = "Lobby Category #1"
-[18:04:43.525]  |           NEXP = 1 (0x0001)
-[18:04:43.528]  |           PASS = ""
-[18:04:43.529]  |           UCRT = true
-[18:04:43.530]  |           VWID = 1 (0x00000001)
-[18:04:43.531]  |           AREM = true
-[18:04:43.531]  |           ]
-[18:04:43.533]  |           ]
-[18:04:43.534]  |           CAP = 1 (0x00000001)
-[18:04:43.535]  |           CNAM = ""
-[18:04:43.538]  |           CRET = 0 (0x0000000000000000)
-[18:04:43.540]  |           ]
-[18:04:43.542]  |           CRTM = 0 (0x00000000)
-[18:04:43.543]  |           CTID = 0 (0x00000000)
-[18:04:43.545]  |           ENUM = 1 (0x00000001)
-[18:04:43.546]  |           HNAM = "Lobby"
-[18:04:43.549]  |           HOST = 1 (0x0000000000000001)
-[18:04:43.550]  |           NAME = "Lobby #1"
-[18:04:43.552]  |           POPU = 0 (0x00000000)
-[18:04:43.554]  |           PSWD = ""
-[18:04:43.557]  |           PVAL = ""
-[18:04:43.558]  |           RMID = 1 (0x00000001)
-[18:04:43.559]  |           UCRT = true
-[18:04:43.560]  |           VWID = 0 (0x00000000)
-done loading!
-done loading!
-[18:04:43.597]  |           VWID = 0 (0x00000000)
-[18:04:43.597]  |           VWID = 1 (0x00000001)
-updating empty slot
-added placeholder _level0.MaxisParty.partyMC1.placeholderMC to index 0
-[18:04:43.672]  |           VWID = 1 (0x00000001)
-[18:04:43.679]  |           CTID = 1 (0x00000001)
-[18:04:43.680]  |           INID = 0 (0x0000000000000000)
-[18:04:43.681]  |           INVT = false
-[18:04:43.682]  |           PASS = ""
-[18:04:43.684]  |           PVAL = ""
-[18:04:43.685]  |           RMID = 0 (0x00000000)
-[18:04:43.685]  |             CAPA = 0 (0x00000000)
-[18:04:43.687]  |             ]
-[18:04:43.687]  |             ]
-[18:04:43.688]  |             CTID = 0 (0x00000000)
-[18:04:43.689]  |             DESC = ""
-[18:04:43.690]  |             DISP = ""
-[18:04:43.691]  |             DISR = ""
-[18:04:43.691]  |             EMAX = 0 (0x00000000)
-[18:04:43.692]  |             EPCT = 0 (0x0000)
-[18:04:43.694]  |             FLAG = 0 (0x00000000)
-[18:04:43.695]  |             FLAG = 0 (0x00000000)
-[18:04:43.696]  |             ]
-[18:04:43.697]  |             LOCL = ""
-[18:04:43.698]  |             NAME = ""
-[18:04:43.698]  |             NEXP = 0 (0x0000)
-[18:04:43.699]  |             PASS = ""
-[18:04:43.700]  |             UCRT = false
-[18:04:43.701]  |             VWID = 0 (0x00000000)
-[18:04:43.702]  |           }
-[18:04:43.704]  |           CRIT = ""
-[18:04:43.705]  |             BZID = 0 (0x0000000000000000)
-[18:04:43.706]  |             RMID = 0 (0x00000000)
-[18:04:43.707]  |           }
-[18:04:43.708]  |             AREM = false
-[18:04:43.709]  |             ]
-[18:04:43.710]  |             ]
-[18:04:43.711]  |             CAP = 0 (0x00000000)
-[18:04:43.712]  |             CNAM = ""
-[18:04:43.714]  |             CRET = 0 (0x0000000000000000)
-[18:04:43.714]  |             ]
-[18:04:43.715]  |             CRTM = 0 (0x00000000)
-[18:04:43.716]  |             CTID = 0 (0x00000000)
-[18:04:43.717]  |             ENUM = 0 (0x00000000)
-[18:04:43.717]  |             HNAM = ""
-[18:04:43.718]  |             HOST = 0 (0x0000000000000000)
-[18:04:43.719]  |             NAME = ""
-[18:04:43.720]  |             POPU = 0 (0x00000000)
-[18:04:43.721]  |             PSWD = ""
-[18:04:43.721]  |             PVAL = ""
-[18:04:43.722]  |             RMID = 0 (0x00000000)
-[18:04:43.724]  |             UCRT = false
-[18:04:43.725]  |           }
-[18:04:43.725]  |             DISP = ""
-[18:04:43.726]  |             ]
-[18:04:43.727]  |             ]
-[18:04:43.728]  |             MXRM = 0 (0x00000000)
-[18:04:43.729]  |             NAME = ""
-[18:04:43.730]  |             USRM = 0 (0x00000000)
-[18:04:43.730]  |             VWID = 0 (0x00000000)
-[18:04:43.731]  |           }
-[18:04:43.732]  |           VERS = 1 (0x00000001)
-[18:04:43.734]  |           BZID = 1 (0x0000000000000001)
-[18:04:43.735]  |           RMID = 1 (0x00000001)
-*/
-
-/*
-	Packet IDs
-		0x0A = SelectViewUpdates
-		0x0B = SelectCategoryUpdates
-		0x14 = JoinRoom
-		0x15 = LeaveRoom
-		0x1F = KickUser
-		0x28 = TransferRoomHost
-		0x64 = CreateRoomCategory
-		0x65 = RemoveRoomCategory
-		0x66 = CreateRoom
-		0x67 = RemoveRoom
-		0x68 = ClearBannedUsers
-		0x69 = UnbanUser
-		0x6D = GetViews
-		0x6E = CreateScheduledCategory
-		0x6F = DeleteScheduledCategory
-		0x70 = GetSchedulesCategories
-		0x78 = LookupRoomData
-		0x7A = ListBannedUsers
-		0x82 = SetRoomAttributes
-		0x8C = CheckEntryCriteria
-		0x96 = ToggleJoinedRoomNotifications
-		0xA0 = SelectPseudoRoomUpdates
-
-	Notification Packet IDs
-		0x0A = NotifyRoomViewUpdated
-		0x0B = NotifyRoomViewAdded
-		0x0C = NotifyRoomViewRemoved
-		0x14 = NotifyRoomCategoryUpdated
-		0x15 = NotifyRoomCategoryAdded
-		0x16 = NotifyRoomCategoryRemoved
-		0x1E = NotifyRoomUpdated
-		0x1F = NotifyRoomAdded
-		0x20 = NotifyRoomRemoved
-		0x28 = NotifyRoomPopulationUpdated
-		0x32 = NotifyRoomMemberJoined
-		0x33 = NotifyRoomMemberLeft
-		0x34 = NotifyRoomMemberUpdated
-		0x3C = NotifyRoomKick
-		0x46 = NotifyRoomHostTransfer
-		0x50 = NotifyRoomAttributesSet
-
 	Blaze fields
 		RoomReplicationContext
 			SEID = 0x38
@@ -286,78 +78,154 @@ added placeholder _level0.MaxisParty.partyMC1.placeholderMC to index 0
 			UCRT = 0x50
 */
 
+enum PacketID : uint16_t {
+	SelectViewUpdates = 0x0A,
+	SelectCategoryUpdates = 0x0B,
+	JoinRoom = 0x14,
+	LeaveRoom = 0x15,
+	KickUser = 0x1F,
+	TransferRoomHost = 0x28,
+	CreateRoomCategory = 0x64,
+	RemoveRoomCategory = 0x65,
+	CreateRoom = 0x66,
+	RemoveRoom = 0x67,
+	ClearBannedUsers = 0x68,
+	UnbanUser = 0x69,
+	GetViews = 0x6D,
+	CreateScheduledCategory = 0x6E,
+	DeleteScheduledCategory = 0x6F,
+	GetSchedulesCategories = 0x70,
+	LookupRoomData = 0x78,
+	ListBannedUsers = 0x7A,
+	SetRoomAttributes = 0x82,
+	CheckEntryCriteria = 0x8C,
+	ToggleJoinedRoomNotifications = 0x96,
+	SelectPseudoRoomUpdates = 0xA0,
+
+	// Notifications
+	NotifyRoomViewUpdated = 0x0A,
+	NotifyRoomViewAdded = 0x0B,
+	NotifyRoomViewRemoved = 0x0C,
+	NotifyRoomCategoryUpdated = 0x14,
+	NotifyRoomCategoryAdded = 0x15,
+	NotifyRoomCategoryRemoved = 0x16,
+	NotifyRoomUpdated = 0x1E,
+	NotifyRoomAdded = 0x1F,
+	NotifyRoomRemoved = 0x20,
+	NotifyRoomPopulationUpdated = 0x28,
+	NotifyRoomMemberJoined = 0x32,
+	NotifyRoomMemberLeft = 0x33,
+	NotifyRoomMemberUpdated = 0x34,
+	NotifyRoomKick = 0x3C,
+	NotifyRoomHostTransfer = 0x46,
+	NotifyRoomAttributesSet = 0x50
+};
+
 // Blaze
 namespace Blaze {
 	// RoomsComponent
-	void RoomsComponent::Parse(Client* client, const Header& header) {
-		switch (header.command) {
-			case 0x0A:
-				SelectViewUpdates(client, header);
+	uint16_t RoomsComponent::GetId() const {
+		return Id;
+	}
+
+	std::string_view RoomsComponent::GetName() const {
+		return "Rooms";
+	}
+
+	std::string_view RoomsComponent::GetReplyPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::SelectViewUpdates: return "selectViewUpdates";
+			case PacketID::SelectCategoryUpdates: return "selectCategoryUpdates";
+			case PacketID::JoinRoom: return "joinRoom";
+			case PacketID::LeaveRoom: return "leaveRoom";
+			case PacketID::KickUser: return "kickUser";
+			case PacketID::TransferRoomHost: return "transferRoomHost";
+			case PacketID::CreateRoomCategory: return "createRoomCategory";
+			case PacketID::RemoveRoomCategory: return "removeRoomCategory";
+			case PacketID::CreateRoom: return "createRoom";
+			case PacketID::RemoveRoom: return "removeRoom";
+			case PacketID::ClearBannedUsers: return "clearBannedUsers";
+			case PacketID::UnbanUser: return "unbanUser";
+			case PacketID::GetViews: return "getViews";
+			case PacketID::CreateScheduledCategory: return "createScheduledCategory";
+			case PacketID::DeleteScheduledCategory: return "deleteScheduledCategory";
+			case PacketID::GetSchedulesCategories: return "getSchedulesCategories";
+			case PacketID::LookupRoomData: return "lookupRoomData";
+			case PacketID::ListBannedUsers: return "listBannedUsers";
+			case PacketID::SetRoomAttributes: return "setRoomAttributes";
+			case PacketID::CheckEntryCriteria: return "checkEntryCriteria";
+			case PacketID::ToggleJoinedRoomNotifications: return "toggleJoinedRoomNotifications";
+			case PacketID::SelectPseudoRoomUpdates: return "selectPseudoRoomUpdates";
+
+			default: return "";
+		}
+	}
+
+	std::string_view RoomsComponent::GetNotificationPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::NotifyRoomViewUpdated: return "NotifyRoomViewUpdated";
+			case PacketID::NotifyRoomViewAdded: return "NotifyRoomViewAdded";
+			case PacketID::NotifyRoomViewRemoved: return "NotifyRoomViewRemoved";
+			case PacketID::NotifyRoomCategoryUpdated: return "NotifyRoomCategoryUpdated";
+			case PacketID::NotifyRoomCategoryAdded: return "NotifyRoomCategoryAdded";
+			case PacketID::NotifyRoomCategoryRemoved: return "NotifyRoomCategoryRemoved";
+			case PacketID::NotifyRoomUpdated: return "NotifyRoomUpdated";
+			case PacketID::NotifyRoomAdded: return "NotifyRoomAdded";
+			case PacketID::NotifyRoomRemoved: return "NotifyRoomRemoved";
+			case PacketID::NotifyRoomPopulationUpdated: return "NotifyRoomPopulationUpdated";
+			case PacketID::NotifyRoomMemberJoined: return "NotifyRoomMemberJoined";
+			case PacketID::NotifyRoomMemberLeft: return "NotifyRoomMemberLeft";
+			case PacketID::NotifyRoomMemberUpdated: return "NotifyRoomMemberUpdated";
+			case PacketID::NotifyRoomKick: return "NotifyRoomKick";
+			case PacketID::NotifyRoomHostTransfer: return "NotifyRoomHostTransfer";
+			case PacketID::NotifyRoomAttributesSet: return "NotifyRoomAttributesSet";
+
+			default: return "";
+		}
+	}
+
+	bool RoomsComponent::ParsePacket(Request& request) {
+		switch (request.get_command()) {
+			case PacketID::SelectViewUpdates:
+				SelectViewUpdates(request);
 				break;
 
-			case 0x0B:
-				SelectCategoryUpdates(client, header);
+			case PacketID::SelectCategoryUpdates:
+				SelectCategoryUpdates(request);
 				break;
 
-			case 0x14:
-				JoinRoom(client, header);
+			case PacketID::JoinRoom:
+				JoinRoom(request);
 				break;
 
-			case 0xA0:
-				SelectPseudoRoomUpdates(client, header);
+			case PacketID::SelectPseudoRoomUpdates:
+				SelectPseudoRoomUpdates(request);
 				break;
 
 			default:
-				std::cout << "Unknown rooms command: 0x" << std::hex << header.command << std::dec << std::endl;
-				break;
+				return false;
 		}
+
+		return true;
 	}
 
-	void RoomsComponent::SendSelectCategoryUpdates(Client* client, uint32_t viewId) {
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "VWID", viewId);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x0B;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void RoomsComponent::WriteSelectCategoryUpdates(TDF::Packet& packet, uint32_t viewId) {
+		packet.put_integer("VWID", viewId);
 	}
 
-	void RoomsComponent::SendJoinRoom(Client* client, uint32_t roomId) {
-		const auto& user = client->get_user();
-		if (!user) {
-			// JoinRoom came an unknown user.
-			return;
-		}
-
-		SporeNet::RoomPtr room;
-		if (roomId == 0) {
-			room = user->GetRoom();
-		} else {
-			room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
-		}
-
+	void RoomsComponent::WriteJoinRoom(TDF::Packet& packet, const SporeNet::RoomPtr& room, int64_t userId) {
 		if (!room) {
-			// Cannot join a non existant room.
+			// No.
 			return;
 		}
 
-		// TODO: proper room handling
-		room->AddUser(user);
-
-		//
-		auto userId = user->get_id();
-		roomId = room->GetId();
+		Rooms::RoomMemberData memberData;
+		memberData.memberId = userId;
+		memberData.roomId = room->GetId();
 
 		const auto& category = room->GetCategory();
 		const auto& view = category->GetView();
 
-		TDF::Packet packet;
 		packet.put_string("CRIT", "");
 		packet.put_integer("VERS", 1);
 
@@ -378,293 +246,169 @@ namespace Blaze {
 
 		// Member data
 		packet.push_struct("MDAT");
-		packet.put_integer("BZID", userId);
-		packet.put_integer("RMID", roomId);
+		memberData.Write(packet);
 		packet.pop();
-
-		NotifyRoomMemberJoined(client, roomId, userId);
-
-		client->reply({
-			.component = Component::Rooms,
-			.command = 0x14
-		}, packet);
 	}
 
-	void RoomsComponent::NotifyRoomViewUpdated(Client* client, uint32_t viewId) {
+	void RoomsComponent::NotifyRoomViewUpdated(Request& request, uint32_t viewId) {
 		const auto& roomView = SporeNet::Get().GetRoomManager().GetRoomView(viewId);
 		if (roomView) {
 			TDF::Packet packet;
 			roomView->WriteTo(packet);
 
-			DataBuffer outBuffer;
-			packet.Write(outBuffer);
-
-			client->notify({
-				.component = Component::Rooms,
-				.command = 0x0A,
-			}, outBuffer);
+			request.notify(packet, Id, PacketID::NotifyRoomViewUpdated);
 		}
 	}
 	
-	void RoomsComponent::NotifyRoomViewAdded(Client* client, uint32_t viewId) {
+	void RoomsComponent::NotifyRoomViewAdded(Request& request, uint32_t viewId) {
 		const auto& roomView = SporeNet::Get().GetRoomManager().GetRoomView(viewId);
 		if (roomView) {
 			TDF::Packet packet;
 			roomView->WriteTo(packet);
 
-			DataBuffer outBuffer;
-			packet.Write(outBuffer);
-
-			Header header;
-			header.component = Component::Rooms;
-			header.command = 0x0B;
-			header.error_code = 0;
-
-			client->notify(std::move(header), outBuffer);
+			request.notify(packet, Id, PacketID::NotifyRoomViewAdded);
 		}
 	}
 
-	void RoomsComponent::NotifyRoomViewRemoved(Client* client, uint32_t viewId) {
+	void RoomsComponent::NotifyRoomViewRemoved(Request& request, uint32_t viewId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "VWID", viewId);
+		packet.put_integer("VWID", viewId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x0C;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomViewRemoved);
 	}
 
-	void RoomsComponent::NotifyRoomCategoryUpdated(Client* client, uint32_t categoryId) {
+	void RoomsComponent::NotifyRoomCategoryUpdated(Request& request, uint32_t categoryId) {
 		const auto& roomCategory = SporeNet::Get().GetRoomManager().GetRoomCategory(categoryId);
 		if (roomCategory) {
 			TDF::Packet packet;
 			roomCategory->WriteTo(packet);
 
-			DataBuffer outBuffer;
-			packet.Write(outBuffer);
-
-			Header header;
-			header.component = Component::Rooms;
-			header.command = 0x14;
-			header.error_code = 0;
-
-			client->notify(std::move(header), outBuffer);
+			request.notify(packet, Id, PacketID::NotifyRoomCategoryUpdated);
 		}
 	}
 
-	void RoomsComponent::NotifyRoomCategoryAdded(Client* client, uint32_t categoryId) {
+	void RoomsComponent::NotifyRoomCategoryAdded(Request& request, uint32_t categoryId) {
 		const auto& roomCategory = SporeNet::Get().GetRoomManager().GetRoomCategory(categoryId);
 		if (roomCategory) {
 			TDF::Packet packet;
 			roomCategory->WriteTo(packet);
 
-			DataBuffer outBuffer;
-			packet.Write(outBuffer);
-
-			Header header;
-			header.component = Component::Rooms;
-			header.command = 0x15;
-			header.error_code = 0;
-
-			client->notify(std::move(header), outBuffer);
+			request.notify(packet, Id, PacketID::NotifyRoomCategoryAdded);
 		}
 	}
 
-	void RoomsComponent::NotifyRoomCategoryRemoved(Client* client, uint32_t categoryId) {
+	void RoomsComponent::NotifyRoomCategoryRemoved(Request& request, uint32_t categoryId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "CTID", categoryId);
+		packet.put_integer("CTID", categoryId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x16;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomCategoryRemoved);
 	}
 
-	void RoomsComponent::NotifyRoomUpdated(Client* client, uint32_t roomId) {
+	void RoomsComponent::NotifyRoomUpdated(Request& request, uint32_t roomId) {
 		const auto& room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
 		if (room) {
 			TDF::Packet packet;
 			room->WriteTo(packet);
 
-			DataBuffer outBuffer;
-			packet.Write(outBuffer);
-
-			Header header;
-			header.component = Component::Rooms;
-			header.command = 0x1E;
-			header.error_code = 0;
-
-			client->notify(std::move(header), outBuffer);
+			request.notify(packet, Id, PacketID::NotifyRoomUpdated);
 		}
 	}
 
-	void RoomsComponent::NotifyRoomAdded(Client* client, uint32_t roomId) {
+	void RoomsComponent::NotifyRoomAdded(Request& request, uint32_t roomId) {
 		const auto& room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
 		if (room) {
 			TDF::Packet packet;
 			room->WriteTo(packet);
 
-			DataBuffer outBuffer;
-			packet.Write(outBuffer);
-
-			Header header;
-			header.component = Component::Rooms;
-			header.command = 0x1F;
-			header.error_code = 0;
-
-			client->notify(std::move(header), outBuffer);
+			request.notify(packet, Id, PacketID::NotifyRoomAdded);
 		}
 	}
 
-	void RoomsComponent::NotifyRoomRemoved(Client* client, uint32_t roomId) {
+	void RoomsComponent::NotifyRoomRemoved(Request& request, uint32_t roomId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "RMID", roomId);
+		packet.put_integer("RMID", roomId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x20;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomRemoved);
 	}
 
-	void RoomsComponent::NotifyRoomPopulationUpdated(Client* client) {
+	void RoomsComponent::NotifyRoomPopulationUpdated(Request& request) {
 		TDF::Packet packet;
-		{
-			auto& popaMap = packet.CreateMap(nullptr, "POPA", TDF::Type::String, TDF::Type::String);
-		} {
-			auto& popmMap = packet.CreateMap(nullptr, "POPM", TDF::Type::String, TDF::Type::String);
-		}
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
+		packet.push_map("POPA", TDF::Type::String, TDF::Type::String);
+		// administrator population?
+		packet.pop();
 
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x28;
-		header.error_code = 0;
+		packet.push_map("POPM", TDF::Type::String, TDF::Type::String);
+		// member population?
+		packet.pop();
 
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomPopulationUpdated);
 	}
 
-	void RoomsComponent::NotifyRoomMemberJoined(Client* client, uint32_t roomId, uint32_t memberId) {
+	void RoomsComponent::NotifyRoomMemberJoined(Request& request, uint32_t roomId, uint32_t memberId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "BZID", memberId);
-		packet.PutInteger(nullptr, "RMID", roomId);
+		packet.put_integer("BZID", memberId);
+		packet.put_integer("RMID", roomId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x32;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomMemberJoined);
 	}
 
-	void RoomsComponent::NotifyRoomMemberLeft(Client* client, uint32_t roomId, uint32_t memberId) {
+	void RoomsComponent::NotifyRoomMemberLeft(Request& request, uint32_t roomId, uint32_t memberId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "MBID", memberId);
-		packet.PutInteger(nullptr, "RMID", roomId);
+		packet.put_integer("MBID", memberId);
+		packet.put_integer("RMID", roomId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x33;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomMemberLeft);
 	}
 
-	void RoomsComponent::NotifyRoomMemberUpdated(Client* client, uint32_t roomId, uint32_t memberId) {
+	void RoomsComponent::NotifyRoomMemberUpdated(Request& request, uint32_t roomId, uint32_t memberId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "BZID", memberId);
-		packet.PutInteger(nullptr, "RMID", roomId);
+		packet.put_integer("BZID", memberId);
+		packet.put_integer("RMID", roomId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x34;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomMemberUpdated);
 	}
 
-	void RoomsComponent::NotifyRoomKick(Client* client, uint32_t roomId, uint32_t memberId) {
+	void RoomsComponent::NotifyRoomKick(Request& request, uint32_t roomId, uint32_t memberId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "MBID", memberId);
-		packet.PutInteger(nullptr, "RMID", roomId);
+		packet.put_integer("MBID", memberId);
+		packet.put_integer("RMID", roomId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x3C;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomKick);
 	}
 
-	void RoomsComponent::NotifyRoomHostTransfer(Client* client, uint32_t roomId, uint32_t memberId) {
+	void RoomsComponent::NotifyRoomHostTransfer(Request& request, uint32_t roomId, uint32_t memberId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "MBID", memberId);
-		packet.PutInteger(nullptr, "RMID", roomId);
+		packet.put_integer("MBID", memberId);
+		packet.put_integer("RMID", roomId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x46;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomHostTransfer);
 	}
 
-	void RoomsComponent::NotifyRoomAttributesSet(Client* client, uint32_t roomId) {
+	void RoomsComponent::NotifyRoomAttributesSet(Request& request, uint32_t roomId) {
 		// TODO: add a map<string, string> for attributes
 		TDF::Packet packet;
-		{
-			auto& attrMap = packet.CreateMap(nullptr, "ATTR", TDF::Type::String, TDF::Type::String);
-		}
-		packet.PutInteger(nullptr, "RMID", roomId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
+		packet.push_map("ATTR", TDF::Type::String, TDF::Type::String);
+		// attributes
+		packet.pop();
 
-		Header header;
-		header.component = Component::Rooms;
-		header.command = 0x50;
-		header.error_code = 0;
+		packet.put_integer("RMID", roomId);
 
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyRoomAttributesSet);
 	}
 
-	void RoomsComponent::SelectViewUpdates(Client* client, Header header) {
-		const auto& request = client->get_request();
-		const auto& user = client->get_user();
+	void RoomsComponent::SelectViewUpdates(Request& request) {
+		const auto& user = request.get_user();
+		if (!user) {
+			return;
+		}
 
+		uint32_t roomId = 0;
+		uint32_t roomCategoryId = 0;
 		uint32_t roomViewId = 0;
 
+		bool add = false;
 		bool update = request["UPDT"].GetUint() != 0;
 		if (update) {
 			SporeNet::RoomViewPtr roomView;
@@ -674,6 +418,9 @@ namespace Blaze {
 			if (room) {
 				roomCategory = room->GetCategory();
 				roomView = roomCategory->GetView();
+
+				roomId = room->GetId();
+				roomCategoryId = roomCategory->GetId();
 				roomViewId = roomView->GetId();
 			} else {
 				SporeNet::RoomManager& manager = SporeNet::Get().GetRoomManager();
@@ -681,20 +428,17 @@ namespace Blaze {
 
 				roomCategory = manager.CreateRoomCategory();
 				roomView = manager.CreateRoomView();
-				roomViewId = roomView->GetId();
 
 				roomCategory->SetView(roomView);
 				room->SetCategory(roomCategory);
 				user->SetRoom(room);
 
-				NotifyRoomViewAdded(client, roomViewId);
-				NotifyRoomCategoryAdded(client, roomCategory->GetId());
-				NotifyRoomAdded(client, room->GetId());
-			}
+				roomId = room->GetId();
+				roomCategoryId = roomCategory->GetId();
+				roomViewId = roomView->GetId();
 
-			NotifyRoomViewUpdated(client, roomViewId);
-			NotifyRoomCategoryUpdated(client, roomCategory->GetId());
-			NotifyRoomUpdated(client, room->GetId());
+				add = true;
+			}
 		}
 
 		TDF::Packet packet;
@@ -703,25 +447,37 @@ namespace Blaze {
 		packet.put_integer("USID", user->get_id());
 		packet.put_integer("VWID", roomViewId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
+		request.reply(packet);
 
-		header.component = Component::Rooms;
-		header.command = 0x0A;
-		header.error_code = 0;
+		// Notifications
+		if (add) {
+			NotifyRoomViewAdded(request, roomViewId);
+			NotifyRoomCategoryAdded(request, roomCategoryId);
+			NotifyRoomAdded(request, roomId);
+		}
 
-		client->reply(std::move(header), outBuffer);
+		if (update) {
+			NotifyRoomViewUpdated(request, roomViewId);
+			NotifyRoomCategoryUpdated(request, roomCategoryId);
+			NotifyRoomUpdated(request, roomId);
+		}
 	}
 
-	void RoomsComponent::SelectCategoryUpdates(Client* client, Header header) {
-		const auto& request = client->get_request();
-
+	void RoomsComponent::SelectCategoryUpdates(Request& request) {
 		uint32_t viewId = request["VWID"].GetUint();
-		SendSelectCategoryUpdates(client, viewId);
+
+		TDF::Packet packet;
+		WriteSelectCategoryUpdates(packet, viewId);
+
+		request.reply(packet);
 	}
 
-	void RoomsComponent::JoinRoom(Client* client, Header header) {
-		const auto& request = client->get_request();
+	void RoomsComponent::JoinRoom(Request& request) {
+		const auto& user = request.get_user();
+		if (!user) {
+			// No.
+			return;
+		}
 
 		std::string password = request["PASS"].GetString();
 		std::string pval = request["PVAL"].GetString();
@@ -732,10 +488,37 @@ namespace Blaze {
 		uint32_t categoryId = request["CTID"].GetUint();
 		uint32_t roomId = request["RMID"].GetUint();
 
-		SendJoinRoom(client, roomId);
+		// Get room data
+		SporeNet::RoomPtr room;
+		if (roomId == 0) {
+			room = user->GetRoom();
+		} else {
+			room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
+		}
+
+		if (!room) {
+			// Some error
+			request.reply();
+			return;
+		}
+
+		auto userId = user->get_id();
+
+		// TODO: proper room handling
+		room->AddUser(user);
+
+		// Write packet
+		TDF::Packet packet;
+		WriteJoinRoom(packet, room, userId);
+
+		request.reply(packet);
+
+		// Notifications
+		NotifyRoomMemberJoined(request, roomId, userId);
 	}
 
-	void RoomsComponent::SelectPseudoRoomUpdates(Client* client, Header header) {
-		const auto& request = client->get_request();
+	void RoomsComponent::SelectPseudoRoomUpdates(Request& request) {
+		// Empty reply?
+		request.reply();
 	}
 }

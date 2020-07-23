@@ -11,12 +11,14 @@ namespace Game {
 	}
 
 	ObjectPtr ObjectManager::CreateObject(uint32_t noun) {
+		constexpr uint32_t START_ID = 0xF000;
+
 		uint32_t id;
 		if (!mOpenIndexes.empty()) {
 			id = mOpenIndexes.back();
 			mOpenIndexes.pop_back();
 		} else if (mObjects.empty()) {
-			id = 1;
+			id = START_ID;
 		} else {
 			id = mObjects.begin()->first + 1;
 		}

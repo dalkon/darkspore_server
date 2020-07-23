@@ -38,7 +38,7 @@ namespace Ability {
 		CooldownScale,
 		Frozen,
 		ProjectileSpeedIncrease,
-		AoeResistance,
+		AoEResistance,
 		EnergyDamageBuff,
 		Intangible,
 		HealingReduction,
@@ -48,7 +48,7 @@ namespace Ability {
 		StealthDetection,
 		LifeSteal,
 		RejectModifier,
-		AoeDamage,
+		AoEDamage,
 		TechnologyTypeDamage,
 		SpacetimeTypeDamage,
 		LifeTypeDamage,
@@ -67,7 +67,7 @@ namespace Ability {
 		DebuffDurationIncrease,
 		EnergyDamageReduction,
 		Incorporeal,
-		DotDamageIncrease,
+		DoTDamageIncrease,
 		MindControlled,
 		SwapDisabled,
 		ImmuneToRandomTeleport,
@@ -94,7 +94,7 @@ namespace Ability {
 		ImmuneToRooted,
 		ImmuneToSlow,
 		ImmuneToPull,
-		DotDamageDoneIncrease,
+		DoTDamageDoneIncrease,
 		AggroIncrease,
 		AggroDecrease,
 		PhysicalDamageDoneIncrease,
@@ -103,8 +103,8 @@ namespace Ability {
 		EnergyDamageDoneByAbilityIncrease,
 		ChannelTimeDecrease,
 		CrowdControlDurationDecrease,
-		DotDurationDecrease,
-		AoeDurationIncrease,
+		DoTDurationDecrease,
+		AoEDurationIncrease,
 		HealIncrease,
 		OnLockdown,
 		HoTDoneIncrease,
@@ -250,6 +250,11 @@ namespace RakNet {
 	}
 #pragma warning(pop)
 
+	/*
+		FYI: All class names are what darkspore calls them, not me.
+			The same goes for the variable names, they are stupid, they will change later on.
+	*/
+
 	// cSPVector2
 	struct cSPVector2 {
 		float x = 0.f;
@@ -258,6 +263,7 @@ namespace RakNet {
 		cSPVector2() = default;
 		cSPVector2(float _x, float _y);
 
+		void ReadFrom(BitStream& stream);
 		void WriteTo(BitStream& stream) const;
 	};
 
@@ -270,6 +276,7 @@ namespace RakNet {
 		cSPVector3() = default;
 		cSPVector3(float _x, float _y, float _z);
 
+		void ReadFrom(BitStream& stream);
 		void WriteTo(BitStream& stream) const;
 	};
 
@@ -280,6 +287,7 @@ namespace RakNet {
 		float z = 0.f;
 		float w = 0.f;
 
+		void ReadFrom(BitStream& stream);
 		void WriteTo(BitStream& stream) const;
 	};
 
@@ -456,6 +464,119 @@ namespace RakNet {
 		void WriteReflection(BitStream& stream) const;
 	};
 
+	// cLobParams
+	struct cLobParams {
+		float planeDirLinearParam;
+		float upLinearParam;
+		float upQuadraticParam;
+		cSPVector3 lobUpDir;
+		cSPVector3 planeDir;
+		int32_t bounceNum;
+		float bounceRestitution;
+		bool groundCollisionOnly;
+		bool stopBounceOnCreatures;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// cProjectileParams
+	struct cProjectileParams {
+		float mSpeed;
+		float mAcceleration;
+		uint32_t mJinkInfo;
+		float mRange;
+		float mSpinRate;
+		cSPVector3 mDirection;
+		uint8_t mProjectileFlags;
+		float mHomingDelay;
+		float mTurnRate;
+		float mTurnAcceleration;
+		float mEccentricity;
+		bool mPiercing;
+		bool mIgnoreGroundCollide;
+		bool mIgnoreCreatureCollide;
+		float mCombatantSweepHeight;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// cLocomotionData
+	struct cLocomotionData {
+		uint64_t lobStartTime;
+		float lobPrevSpeedModifier;
+		cLobParams lobParams;
+		cProjectileParams mProjectileParams;
+		uint32_t mGoalFlags;
+		cSPVector3 mGoalPosition;
+		cSPVector3 mPartialGoalPosition;
+		cSPVector3 mFacing;
+		cSPVector3 mExternalLinearVelocity;
+		cSPVector3 mExternalForce;
+		float mAllowedStopDistance;
+		float mDesiredStopDistance;
+		tObjID mTargetObjectId;
+		cSPVector3 mTargetPosition;
+		cSPVector3 mExpectedGeoCollision;
+		cSPVector3 mInitialDirection;
+		cSPVector3 mOffset;
+		int32_t reflectedLastUpdate;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// cAttributeData
+	struct cAttributeData {
+		std::array<float, Ability::Count> mAttributes;
+
+		float mMinWeaponDamage;
+		float mMaxWeaponDamage;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// cCombatantData
+	struct cCombatantData {
+		float mHitPoints;
+		float mManaPoints;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// cInteractableData
+	struct cInteractableData {
+		int32_t mNumTimesUsed;
+		int32_t mNumUsesAllowed;
+		uint32_t mInteractableAbility;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// cLootData
+	struct cLootData {
+		int32_t crystalLevel;
+
+		// mLootItem
+		uint64_t mId;
+		asset mRigblockAsset;
+		uint32_t mSuffixAssetId;
+		uint32_t mPrefixAssetId1;
+		uint32_t mPrefixAssetId2;
+		int32_t mItemLevel;
+		int32_t mRarity;
+
+		uint64_t mLootInstanceId;
+		float mDNAAmount;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
 	// sporelabsObject
 	struct sporelabsObject {
 		uint8_t mTeam;
@@ -483,6 +604,31 @@ namespace RakNet {
 		uint32_t sourceMarkerKey_markerId;
 
 		sporelabsObject();
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// GravityForce
+	struct GravityForce {
+		float radius;
+		float force;
+		float forceForMover;
+
+		void WriteTo(BitStream& stream) const;
+		void WriteReflection(BitStream& stream) const;
+	};
+
+	// CombatEvent
+	struct CombatEvent {
+		uint16_t flags;
+		float deltaHealth;
+		float absorbedAmount;
+		tObjID targetID;
+		tObjID sourceID;
+		tObjID abilityID;
+		cSPVector3 damageDirection;
+		int32_t integerHpChange;
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;

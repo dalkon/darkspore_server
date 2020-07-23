@@ -7,6 +7,7 @@
 
 #include "blaze/server.h"
 #include "http/server.h"
+#include "qos/server.h"
 #include "game/api.h"
 
 // Application
@@ -50,6 +51,8 @@ class Application {
 
 		std::unique_ptr<HTTP::Server> mHttpServer;
 		std::unique_ptr<HTTP::Server> mQosServer;
+
+		std::unique_ptr<QoS::Server> mTestServer;
 };
 
 static Application& GetApp() {

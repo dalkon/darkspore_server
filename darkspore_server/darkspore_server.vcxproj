@@ -70,8 +70,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)source;E:\DevFolder\LibrarySources\raknet3\Source;E:\DevFolder\C++ Libraries\pugixml\include;E:\DevFolder\C++ Libraries\rapidjson\include;E:\DevFolder\C++ Libraries\openssl-1.1.1b\include;E:\DevFolder\C++ Libraries\boost_1_72_0;$(IncludePath)</IncludePath>
-    <LibraryPath>E:\DevFolder\C++ Libraries\RakNet\lib;E:\DevFolder\C++ Libraries\pugixml\lib;E:\DevFolder\C++ Libraries\openssl-1.1.1b\lib;E:\DevFolder\C++ Libraries\boost_1_72_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)source;E:\DevFolder\LibrarySources\raknet3\Source;E:\DevFolder\C++ Libraries\pugixml\include;E:\DevFolder\C++ Libraries\rapidjson\include;E:\DevFolder\C++ Libraries\openssl-1.1.1b\include;E:\DevFolder\C++ Libraries\boost_1_73_0;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\DevFolder\C++ Libraries\RakNet\lib;E:\DevFolder\C++ Libraries\pugixml\lib;E:\DevFolder\C++ Libraries\openssl-1.1.1b\lib;E:\DevFolder\C++ Libraries\boost_1_73_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -132,6 +132,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="source\blaze\client.h" />
+    <ClInclude Include="source\blaze\component.h" />
     <ClInclude Include="source\blaze\component\associationcomponent.h" />
     <ClInclude Include="source\blaze\component\authcomponent.h" />
     <ClInclude Include="source\blaze\component\gamemanagercomponent.h" />
@@ -163,20 +164,24 @@
     <ClInclude Include="source\main.h" />
     <ClInclude Include="source\network\client.h" />
     <ClInclude Include="source\predefined.h" />
+    <ClInclude Include="source\qos\server.h" />
     <ClInclude Include="source\raknet\client.h" />
     <ClInclude Include="source\raknet\server.h" />
     <ClInclude Include="source\raknet\types.h" />
     <ClInclude Include="source\sporenet\creature.h" />
     <ClInclude Include="source\sporenet\instance.h" />
+    <ClInclude Include="source\sporenet\part.h" />
     <ClInclude Include="source\sporenet\room.h" />
     <ClInclude Include="source\sporenet\squad.h" />
     <ClInclude Include="source\sporenet\user.h" />
+    <ClInclude Include="source\sporenet\vendor.h" />
     <ClInclude Include="source\tcptest.h" />
     <ClInclude Include="source\utils\functions.h" />
     <ClInclude Include="source\utils\log.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\blaze\client.cpp" />
+    <ClCompile Include="source\blaze\component.cpp" />
     <ClCompile Include="source\blaze\component\associationcomponent.cpp" />
     <ClCompile Include="source\blaze\component\authcomponent.cpp" />
     <ClCompile Include="source\blaze\component\gamemanagercomponent.cpp" />
@@ -206,14 +211,17 @@
     <ClCompile Include="source\http\uri.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\network\client.cpp" />
+    <ClCompile Include="source\qos\server.cpp" />
     <ClCompile Include="source\raknet\client.cpp" />
     <ClCompile Include="source\raknet\server.cpp" />
     <ClCompile Include="source\raknet\types.cpp" />
     <ClCompile Include="source\sporenet\creature.cpp" />
     <ClCompile Include="source\sporenet\instance.cpp" />
+    <ClCompile Include="source\sporenet\part.cpp" />
     <ClCompile Include="source\sporenet\room.cpp" />
     <ClCompile Include="source\sporenet\squad.cpp" />
     <ClCompile Include="source\sporenet\user.cpp" />
+    <ClCompile Include="source\sporenet\vendor.cpp" />
     <ClCompile Include="source\tcptest.cpp" />
     <ClCompile Include="source\utils\functions.cpp" />
     <ClCompile Include="source\utils\log.cpp" />

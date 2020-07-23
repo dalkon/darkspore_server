@@ -14,6 +14,8 @@
 
 // Blaze
 namespace Blaze {
+	class Request;
+
 	// Client
 	class Client : public Network::Client {
 		public:
@@ -33,21 +35,16 @@ namespace Blaze {
 
 			void start();
 
-			void notify(Header header, const DataBuffer& buffer);
-			void reply(Header header);
-			void reply(Header header, const DataBuffer& buffer);
-
-			//
-			void notify(Header&& header, const TDF::Packet& packet);
-			void reply(Header&& header, const TDF::Packet& packet);
-			//
+			void notify(const TDF::Packet& packet, uint16_t component, uint16_t command, ErrorCode error = ErrorCode::NONE);
+			void reply(const Request& request, ErrorCode error = ErrorCode::NONE);
+			void reply(const Request& request, const TDF::Packet& packet, ErrorCode error = ErrorCode::NONE);
 
 			void handle_handshake(const boost::system::error_code& error);
 			void handle_read(const boost::system::error_code& error, size_t bytes_transferred);
 			void handle_write(const boost::system::error_code& error);
 
 		private:
-			void send(const Header& header, const DataBuffer& buffer);
+			void send(MessageType message_type, uint32_t message_id, uint16_t component_id, uint16_t command_id, uint16_t error_code, const DataBuffer& buffer);
 
 			void parse_packets();
 
@@ -64,6 +61,45 @@ namespace Blaze {
 			
 			uint32_t mCurrentMessageId;
 			uint32_t mId;
+	};
+
+	// Request
+	class Request {
+		public:
+			Request(Client& client);
+
+			const auto& get_request() const { return mClient.get_request(); }
+
+			auto& get_client() { return mClient; }
+			const auto& get_client() const { return mClient; }
+
+			decltype(auto) get_user() const { return mClient.get_user(); }
+			void set_user(const SporeNet::UserPtr& user) { mClient.set_user(user); }
+
+			auto get_component() const { return mComponent; }
+			auto get_command() const { return mCommand; }
+
+			decltype(auto) begin() const { return get_request().MemberBegin(); }
+			decltype(auto) end() const { return get_request().MemberEnd(); }
+			decltype(auto) find(const std::string& field) const { return get_request().FindMember(field); }
+			decltype(auto) operator[](const std::string& field) const { return get_request()[field]; }
+
+			void notify(const TDF::Packet& packet, uint16_t component, uint16_t command, ErrorCode error = ErrorCode::NONE) const;
+			void reply(ErrorCode error = ErrorCode::NONE) const;
+			void reply(const TDF::Packet& packet, ErrorCode error = ErrorCode::NONE) const;
+
+		private:
+			Client& mClient;
+
+			MessageType mMessageType = MessageType::Message;
+			uint32_t mMessageId = 0;
+
+			uint16_t mLength = 0;
+			uint16_t mComponent = 0;
+			uint16_t mCommand = 0;
+			uint16_t mErrorCode = 0;
+			
+			friend class Client;
 	};
 }
 

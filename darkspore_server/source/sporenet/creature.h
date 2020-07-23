@@ -8,6 +8,7 @@
 #include <vector>
 #include <array>
 #include <unordered_map>
+#include <memory>
 #include <pugixml.hpp>
 
 // SporeNet
@@ -194,7 +195,7 @@ namespace SporeNet {
 			void Write(pugi::xml_node& node) const;
 			void WriteApi(pugi::xml_node& node, bool profile_data, bool include_abilities, bool include_parts) const;
 
-			const std::string& GetName() const;
+			std::string GetName() const;
 
 			uint32_t GetNoun() const;
 

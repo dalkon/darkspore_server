@@ -83,129 +83,229 @@
 			OFRC = 0x38
 */
 
+enum PacketID : uint16_t {
+	AddUsersToList = 0x01,
+	RemoveUsersFromList = 0x02,
+	ClearLists = 0x03,
+	SetUsersToList = 0x04,
+	GetListForUser = 0x05,
+	GetLists = 0x06,
+	SubscribeToLists = 0x07,
+	UnsubscribeFromLists = 0x08,
+
+	// Notifications
+	NotifyUpdateListMembership = 0x01,
+};
+
 // Blaze
 namespace Blaze {
 	// AssociationComponent
-	void AssociationComponent::Parse(Client* client, const Header& header) {
-		switch (header.command) {
-			case 0x06:
-				GetLists(client, header);
+	uint16_t AssociationComponent::GetId() const {
+		return Id;
+	}
+
+	std::string_view AssociationComponent::GetName() const {
+		return "AssociationLists";
+	}
+
+	std::string_view AssociationComponent::GetReplyPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::AddUsersToList: return "addUsersToList";
+			case PacketID::RemoveUsersFromList: return "removeUsersFromList";
+			case PacketID::ClearLists: return "clearLists";
+			case PacketID::SetUsersToList: return "setUsersToList";
+			case PacketID::GetListForUser: return "getListForUser";
+			case PacketID::GetLists: return "getLists";
+			case PacketID::SubscribeToLists: return "subscribeToLists";
+			case PacketID::UnsubscribeFromLists: return "unsubscribeFromLists";
+
+			default: return "";
+		}
+	}
+
+	std::string_view AssociationComponent::GetNotificationPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::NotifyUpdateListMembership: return "NotifyUpdateListMembership";
+
+			default: return "";
+		}
+	}
+
+	bool AssociationComponent::ParsePacket(Request& request) {
+		switch (request.get_command()) {
+			case PacketID::AddUsersToList:
+				AddUsersToList(request);
+				break;
+
+			case PacketID::RemoveUsersFromList:
+				RemoveUsersFromList(request);
+				break;
+
+			case PacketID::GetLists:
+				GetLists(request);
 				break;
 
 			default:
-				std::cout << "Unknown associationlists command: 0x" << std::hex << header.command << std::dec << std::endl;
-				break;
+				return false;
+		}
+
+		return true;
+	}
+
+	void AssociationComponent::UpdateListMembersResponse(TDF::Packet& packet, const std::vector<ListMemberInfo>& memberInfoList, const std::vector<ListMemberId>& removeList) {
+		if (!memberInfoList.empty()) {
+			packet.push_list("LMID", TDF::Type::Struct);
+			for (const auto& memberInfo : memberInfoList) {
+				packet.push_struct("");
+				memberInfo.Write(packet);
+				packet.pop();
+			}
+			packet.pop();
+		}
+
+		if (!removeList.empty()) {
+			packet.push_list("REM", TDF::Type::Struct);
+			for (const auto& memberId : removeList) {
+				packet.push_struct("");
+				memberId.Write(packet);
+				packet.pop();
+			}
+			packet.pop();
 		}
 	}
 
-	void AssociationComponent::SendLists(Client* client) {
-		const auto& request = client->get_request();
-		const auto& user = client->get_user();
-
-		std::vector<ListInfo> listInfo {
-			{
-				.blazeObjectId { 0, 0, 0 },
-				.identification {
-					.name = "",
-					.type = 4
-				},
-				.flags = 1,
-				.lms = 0,
-				.prid = 0
-			}, {
-				.blazeObjectId { 0, 0, 0 },
-				.identification {
-					.name = "",
-					.type = 5
-				},
-				.flags = 1 | 16,
-				.lms = 0,
-				.prid = 0
-			}
-		};
-
-		TDF::Packet packet;
-		packet.push_list("ALST", TDF::Type::Struct);
-		for (const auto& info : listInfo) {
+	void AssociationComponent::WriteLists(TDF::Packet& packet, const std::vector<ListMembers>& listMembersData) {
+		/*
+		4 = ignore list
+		5 = friend list
+		*/
+		packet.push_list("LMAP", TDF::Type::Struct);
+		for (const auto& listMembers : listMembersData) {
 			packet.push_struct("");
-			info.Write(packet);
+			listMembers.Write(packet);
 			packet.pop();
 		}
 		packet.pop();
-
-		packet.put_integer("MXRC", request["MXRC"].GetUint());
-		packet.put_integer("OFRC", request["OFRC"].GetUint());
-
-		client->reply({
-			.component = Component::AssociationLists,
-			.command = 0x06
-		}, packet);
 	}
 
-	void AssociationComponent::NotifyUpdateListMembership(Client* client, uint32_t type) {
-		const auto& user = client->get_user();
+	void AssociationComponent::NotifyUpdateListMembership(Request& request, const std::vector<ListMemberInfoUpdate>& listMemberInfoUpdate, const ListIdentification& listId) {
+		if (listMemberInfoUpdate.empty()) {
+			return;
+		}
 
-		BlazeUser test;
-
-		ListIdentification identification;
-		identification.name = user->get_name();
-		identification.type = type;
-
-		// Member data
-		ListMemberInfoUpdate infoUpdate;
-		infoUpdate.type = ListUpdateType::Add;
-
-		ListMemberInfo& info = infoUpdate.info;
-		info.id.id = user->get_id();
-		info.id.name = user->get_name();
-		info.time = utils::get_unix_time();
+		const auto& user = request.get_user();
+		if (!user) {
+			return;
+		}
 
 		TDF::Packet packet;
 		packet.push_list("BIDL", TDF::Type::Struct);
+		for (const auto& memberInfoUpdate : listMemberInfoUpdate) {
 			packet.push_struct("");
-			infoUpdate.Write(packet);
+			memberInfoUpdate.Write(packet);
 			packet.pop();
+		}
 		packet.pop();
 
 		packet.push_struct("LID");
-		identification.Write(packet);
+		listId.Write(packet);
 		packet.pop();
 
-		client->notify({
-			.component = Component::AssociationLists,
-			.command = 0x01
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyUpdateListMembership);
 	}
 
-	void AssociationComponent::GetLists(Client* client, Header header) {
-		NotifyUpdateListMembership(client, 4);
-		NotifyUpdateListMembership(client, 5);
+	void AssociationComponent::AddUsersToList(Request& request) {
+		// Read request data
+		std::vector<ListMemberInfoUpdate> updateList;
+		std::vector<ListMemberInfo> memberInfoList;
+		if (auto it = request.find("BIDL"); it != request.end()) {
+			auto timestamp = utils::get_unix_time();
+			for (const auto& child : it->value["_Content"].GetArray()) {
+				decltype(auto) memberInfo = memberInfoList.emplace_back();
+				memberInfo.id.Read(child);
+				memberInfo.time = timestamp;
 
-		// Otherwise the client says "Could not get association lists"
-		SendLists(client);
+				decltype(auto) memberInfoUpdate = updateList.emplace_back();
+				memberInfoUpdate.info = memberInfo;
+				memberInfoUpdate.type = ListUpdateType::Add;
+			}
+		}
+
+		ListIdentification listId;
+		listId.Read(request["LID"]);
+
+		// Send reply
+		TDF::Packet packet;
+		UpdateListMembersResponse(packet, memberInfoList, {});
+
+		request.reply(packet);
+
+		// Send update notification
+		NotifyUpdateListMembership(request, updateList, listId);
+	}
+
+	void AssociationComponent::RemoveUsersFromList(Request& request) {
+		// Read request data
+		std::vector<ListMemberInfoUpdate> updateList;
+		std::vector<ListMemberId> removeList;
+		if (auto it = request.find("BIDL"); it != request.end()) {
+			auto timestamp = utils::get_unix_time();
+			for (const auto& child : it->value["_Content"].GetArray()) {
+				decltype(auto) memberId = removeList.emplace_back();
+				memberId.Read(child);
+
+				decltype(auto) memberInfoUpdate = updateList.emplace_back();
+				memberInfoUpdate.info.id = memberId;
+				memberInfoUpdate.info.time = timestamp;
+				memberInfoUpdate.type = ListUpdateType::Remove;
+			}
+		}
+
+		ListIdentification listId;
+		listId.Read(request["LID"]);
+
+		// Send reply
+		TDF::Packet packet;
+		UpdateListMembersResponse(packet, {}, removeList);
+
+		request.reply(packet);
+
+		// Send update notification
+		NotifyUpdateListMembership(request, updateList, listId);
+	}
+
+	void AssociationComponent::GetLists(Request& request) {
+		const auto& user = request.get_user();
+		if (!user) {
+			return;
+		}
+
+		uint32_t mxrc = request["MXRC"].GetUint();
+		uint32_t ofrc = request["OFRC"].GetUint();
+
+		std::vector<ListMembers> listMembersData;
+		if (auto it = request.find("ALST"); it != request.end()) {
+			for (const auto& child : it->value["_Content"].GetArray()) {
+				decltype(auto) listMembers = listMembersData.emplace_back();
+				listMembers.info.Read(child);
+				listMembers.ofrc = ofrc;
+				listMembers.toct = 0; // unknown so far, some sort of id?
+
+				if (listMembers.info.identification.type == 4) {
+					decltype(auto) member = listMembers.memberList.emplace_back();
+					member.id.id = user->get_id();
+					member.id.name = user->get_name();
+					member.time = 0;
+				}
+			}
+		}
+
+		TDF::Packet packet;
+		WriteLists(packet, listMembersData);
+
+		request.reply(packet);
 
 		// PlaygroupsComponent::NotifyJoinPlaygroup(client);
 		// NotifyUpdateListMembership(client);
-	}
-
-	rapidjson::Value& AssociationComponent::WriteListMember(TDF::Packet& packet, rapidjson::Value* parent, const std::string& label, const BlazeUser& user) {
-		auto& value = packet.CreateStruct(parent, label);
-		{
-			auto& info = packet.CreateStruct(&value, "INFO");
-			{
-				auto& lmid = packet.CreateStruct(&info, "LMID");
-				packet.PutInteger(&info, "BLID", utils::get_unix_time());
-				packet.PutString(&info, "PNAM", user.name);
-				packet.PutInteger(&info, "XREF", 0);
-				packet.PutInteger(&info, "XTYP", ExternalRefType::Unknown);
-			}
-			packet.PutInteger(&info, "TIME", utils::get_unix_time());
-		} {
-			auto& meml = packet.CreateList(&value, "MEML", TDF::Type::String);
-
-		}
-		packet.PutInteger(&value, "OFRC", 0);
-		packet.PutInteger(&value, "TOCT", utils::get_unix_time());
-		return value;
 	}
 }

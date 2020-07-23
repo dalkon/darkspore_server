@@ -4,6 +4,7 @@
 #include "creature.h"
 #include "user.h"
 #include "room.h"
+#include "vendor.h"
 
 // SporeNet
 namespace SporeNet {
@@ -14,9 +15,11 @@ namespace SporeNet {
 
 		mUserManager = std::make_unique<UserManager>();
 		mRoomManager = std::make_unique<RoomManager>();
+		mVendor = std::make_unique<Vendor>();
 	}
 
 	Instance::~Instance() {
+		mVendor.reset();
 		mRoomManager.reset();
 		mUserManager.reset();
 		mTemplateDatabase.reset();
@@ -32,5 +35,9 @@ namespace SporeNet {
 
 	RoomManager& Instance::GetRoomManager() const {
 		return *mRoomManager;
+	}
+
+	Vendor& Instance::GetVendor() const {
+		return *mVendor;
 	}
 }

@@ -208,81 +208,6 @@
 		Quickplay = 6
 		DirectEntry = 7
 
-	Packet IDs
-		0x01 = CreateGame
-		0x02 = DestroyGame
-		0x03 = AdvanceGameState
-		0x04 = SetGameSettings
-		0x05 = SetPlayerCapacity
-		0x07 = SetGameAttributes
-		0x08 = SetPlayerAttributes
-		0x09 = JoinGame
-		0x0B = RemovePlayer
-		0x0D = StartMatchmaking
-		0x0E = CancelMatchmaking
-		0x0F = FinalizeGameCreation
-		0x11 = ListGames
-		0x12 = SetPlayerCustomData
-		0x13 = ReplayGame
-		0x14 = ReturnDedicatedServerToPool
-		0x15 = JoinGameByGroup
-		0x16 = LeaveGameByGroup
-		0x17 = MigrateGame
-		0x18 = UpdateGameHostMigrationStatus
-		0x19 = ResetDedicatedServer
-		0x1A = UpdateGameSession
-		0x1B = BanPlayer
-		0x1D = UpdateMeshConnection
-		0x1F = RemovePlayerFromBannedList
-		0x20 = ClearBannedList
-		0x21 = GetBannedList
-		0x26 = AddQueuedPlayerToGame
-		0x27 = UpdateGameName
-		0x64 = GetGameListSnapshot
-		0x65 = GetGameListSubscription
-		0x66 = DestroyGameList
-		0x67 = GetFullGameData
-		0x68 = GetMatchmakingConfig
-		0x69 = GetGameDataFromId
-		0x6A = AddAdminPlayer
-		0x6B = RemoveAdminPlayer
-		0x6C = SetPlayerTeam
-		0x6D = ChangePlayerTeam
-		0x6E = MigrateAdminPlayer
-		0x6F = GetUserSetGameListSubscription
-		0x96 = RegisterDynamicDedicatedServerCreator
-		0x97 = UnregisterDynamicDedicatedServerCreator
-
-	Notification Packet IDs
-		0x0A = NotifyMatchmakingFailed
-		0x0C = NotifyMatchmakingAsyncStatus
-		0x0F = NotifyGameCreated
-		0x10 = NotifyGameRemoved
-		0x14 = NotifyGameSetup
-		0x15 = NotifyPlayerJoining
-		0x1E = NotifyPlayerJoinCompleted
-		0x28 = NotifyPlayerRemoved
-		0x3C = NotifyHostMigrationCompleted
-		0x46 = NotifyHostMigrationStart
-		0x47 = NotifyPlatformHostInitialized
-		0x50 = NotifyGameAttribChange
-		0x5A = NotifyPlayerAttribChange
-		0x5F = NotifyPlayerCustomDataChange
-		0x64 = NotifyGameStateChange
-		0x6E = NotifyGameSettingsChange
-		0x6F = NotifyGameCapacityChange
-		0x70 = NotifyGameReset
-		0x71 = NotifyGameReportingIdChange
-		0x73 = NotifyGameSessionUpdated
-		0x74 = NotifyGamePlayerStateChange
-		0x75 = NotifyGamePlayerTeamChange
-		0x76 = NotifyGameTeamIdChange
-		0x77 = NotifyProcessQueue
-		0xC9 = NotifyGameListUpdate
-		0xCA = NotifyAdminListChange
-		0xDC = NotifyCreateDynamicDedicatedServerGame
-		0xE6 = NotifyGameNameChange
-
 	Blaze Fields
 		PDAT
 			BLOB = 0x20
@@ -478,199 +403,295 @@
 			PHST = 0x48
 */
 
+enum PacketID : uint16_t {
+	CreateGame = 0x01,
+	DestroyGame = 0x02,
+	AdvanceGameState = 0x03,
+	SetGameSettings = 0x04,
+	SetPlayerCapacity = 0x05,
+	SetGameAttributes = 0x07,
+	SetPlayerAttributes = 0x08,
+	JoinGame = 0x09,
+	RemovePlayer = 0x0B,
+	StartMatchmaking = 0x0D,
+	CancelMatchmaking = 0x0E,
+	FinalizeGameCreation = 0x0F,
+	ListGames = 0x11,
+	SetPlayerCustomData = 0x12,
+	ReplayGame = 0x13,
+	ReturnDedicatedServerToPool = 0x14,
+	JoinGameByGroup = 0x15,
+	LeaveGameByGroup = 0x16,
+	MigrateGame = 0x17,
+	UpdateGameHostMigrationStatus = 0x18,
+	ResetDedicatedServer = 0x19,
+	UpdateGameSession = 0x1A,
+	BanPlayer = 0x1B,
+	UpdateMeshConnection = 0x1D,
+	RemovePlayerFromBannedList = 0x1F,
+	ClearBannedList = 0x20,
+	GetBannedList = 0x21,
+	AddQueuedPlayerToGame = 0x26,
+	UpdateGameName = 0x27,
+	GetGameListSnapshot = 0x64,
+	GetGameListSubscription = 0x65,
+	DestroyGameList = 0x66,
+	GetFullGameData = 0x67,
+	GetMatchmakingConfig = 0x68,
+	GetGameDataFromId = 0x69,
+	AddAdminPlayer = 0x6A,
+	RemoveAdminPlayer = 0x6B,
+	SetPlayerTeam = 0x6C,
+	ChangePlayerTeam = 0x6D,
+	MigrateAdminPlayer = 0x6E,
+	GetUserSetGameListSubscription = 0x6F,
+	RegisterDynamicDedicatedServerCreator = 0x96,
+	UnregisterDynamicDedicatedServerCreator = 0x97,
+
+	// Notifications
+	NotifyMatchmakingFailed = 0x0A,
+	NotifyMatchmakingAsyncStatus = 0x0C,
+	NotifyGameCreated = 0x0F,
+	NotifyGameRemoved = 0x10,
+	NotifyGameSetup = 0x14,
+	NotifyPlayerJoining = 0x15,
+	NotifyPlayerJoinCompleted = 0x1E,
+	NotifyPlayerRemoved = 0x28,
+	NotifyHostMigrationCompleted = 0x3C,
+	NotifyHostMigrationStart = 0x46,
+	NotifyPlatformHostInitialized = 0x47,
+	NotifyGameAttribChange = 0x50,
+	NotifyPlayerAttribChange = 0x5A,
+	NotifyPlayerCustomDataChange = 0x5F,
+	NotifyGameStateChange = 0x64,
+	NotifyGameSettingsChange = 0x6E,
+	NotifyGameCapacityChange = 0x6F,
+	NotifyGameReset = 0x70,
+	NotifyGameReportingIdChange = 0x71,
+	NotifyGameSessionUpdated = 0x73,
+	NotifyGamePlayerStateChange = 0x74,
+	NotifyGamePlayerTeamChange = 0x75,
+	NotifyGameTeamIdChange = 0x76,
+	NotifyProcessQueue = 0x77,
+	NotifyGameListUpdate = 0xC9,
+	NotifyAdminListChange = 0xCA,
+	NotifyCreateDynamicDedicatedServerGame = 0xDC,
+	NotifyGameNameChange = 0xE6
+};
+
 // Blaze
 namespace Blaze {
 	// GameManagerComponent
-	void GameManagerComponent::Parse(Client* client, const Header& header) {
-		switch (header.command) {
-			case 0x01:
-				CreateGame(client, header);
+	uint16_t GameManagerComponent::GetId() const {
+		return Id;
+	}
+
+	std::string_view GameManagerComponent::GetName() const {
+		return "GameManager";
+	}
+
+	std::string_view GameManagerComponent::GetReplyPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::CreateGame: return "createGame";
+			case PacketID::DestroyGame: return "destroyGame";
+			case PacketID::AdvanceGameState: return "advanceGameState";
+			case PacketID::SetGameSettings: return "setGameSettings";
+			case PacketID::SetPlayerCapacity: return "setPlayerCapacity";
+			case PacketID::SetGameAttributes: return "setGameAttributes";
+			case PacketID::SetPlayerAttributes: return "setPlayerAttributes";
+			case PacketID::JoinGame: return "joinGame";
+			case PacketID::RemovePlayer: return "removePlayer";
+			case PacketID::StartMatchmaking: return "startMatchmaking";
+			case PacketID::CancelMatchmaking: return "cancelMatchmaking";
+			case PacketID::FinalizeGameCreation: return "finalizeGameCreation";
+			case PacketID::ListGames: return "listGames";
+			case PacketID::SetPlayerCustomData: return "setPlayerCustomData";
+			case PacketID::ReplayGame: return "replayGame";
+			case PacketID::ReturnDedicatedServerToPool: return "returnDedicatedServerToPool";
+			case PacketID::JoinGameByGroup: return "joinGameByGroup";
+			case PacketID::LeaveGameByGroup: return "leaveGameByGroup";
+			case PacketID::MigrateGame: return "migrateGame";
+			case PacketID::UpdateGameHostMigrationStatus: return "updateGameHostMigrationStatus";
+			case PacketID::ResetDedicatedServer: return "resetDedicatedServer";
+			case PacketID::UpdateGameSession: return "updateGameSession";
+			case PacketID::BanPlayer: return "banPlayer";
+			case PacketID::UpdateMeshConnection: return "updateMeshConnection";
+			case PacketID::RemovePlayerFromBannedList: return "removePlayerFromBannedList";
+			case PacketID::ClearBannedList: return "clearBannedList";
+			case PacketID::GetBannedList: return "getBannedList";
+			case PacketID::AddQueuedPlayerToGame: return "addQueuedPlayerToGame";
+			case PacketID::UpdateGameName: return "updateGameName";
+			case PacketID::GetGameListSnapshot: return "getGameListSnapshot";
+			case PacketID::GetGameListSubscription: return "getGameListSubscription";
+			case PacketID::DestroyGameList: return "destroyGameList";
+			case PacketID::GetFullGameData: return "getFullGameData";
+			case PacketID::GetMatchmakingConfig: return "getMatchmakingConfig";
+			case PacketID::GetGameDataFromId: return "getGameDataFromId";
+			case PacketID::AddAdminPlayer: return "addAdminPlayer";
+			case PacketID::RemoveAdminPlayer: return "removeAdminPlayer";
+			case PacketID::SetPlayerTeam: return "setPlayerTeam";
+			case PacketID::ChangePlayerTeam: return "changePlayerTeam";
+			case PacketID::MigrateAdminPlayer: return "migrateAdminPlayer";
+			case PacketID::GetUserSetGameListSubscription: return "getUserSetGameListSubscription";
+			case PacketID::RegisterDynamicDedicatedServerCreator: return "registerDynamicDedicatedServerCreator";
+			case PacketID::UnregisterDynamicDedicatedServerCreator: return "unregisterDynamicDedicatedServerCreator";
+
+			default: return "";
+		}
+	}
+
+	std::string_view GameManagerComponent::GetNotificationPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::NotifyMatchmakingFailed: return "NotifyMatchmakingFailed";
+			case PacketID::NotifyMatchmakingAsyncStatus: return "NotifyMatchmakingAsyncStatus";
+			case PacketID::NotifyGameCreated: return "NotifyGameCreated";
+			case PacketID::NotifyGameRemoved: return "NotifyGameRemoved";
+			case PacketID::NotifyGameSetup: return "NotifyGameSetup";
+			case PacketID::NotifyPlayerJoining: return "NotifyPlayerJoining";
+			case PacketID::NotifyPlayerJoinCompleted: return "NotifyPlayerJoinCompleted";
+			case PacketID::NotifyPlayerRemoved: return "NotifyPlayerRemoved";
+			case PacketID::NotifyHostMigrationCompleted: return "NotifyHostMigrationCompleted";
+			case PacketID::NotifyHostMigrationStart: return "NotifyHostMigrationStart";
+			case PacketID::NotifyPlatformHostInitialized: return "NotifyPlatformHostInitialized";
+			case PacketID::NotifyGameAttribChange: return "NotifyGameAttribChange";
+			case PacketID::NotifyPlayerAttribChange: return "NotifyPlayerAttribChange";
+			case PacketID::NotifyPlayerCustomDataChange: return "NotifyPlayerCustomDataChange";
+			case PacketID::NotifyGameStateChange: return "NotifyGameStateChange";
+			case PacketID::NotifyGameSettingsChange: return "NotifyGameSettingsChange";
+			case PacketID::NotifyGameCapacityChange: return "NotifyGameCapacityChange";
+			case PacketID::NotifyGameReset: return "NotifyGameReset";
+			case PacketID::NotifyGameReportingIdChange: return "NotifyGameReportingIdChange";
+			case PacketID::NotifyGameSessionUpdated: return "NotifyGameSessionUpdated";
+			case PacketID::NotifyGamePlayerStateChange: return "NotifyGamePlayerStateChange";
+			case PacketID::NotifyGamePlayerTeamChange: return "NotifyGamePlayerTeamChange";
+			case PacketID::NotifyGameTeamIdChange: return "NotifyGameTeamIdChange";
+			case PacketID::NotifyProcessQueue: return "NotifyProcessQueue";
+			case PacketID::NotifyGameListUpdate: return "NotifyGameListUpdate";
+			case PacketID::NotifyAdminListChange: return "NotifyAdminListChange";
+			case PacketID::NotifyCreateDynamicDedicatedServerGame: return "NotifyCreateDynamicDedicatedServerGame";
+			case PacketID::NotifyGameNameChange: return "NotifyGameNameChange";
+
+			default: return "";
+		}
+	}
+
+	bool GameManagerComponent::ParsePacket(Request& request) {
+		switch (request.get_command()) {
+			case PacketID::CreateGame:
+				CreateGame(request);
 				break;
 
-			case 0x02:
-				DestroyGame(client, header);
+			case PacketID::DestroyGame:
+				DestroyGame(request);
 				break;
 
-			case 0x08:
-				SetPlayerAttributes(client, header);
+			case PacketID::SetPlayerAttributes:
+				SetPlayerAttributes(request);
 				break;
 
-			case 0x09:
-				JoinGame(client, header);
+			case PacketID::JoinGame:
+				JoinGame(request);
 				break;
 			
-			case 0x0B:
-				RemovePlayer(client, header);
+			case PacketID::RemovePlayer:
+				RemovePlayer(request);
 				break;
 
-			case 0x0D:
-				StartMatchmaking(client, header);
+			case PacketID::StartMatchmaking:
+				StartMatchmaking(request);
 				break;
 
-			case 0x0E:
-				CancelMatchmaking(client, header);
+			case PacketID::CancelMatchmaking:
+				CancelMatchmaking(request);
 				break;
 
-			case 0x0F:
-				FinalizeGameCreation(client, header);
+			case PacketID::FinalizeGameCreation:
+				FinalizeGameCreation(request);
 				break;
 
-			case 0x19:
-				ResetDedicatedServer(client, header);
+			case PacketID::ResetDedicatedServer:
+				ResetDedicatedServer(request);
 				break;
 
-			case 0x1D:
-				UpdateMeshConnection(client, header);
+			case PacketID::UpdateMeshConnection:
+				UpdateMeshConnection(request);
 				break;
 
 			default:
-				std::cout << "Unknown gamemanager command: 0x" << std::hex << header.command << std::dec << std::endl;
-				break;
+				return false;
 		}
+
+		return true;
 	}
 
-	void GameManagerComponent::SendCreateGame(Client* client, uint32_t gameId) {
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", gameId);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x01;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void GameManagerComponent::WriteCreateGame(TDF::Packet& packet, uint32_t gameId) {
+		// TODO: check if this packet even uses any data.
+		packet.put_integer("GID", gameId);
 	}
 
-	void GameManagerComponent::SendJoinGame(Client* client, uint32_t gameId) {
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", gameId);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x09;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void GameManagerComponent::WriteJoinGame(TDF::Packet& packet, uint32_t gameId) {
+		packet.put_integer("GID", gameId);
 	}
 
-	void GameManagerComponent::SendStartMatchmaking(Client* client, uint32_t id) {
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "MSID", id);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x0D;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void GameManagerComponent::WriteStartMatchmaking(TDF::Packet& packet, uint32_t id) {
+		packet.put_integer("MSID", id);
 	}
 
-	void GameManagerComponent::SendCancelMatchmaking(Client* client, uint32_t id) {
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "MSID", id);
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x0E;
-		header.error_code = 0;
-
-		client->reply(std::move(header), outBuffer);
+	void GameManagerComponent::WriteCancelMatchmaking(TDF::Packet& packet, uint32_t id) {
+		packet.put_integer("MSID", id);
 	}
 
-	void GameManagerComponent::NotifyMatchmakingFailed(Client* client, uint32_t id, MatchmakingResult result) {
-		const auto& user = client->get_user();
-
-		TDF::Packet packet;
-		packet.PutInteger(nullptr, "MAXF", 0);
-		packet.PutInteger(nullptr, "MSID", id);
-		packet.PutInteger(nullptr, "RSLT", result);
-		packet.PutInteger(nullptr, "USID", user->get_id());
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x0A;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
-	}
-
-	void GameManagerComponent::NotifyMatchmakingAsyncStatus(Client* client, uint32_t id) {
-		const auto& user = client->get_user();
-
-		TDF::Packet packet;
-		{
-			auto& asyncInfoList = packet.CreateList(nullptr, "ASIL", TDF::Type::String);
+	void GameManagerComponent::NotifyMatchmakingFailed(Request& request, uint32_t id, MatchmakingResult result) {
+		const auto& user = request.get_user();
+		if (!user) {
+			// No user, ignore.
+			return;
 		}
-		packet.PutInteger(nullptr, "MSID", id);
-		packet.PutInteger(nullptr, "USID", user->get_id());
 
-		/*
-		873a6c00 - ASIL
+		TDF::Packet packet;
+		packet.put_integer("MAXF", 0);
+		packet.put_integer("MSID", id);
+		packet.put_integer("RSLT", result);
+		packet.put_integer("USID", user->get_id());
 
-			b73a6400 - MSID
-
-			d73a6400 - USID
-			*/
-
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x0C;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyMatchmakingFailed);
 	}
 
-	void GameManagerComponent::NotifyGameCreated(Client* client, uint32_t gameId) {
+	void GameManagerComponent::NotifyMatchmakingAsyncStatus(Request& request, uint32_t id) {
+		const auto& user = request.get_user();
+		if (!user) {
+			// No user, ignore.
+			return;
+		}
+
+		TDF::Packet packet;
+		packet.push_list("ASIL", TDF::Type::String);
+		// some user list? ill check later.
+		packet.pop();
+
+		packet.put_integer("MSID", id);
+		packet.put_integer("USID", user->get_id());
+
+		request.notify(packet, Id, PacketID::NotifyMatchmakingAsyncStatus);
+	}
+
+	void GameManagerComponent::NotifyGameCreated(Request& request, uint32_t gameId) {
 		TDF::Packet packet;
 		packet.put_integer("GID", gameId);
 
-		client->notify({
-			.component = Component::GameManager,
-			.command = 0x0F
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyGameCreated);
 	}
 
-	void GameManagerComponent::NotifyGameRemoved(Client* client, uint32_t gameId, DestroyGameReason reason) {
+	void GameManagerComponent::NotifyGameRemoved(Request& request, uint32_t gameId, DestroyGameReason reason) {
 		TDF::Packet packet;
 		packet.put_integer("GID", gameId);
 		packet.put_integer("REAS", reason);
 
-		client->notify({
-			.component = Component::GameManager,
-			.command = 0x10
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyGameRemoved);
 	}
 
-	void GameManagerComponent::NotifyGameSetup(Client* client) {
-		/*
-			HNET internals
-
-			0x1C
-			0x18
-			0x18
-			0x10
-		*/
-		const auto& request = client->get_request();
-
-		const auto& user = client->get_user();
+	void GameManagerComponent::NotifyGameSetup(Request& request) {
+		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
@@ -680,7 +701,6 @@ namespace Blaze {
 			return;
 		}
 
-		auto clientId = client->get_id();
 		auto userId = user->get_id();
 
 		const auto& gameInfo = game->GetInfo();
@@ -699,7 +719,7 @@ namespace Blaze {
 		{
 			ReplicatedGamePlayer player;
 			player.gameId = game->GetId();
-			player.localization = client->data().lang;
+			player.localization = request.get_client().data().lang;
 			player.name = user->get_name();
 			player.id = userId;
 			player.hostNetwork = gameInfo.hostNetwork;
@@ -855,16 +875,11 @@ namespace Blaze {
 			// packet.PutInteger(&valuStruct, "ERR", 0);
 		}
 #endif
-		client->notify({
-			.component = Component::GameManager,
-			.command = 0x14
-		}, packet);
+		request.notify(packet, Id, PacketID::NotifyGameSetup);
 	}
 
-	void GameManagerComponent::NotifyPlayerJoining(Client* client, uint32_t gameId) {
-		auto& request = client->get_request();
-
-		const auto& user = client->get_user();
+	void GameManagerComponent::NotifyPlayerJoining(Request& request, uint32_t gameId) {
+		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
@@ -876,124 +891,69 @@ namespace Blaze {
 
 		user->set_game(game);
 
+		const auto& client = request.get_client();
 		const auto& gameInfo = game->GetInfo();
 
+		ReplicatedGamePlayer player;
+		player.gameId = game->GetId();
+		player.localization = client.data().lang;
+		player.name = user->get_name();
+		player.id = user->get_id();
+		player.hostNetwork = gameInfo.hostNetwork;
+		player.slot = 1;
+		player.slotType = Slot::Public;
+		player.state = PlayerState::Connected;
+		player.tIndex = 0xFFFF;
+		player.time = utils::get_unix_time();
+		player.uid = client.get_id();
+
+		//
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", game->GetId());
-		{
-			auto& pdatStruct = packet.CreateStruct(nullptr, "PDAT");
-			packet.PutBlob(&pdatStruct, "BLOB", nullptr, 0);
-			packet.PutInteger(&pdatStruct, "EXID", 0);
-			packet.PutInteger(&pdatStruct, "LOC", client->data().lang);
-			packet.PutString(&pdatStruct, "NAME", user->get_name());
-			{
-				auto& pattMap = packet.CreateMap(&pdatStruct, "PATT", TDF::Type::String, TDF::Type::String);
-				packet.PutString(&pattMap, "Premium", "True");
-			}
-			packet.PutInteger(&pdatStruct, "PID", user->get_id());
-			{
-				auto& pnetUnion = packet.CreateUnion(nullptr, "PNET", NetworkAddressMember::IpPairAddress);
-				auto& valuStruct = packet.CreateStruct(&pnetUnion, "VALU");
-				{
-					auto& inipStruct = packet.CreateStruct(&valuStruct, "INIP");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
-				} {
-					auto& exipStruct = packet.CreateStruct(&valuStruct, "EXIP");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
-				}
-			}
-			packet.PutInteger(&pdatStruct, "SID", 0);
-			packet.PutInteger(&pdatStruct, "SLOT", 0);
-			packet.PutInteger(&pdatStruct, "STAT", PlayerState::Connected);
-			packet.PutInteger(&pdatStruct, "TIDX", 0xFFFF);
-			packet.PutInteger(&pdatStruct, "TIME", utils::get_unix_time());
-			packet.PutObjectId(&pdatStruct, "UGID", 0, 0, 0);
-			packet.PutInteger(&pdatStruct, "UID", client->get_id());
-		}
+		packet.put_integer("GID", player.gameId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
+		packet.push_struct("PDAT");
+		player.Write(packet);
+		packet.pop();
 
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x15;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyPlayerJoining);
 	}
 
-	void GameManagerComponent::NotifyPlayerJoinCompleted(Client* client, uint32_t gameId, uint32_t personaId) {
+	void GameManagerComponent::NotifyPlayerJoinCompleted(Request& request, uint32_t gameId, uint32_t personaId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", gameId);
-		packet.PutInteger(nullptr, "PID", personaId);
+		packet.put_integer("GID", gameId);
+		packet.put_integer("PID", personaId);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x1E;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyPlayerJoinCompleted);
 	}
 
-	void GameManagerComponent::NotifyPlayerRemoved(Client* client, uint32_t gameId, uint32_t personaId, PlayerRemovedReason reason) {
+	void GameManagerComponent::NotifyPlayerRemoved(Request& request, uint32_t gameId, uint32_t personaId, PlayerRemovedReason reason) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "CNTX", 0);
-		packet.PutInteger(nullptr, "GID", gameId);
-		packet.PutInteger(nullptr, "PID", personaId);
-		packet.PutInteger(nullptr, "REAS", reason);
+		packet.put_integer("CNTX", 0);
+		packet.put_integer("GID", gameId);
+		packet.put_integer("PID", personaId);
+		packet.put_integer("REAS", reason);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x28;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyPlayerRemoved);
 	}
 
-	void GameManagerComponent::NotifyPlatformHostInitialized(Client* client, uint64_t gameId) {
+	void GameManagerComponent::NotifyPlatformHostInitialized(Request& request, uint64_t gameId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", gameId);
-		packet.PutInteger(nullptr, "PHST", 1);
+		packet.put_integer("GID", gameId);
+		packet.put_integer("PHST", 1); // host id (host persona id)?
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x47;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyPlatformHostInitialized);
 	}
 
-	void GameManagerComponent::NotifyGameStateChange(Client* client, uint64_t gameId, GameState gameState) {
+	void GameManagerComponent::NotifyGameStateChange(Request& request, uint64_t gameId, GameState gameState) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", gameId);
-		packet.PutInteger(nullptr, "GSTA", gameState);
+		packet.put_integer("GID", gameId);
+		packet.put_integer("GSTA", gameState);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x64;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyGameStateChange);
 	}
 
-	void GameManagerComponent::NotifyGameReset(Client* client) {
-		auto& request = client->get_request();
-
-		const auto& user = client->get_user();
+	void GameManagerComponent::NotifyGameReset(Request& request) {
+		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
@@ -1083,57 +1043,30 @@ namespace Blaze {
 			packet.PutBlob(&dataStruct, "XSES", nullptr, 0);
 		}
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x70;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyGameReset);
 	}
 
-	void GameManagerComponent::NotifyGameSessionUpdated(Client* client, uint32_t gameId) {
+	void GameManagerComponent::NotifyGameSessionUpdated(Request& request, uint32_t gameId) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", gameId);
-		packet.PutBlob(nullptr, "XNNC", nullptr, 0);
-		packet.PutBlob(nullptr, "XSES", nullptr, 0);
+		packet.put_integer("GID", gameId);
+		packet.put_blob("XNNC", nullptr, 0);
+		packet.put_blob("XSES", nullptr, 0);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x73;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyGameSessionUpdated);
 	}
 
-	void GameManagerComponent::NotifyGamePlayerStateChange(Client* client, uint32_t gameId, uint32_t personaId, PlayerState playerState) {
+	void GameManagerComponent::NotifyGamePlayerStateChange(Request& request, uint32_t gameId, uint32_t personaId, PlayerState playerState) {
 		TDF::Packet packet;
-		packet.PutInteger(nullptr, "GID", gameId);
-		packet.PutInteger(nullptr, "PID", personaId);
-		packet.PutInteger(nullptr, "STAT", playerState);
+		packet.put_integer("GID", gameId);
+		packet.put_integer("PID", personaId);
+		packet.put_integer("STAT", playerState);
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0x74;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyGamePlayerStateChange);
 	}
 
-	void GameManagerComponent::NotifyCreateDynamicDedicatedServerGame(Client* client) {
+	void GameManagerComponent::NotifyCreateDynamicDedicatedServerGame(Request& request) {
 		// Sending this should make the client send back a CreateGameRequest or ResetDedicatedServer
-
-		auto& request = client->get_request();
-
-		const auto& user = client->get_user();
+		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
@@ -1222,101 +1155,146 @@ namespace Blaze {
 		}
 		packet.PutString(nullptr, "MID", "1");
 
-		DataBuffer outBuffer;
-		packet.Write(outBuffer);
-
-		Header header;
-		header.component = Component::GameManager;
-		header.command = 0xDC;
-		header.error_code = 0;
-
-		client->notify(std::move(header), outBuffer);
+		request.notify(packet, Id, PacketID::NotifyCreateDynamicDedicatedServerGame);
 	}
 
-	void GameManagerComponent::CreateGame(Client* client, Header header) {
-		SendCreateGame(client, 1);
+	void GameManagerComponent::CreateGame(Request& request) {
+		// TODO: read request to struct
+		/*
+864b6e00 - ADMN
+874d3200 - ATTR
+8b4c2c00 - BTPL
+8f2a7400 - CRIT
+9e3d3200 - GCTR
+9ee86d00 - GNAM
+9f397400 - GSET
+9f4e7000 - GTYP
+9f5cac00 - GURL
+a2e97400 - HNET
+a67baf00 - IGNO
+b61d3200 - MATR
+bb297300 - NRES
+bb4bf000 - NTOP
+c21d3400 - PATT
+c2387000 - PCAP
+c27a6400 - PGID
+c27ce300 - PGSC
+c2d87800 - PMAX
+c3297300 - PRES
+c6387000 - QCAP
+ca7a6400 - RGID
+ce587400 - SEAT
+ce992c00 - SIDL
+cecbf400 - SLOT
+d2387000 - TCAP
+d2993300 - TIDS
+d2993800 - TIDX
+dafa7000 - VOIP
+db3d3200 - VSTR
+		*/
 
-		NotifyGameStateChange(client, 1, GameState::Initializing);
-		NotifyGameSetup(client);
+		TDF::Packet packet;
+		WriteCreateGame(packet, 1);
+
+		request.reply(packet);
+
+		// Notifications
+		NotifyGameStateChange(request, 1, GameState::Initializing);
+		NotifyGameSetup(request);
 	}
 
-	void GameManagerComponent::DestroyGame(Client* client, Header header) {
-		const auto& request = client->get_request();
-
+	void GameManagerComponent::DestroyGame(Request& request) {
 		auto gameId = request["GID"].GetUint();
 		auto reason = static_cast<DestroyGameReason>(request["REAS"].GetUint());
-		NotifyGameRemoved(client, gameId, reason);
 
 		TDF::Packet packet;
 		packet.put_integer("GID", gameId);
 
-		header.error_code = 0;
-		client->reply(std::move(header), packet);
+		request.reply(packet);
+
+		// Notifications
+		NotifyGameRemoved(request, gameId, reason);
 	}
 
-	void GameManagerComponent::SetPlayerAttributes(Client* client, Header header) {
-		auto& request = client->get_request();
-
-		std::cout << "SetPlayerAttributes" << std::endl;
-
-		header.error_code = 0;
-		client->reply(std::move(header));
+	void GameManagerComponent::SetPlayerAttributes(Request& request) {
+		// get new attribs?
+		request.reply();
 	}
 
-	void GameManagerComponent::JoinGame(Client* client, Header header) {
-		const auto& request = client->get_request();
-		const auto& user = client->get_user();
-
-		uint32_t gameId = request["GID"].GetUint();
-		SendJoinGame(client, gameId);
-
-		UserSessionComponent::NotifyUserAdded(client, user->get_id(), user->get_name());
-		UserSessionComponent::NotifyUserUpdated(client, user->get_id());
-
-		PlaygroupsComponent::NotifyJoinPlaygroup(client);
-
-		NotifyPlayerJoining(client, gameId);
-	}
-
-	void GameManagerComponent::RemovePlayer(Client* client, Header header) {
-		auto& request = client->get_request();
-
-		uint32_t gameId = request["GID"].GetUint();
-		uint32_t personaId = request["PID"].GetUint();
-		PlayerRemovedReason reason = static_cast<PlayerRemovedReason>(request["REAS"].GetUint());
-
-		header.error_code = 0;
-		client->reply(std::move(header));
-
-		NotifyPlayerRemoved(client, gameId, personaId, reason);
-	}
-
-	void GameManagerComponent::StartMatchmaking(Client* client, Header header) {
-		SendStartMatchmaking(client, 1);
-	}
-
-	void GameManagerComponent::CancelMatchmaking(Client* client, Header header) {
-		SendCancelMatchmaking(client, 1);
-
-		NotifyMatchmakingFailed(client, 1, MatchmakingResult::Cancelled);
-	}
-
-	void GameManagerComponent::FinalizeGameCreation(Client* client, Header header) {
-		const auto& user = client->get_user();
+	void GameManagerComponent::JoinGame(Request& request) {
+		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
 
-		auto game = user->get_game();
-		if (game) {
-			Game::GameManager::StartGame(game->GetId());
-		}
+		uint32_t gameId = request["GID"].GetUint();
 
-		header.error_code = 0;
-		client->reply(std::move(header));
+		TDF::Packet packet;
+		WriteJoinGame(packet, gameId);
+
+		request.reply(packet);
+
+		// Notifications
+		PlaygroupsComponent::NotifyJoinPlaygroup(request);
+
+		NotifyPlayerJoining(request, gameId);
 	}
 
-	void GameManagerComponent::ResetDedicatedServer(Client* client, Header header) {
+	void GameManagerComponent::RemovePlayer(Request& request) {
+		uint32_t gameId = request["GID"].GetUint();
+		uint32_t personaId = request["PID"].GetUint();
+		PlayerRemovedReason reason = static_cast<PlayerRemovedReason>(request["REAS"].GetUint());
+
+		request.reply();
+
+		// Notifications
+		NotifyPlayerRemoved(request, gameId, personaId, reason);
+	}
+
+	void GameManagerComponent::StartMatchmaking(Request& request) {
+		// TODO: read game data etc when I bother adding multiplayer
+
+		TDF::Packet packet;
+		WriteStartMatchmaking(packet, 1);
+
+		request.reply(packet);
+	}
+
+	void GameManagerComponent::CancelMatchmaking(Request& request) {
+		auto matchmakingSessionId = request["MSID"].GetUint();
+
+		TDF::Packet packet;
+		WriteCancelMatchmaking(packet, matchmakingSessionId);
+
+		request.reply(packet);
+
+		// Notifications
+		NotifyMatchmakingFailed(request, matchmakingSessionId, MatchmakingResult::Cancelled);
+	}
+
+	void GameManagerComponent::FinalizeGameCreation(Request& request) {
+		const auto& user = request.get_user();
+		if (!user) {
+			return;
+		}
+
+		const auto& game = user->get_game();
+		if (!game) {
+			// Send an error after I bother adding error types
+			request.reply();
+			return;
+		}
+
+		uint32_t gameId = game->GetId();
+		Game::GameManager::StartGame(gameId);
+
+		TDF::Packet packet;
+		WriteJoinGame(packet, gameId);
+
+		request.reply(packet);
+	}
+
+	void GameManagerComponent::ResetDedicatedServer(Request& request) {
 		/*
 			GSET flags
 				1024 = pvp
@@ -1341,7 +1319,7 @@ namespace Blaze {
 
 		// sub_C2EA10
 
-		const auto& user = client->get_user();
+		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
@@ -1351,8 +1329,6 @@ namespace Blaze {
 			// Should never happen?
 			return;
 		}
-
-		const auto& request = client->get_request();
 
 		user->set_game(game);
 
@@ -1418,26 +1394,22 @@ namespace Blaze {
 
 		/////////////////
 
-#if 0 // current "ok" version
-		SendCreateGame(client, gameId);
+		TDF::Packet packet;
+		WriteJoinGame(packet, gameInfo.id);
 
-		NotifyGameStateChange(client, gameId, gameInfo.state);
-		NotifyGameSetup(client);
-#else
-		SendCreateGame(client, gameInfo.id);
+		request.reply(packet);
 
-		NotifyGameCreated(client, gameInfo.id);
-		NotifyCreateDynamicDedicatedServerGame(client);
-		NotifyGameStateChange(client, gameInfo.id, gameInfo.state);
-		// NotifyGameReset(client);
-		NotifyGameSetup(client);
-#endif
-		// NotifyPlayerJoining(client, gameId);
-		// NotifyPlayerJoinCompleted(client, gameId, user->get_id());
+		// Notifications
+		NotifyGameCreated(request, gameInfo.id);
+		NotifyCreateDynamicDedicatedServerGame(request);
+		NotifyGameStateChange(request, gameInfo.id, gameInfo.state);
+		// NotifyGameReset(request);
+		NotifyGameSetup(request);
+		// NotifyPlayerJoining(request, gameId);
+		// NotifyPlayerJoinCompleted(request, gameId, user->get_id());
 	}
 
-	void GameManagerComponent::UpdateMeshConnection(Client* client, Header header) {
-		const auto& request = client->get_request();
+	void GameManagerComponent::UpdateMeshConnection(Request& request) {
 		const auto& targetList = request["TARG"]["_Content"];
 
 		uint32_t gameId = request["GID"].GetUint();
@@ -1451,293 +1423,34 @@ namespace Blaze {
 		uint32_t personaId = targetList[0]["PID"].GetUint();
 
 		PlayerState playerState = static_cast<PlayerState>(targetList[0]["STAT"].GetUint());
-		ClientType type = client->data().type;
+		ClientType type = request.get_client().data().type;
 
+		request.reply();
+
+		// Notifications
 		if (playerState == PlayerState::Connecting) {
 			if (type == ClientType::GameplayUser) {
-				const auto& user = client->get_user();
+				const auto& user = request.get_user();
 				if (user) {
-					NotifyGamePlayerStateChange(client, gameId, user->get_id(), PlayerState::Connected);
-					NotifyPlayerJoinCompleted(client, gameId, user->get_id());
+					NotifyGamePlayerStateChange(request, gameId, user->get_id(), PlayerState::Connected);
+					NotifyPlayerJoinCompleted(request, gameId, user->get_id());
 				}
 			} else if (type == ClientType::DedicatedServer) {
-				NotifyGamePlayerStateChange(client, gameId, personaId, PlayerState::Connected);
-				NotifyPlayerJoinCompleted(client, gameId, personaId);
+				NotifyGamePlayerStateChange(request, gameId, personaId, PlayerState::Connected);
+				NotifyPlayerJoinCompleted(request, gameId, personaId);
 			}
 		} else if (playerState == PlayerState::Reserved) {
 			if (type == ClientType::GameplayUser) {
 				// var game = GameManager.Games[gameID.Value];
 				// game.Slots.Remove(playerID.Value);
 
-				NotifyPlayerRemoved(client, gameId, personaId, PlayerRemovedReason::PlayerConnLost);
+				NotifyPlayerRemoved(request, gameId, personaId, PlayerRemovedReason::PlayerConnLost);
 			} else if (type == ClientType::DedicatedServer) {
 				// var game = GameManager.Games[gameID.Value];
 				// game.Slots.Remove(playerID.Value);
 
-				NotifyPlayerRemoved(client, gameId, personaId, PlayerRemovedReason::PlayerConnLost);
+				NotifyPlayerRemoved(request, gameId, personaId, PlayerRemovedReason::PlayerConnLost);
 			}
 		}
-
-		header.error_code = 0;
-		client->reply(std::move(header));
-	}
-
-	void GameManagerComponent::WriteGameData(Client* client, const Game::Instance& game, TDF::Packet& packet, const std::string& playgroupId) {
-		if (!client) {
-			return;
-		}
-
-		const auto& user = client->get_user();
-		if (!user) {
-			return;
-		}
-
-		// Get request data
-		const auto& request = client->get_request();
-
-		// Client data
-		auto clientId = client->get_id();
-
-		// User data
-		auto userId = user->get_id();
-
-		// Game data
-		auto gameId = game.GetId();
-		const auto& gameInfo = game.GetInfo();
-
-		// Game administrators?
-		packet.push_list("ADMN", TDF::Type::Integer);
-		{
-			packet.put_integer("", clientId);
-		}
-		packet.pop();
-
-		// Game attributes
-		packet.push_map("ATTR", TDF::Type::String, TDF::Type::String);
-		for (const auto& [key, value] : gameInfo.attributes) {
-			packet.put_string(key, value);
-		}
-		packet.pop();
-
-		// Game capacity
-		packet.push_list("CAP", TDF::Type::Integer);
-		for (auto value : gameInfo.capacity) {
-			packet.put_integer("", value);
-		}
-		packet.pop();
-
-		packet.put_integer("GID", gameId);
-		packet.put_string("GNAM", gameInfo.name);
-		packet.put_integer("GPVH", 1234); // Game... pvh? u64
-		packet.put_integer("GSET", gameInfo.settings);
-		packet.put_integer("GSID", 1); // Game session id? u64
-		packet.put_integer("GSTA", gameInfo.state);
-		packet.put_string("GTYP", gameInfo.type);
-
-		// Host network data
-		packet.push_list("HNET", TDF::Type::Struct, true);
-		{
-			packet.push_struct("");
-			gameInfo.hostNetwork.Write(packet);
-			packet.pop();
-		}
-		packet.pop();
-
-		packet.put_integer("HSES", 13666); // u32
-		packet.put_integer("IGNO", gameInfo.ignore ? 1 : 0);
-		packet.put_integer("MCAP", gameInfo.maxPlayers);
-
-		// Quality of Service stuff (unsure where it's used)
-		packet.push_struct("NQOS");
-		{
-			packet.put_integer("DBPS", 100);
-			packet.put_integer("NATT", NatType::Open);
-			packet.put_integer("UBPS", 100);
-		}
-		packet.pop();
-
-		packet.put_integer("NRES", gameInfo.resetable ? 0 : 1);
-		packet.put_integer("NTOP", gameInfo.networkTopology);
-		packet.put_string("PGID", playgroupId); // b6852db1-ba37-4b40-aea3-0bd16efba4f9
-		packet.put_blob("PGSR", nullptr, 0);
-
-		// Player host?
-		packet.push_struct("PHST");
-		{
-			packet.put_integer("HPID", userId); // Player ID? (i64)
-			packet.put_integer("HSLT", 1); // Slot? (u8)
-		}
-		packet.pop();
-
-		packet.put_integer("PRES", gameInfo.presence);
-		packet.put_string("PSAS", "ams");
-		packet.put_integer("QCAP", gameInfo.queueCapacity);
-		packet.put_integer("SEED", gameInfo.seed);
-		packet.put_integer("TCAP", gameInfo.tcap);
-
-		// Team host/leader? wtf is this?
-		packet.push_struct("THST");
-		{
-			packet.put_integer("HPID", gameId); // Player ID? (i64)
-			packet.put_integer("HSLT", 0); // Slot? (u8)
-		}
-		packet.pop();
-
-		// Team ids?
-		packet.push_list("TIDS", TDF::Type::Integer); // u16 list?
-		{
-			packet.put_integer("", userId);
-		}
-		packet.pop();
-
-		packet.put_string("UUID", "71bc4bdb-82ec-494d-8d75-ca5123b827ac"); // 714b05dc-93bc-49ac-961c-cb38b574f30a
-		packet.put_integer("VOIP", VoipTopology::Disabled);
-		packet.put_string("VSTR", gameInfo.version);
-		packet.put_blob("XNNC", nullptr, 0);
-		packet.put_blob("XSES", nullptr, 0);
-
-		/*
-		{
-			auto& hnetList = packet.CreateList(&gameStruct, "HNET", TDF::Type::Struct, true);
-			{
-#if 1
-				auto& valuStruct = packet.CreateStruct(&hnetList, "");
-				{
-					auto& exipStruct = packet.CreateStruct(&valuStruct, "EXIP");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.externalIP.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.externalIP.port);
-				} {
-					auto& inipStruct = packet.CreateStruct(&valuStruct, "INIP");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.internalIP.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.internalIP.port);
-				}
-#else
-				auto& hnetMemberUnion = packet.CreateUnion(&hnetList, "", NetworkAddressMember::IpPairAddress);
-				auto& valuStruct = packet.CreateStruct(&hnetMemberUnion, "VALU");
-				{
-					auto& exipStruct = packet.CreateStruct(&valuStruct, "EXIP");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.externalIP.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.externalIP.port);
-				} {
-					auto& inipStruct = packet.CreateStruct(&valuStruct, "INIP");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.internalIP.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.internalIP.port);
-				}
-#endif
-			}
-		}
-		*/
-	}
-
-	void GameManagerComponent::WriteGameRequest(Client* client, const Game::Instance& game, TDF::Packet& packet) {
-		if (!client) {
-			return;
-		}
-
-		const auto& user = client->get_user();
-		if (!user) {
-			return;
-		}
-
-		// Get request data
-		const auto& request = client->get_request();
-
-		std::string gameCtr = request["GCTR"].GetString();
-		std::string gameUrl = request["GURL"].GetString();
-		bool gameIgnore = request["IGNO"].GetUint();
-
-		std::string playgroupId = request["PGID"].GetString();
-
-		uint32_t rgId = request["RGID"].GetUint();
-		uint32_t slot = request["SLOT"].GetUint();
-		uint32_t tidx = request["TIDX"].GetUint();
-		uint32_t tCap = request["TCAP"].GetUint();
-		std::string versionString = request["VSTR"].GetString();
-
-		// Client data
-		auto clientId = client->get_id();
-
-		// User data
-		auto userId = user->get_id();
-
-		// Game data
-		auto gameId = game.GetId();
-		const auto& gameInfo = game.GetInfo();
-
-		// Game administrators?
-		packet.push_list("ADMN", TDF::Type::Integer);
-		{
-			packet.put_integer("", clientId);
-		}
-		packet.pop();
-
-		// Game attributes
-		packet.push_map("ATTR", TDF::Type::String, TDF::Type::String);
-		for (const auto& [key, value] : gameInfo.attributes) {
-			packet.put_string(key, value);
-		}
-		packet.pop();
-		
-		packet.put_object_id("BTPL", 0, 0, 0); // What is this?
-		packet.put_string("GCTR", gameCtr); // Game counter?
-		packet.put_string("GNAM", gameInfo.name); // Game name
-		packet.put_integer("GSET", gameInfo.settings); // Game settings
-		packet.put_string("GTYP", gameInfo.type); // Game type
-		packet.put_string("GURL", gameUrl); // Game URL?
-
-		// Host network list
-		packet.push_list("HNET", TDF::Type::Struct, true);
-		{
-			packet.push_struct("EXIP");
-			packet.put_integer("IP", gameInfo.hostNetwork.exip.address);
-			packet.put_integer("PORT", gameInfo.hostNetwork.exip.port);
-			packet.pop();
-		} {
-			packet.push_struct("INIP");
-			packet.put_integer("IP", gameInfo.hostNetwork.inip.address);
-			packet.put_integer("PORT", gameInfo.hostNetwork.inip.port);
-			packet.pop();
-		}
-		packet.pop();
-
-		packet.put_integer("IGNO", gameInfo.ignore ? 1 : 0);
-		packet.put_integer("NRES", gameInfo.resetable ? 0 : 1);
-		packet.put_integer("NTOP", gameInfo.networkTopology);
-		packet.put_string("PGID", playgroupId);
-		packet.put_blob("PGSC", nullptr, 0);
-
-		// Player capacity?
-		packet.push_list("PCAP", TDF::Type::Integer);
-		for (auto value : gameInfo.capacity) {
-			packet.put_integer("", value);
-		}
-		packet.pop();
-
-		packet.put_integer("PMAX", gameInfo.maxPlayers);
-		packet.put_integer("PRES", gameInfo.presence);
-		packet.put_integer("QCAP", gameInfo.queueCapacity);
-		packet.put_integer("RGID", rgId);
-
-		// Unknown
-		packet.push_list("SIDL", TDF::Type::Integer);
-		packet.put_integer("", 1);
-		packet.pop();
-
-		// Unknown
-		packet.push_list("SEAT", TDF::Type::Integer);
-		packet.put_integer("", 1);
-		packet.pop();
-
-		packet.put_integer("SLOT", slot);
-		packet.put_integer("TCAP", tCap);
-
-		// Team IDs? (probably not)
-		packet.push_list("TIDS", TDF::Type::Integer);
-		packet.put_integer("", 1);
-		packet.pop();
-
-		packet.put_integer("TIDX", tidx);
-		packet.put_integer("VOIP", VoipTopology::Disabled);
-		packet.put_string("VSTR", versionString);
 	}
 }

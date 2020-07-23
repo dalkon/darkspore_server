@@ -17,6 +17,12 @@ namespace SporeNet {
 	// Predefined types
 	class RoomManager;
 
+	// RoomCategoryFlags
+	enum class RoomCategoryFlags : uint8_t {
+		Pseudo = 4,
+		Unknown = 8 // sub_E25720
+	};
+
 	// RoomView
 	class RoomView {
 		private:

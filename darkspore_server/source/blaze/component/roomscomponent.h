@@ -3,44 +3,52 @@
 #define _BLAZE_COMPONENT_ROOMS_HEADER
 
 // Include
-#include "blaze/tdf.h"
+#include "blaze/component.h"
+#include "predefined.h"
 
 // Blaze
 namespace Blaze {
-	class Client;
-
 	// RoomsComponent
-	class RoomsComponent {
+	class RoomsComponent : public Component {
 		public:
-			static void Parse(Client* client, const Header& header);
+			enum { Id = 0x15 };
 
+			uint16_t GetId() const override;
+
+			std::string_view GetName() const override;
+			std::string_view GetReplyPacketName(uint16_t command) const override;
+			std::string_view GetNotificationPacketName(uint16_t command) const override;
+
+			bool ParsePacket(Request& request) override;
+
+		public:
 			// Responses
-			static void SendSelectCategoryUpdates(Client* client, uint32_t viewId);
-			static void SendJoinRoom(Client* client, uint32_t roomId);
+			static void WriteSelectCategoryUpdates(TDF::Packet& packet, uint32_t viewId);
+			static void WriteJoinRoom(TDF::Packet& packet, const SporeNet::RoomPtr& room, int64_t userId);
 
 			// Notifications
-			static void NotifyRoomViewUpdated(Client* client, uint32_t viewId);
-			static void NotifyRoomViewAdded(Client* client, uint32_t viewId);
-			static void NotifyRoomViewRemoved(Client* client, uint32_t viewId);
-			static void NotifyRoomCategoryUpdated(Client* client, uint32_t categoryId);
-			static void NotifyRoomCategoryAdded(Client* client, uint32_t categoryId);
-			static void NotifyRoomCategoryRemoved(Client* client, uint32_t categoryId);
-			static void NotifyRoomUpdated(Client* client, uint32_t roomId);
-			static void NotifyRoomAdded(Client* client, uint32_t roomId);
-			static void NotifyRoomRemoved(Client* client, uint32_t roomId);
-			static void NotifyRoomPopulationUpdated(Client* client);
-			static void NotifyRoomMemberJoined(Client* client, uint32_t roomId, uint32_t memberId);
-			static void NotifyRoomMemberLeft(Client* client, uint32_t roomId, uint32_t memberId);
-			static void NotifyRoomMemberUpdated(Client* client, uint32_t roomId, uint32_t memberId);
-			static void NotifyRoomKick(Client* client, uint32_t roomId, uint32_t memberId);
-			static void NotifyRoomHostTransfer(Client* client, uint32_t roomId, uint32_t memberId);
-			static void NotifyRoomAttributesSet(Client* client, uint32_t roomId);
+			static void NotifyRoomViewUpdated(Request& request, uint32_t viewId);
+			static void NotifyRoomViewAdded(Request& request, uint32_t viewId);
+			static void NotifyRoomViewRemoved(Request& request, uint32_t viewId);
+			static void NotifyRoomCategoryUpdated(Request& request, uint32_t categoryId);
+			static void NotifyRoomCategoryAdded(Request& request, uint32_t categoryId);
+			static void NotifyRoomCategoryRemoved(Request& request, uint32_t categoryId);
+			static void NotifyRoomUpdated(Request& request, uint32_t roomId);
+			static void NotifyRoomAdded(Request& request, uint32_t roomId);
+			static void NotifyRoomRemoved(Request& request, uint32_t roomId);
+			static void NotifyRoomPopulationUpdated(Request& request);
+			static void NotifyRoomMemberJoined(Request& request, uint32_t roomId, uint32_t memberId);
+			static void NotifyRoomMemberLeft(Request& request, uint32_t roomId, uint32_t memberId);
+			static void NotifyRoomMemberUpdated(Request& request, uint32_t roomId, uint32_t memberId);
+			static void NotifyRoomKick(Request& request, uint32_t roomId, uint32_t memberId);
+			static void NotifyRoomHostTransfer(Request& request, uint32_t roomId, uint32_t memberId);
+			static void NotifyRoomAttributesSet(Request& request, uint32_t roomId);
 
 		private:
-			static void SelectViewUpdates(Client* client, Header header);
-			static void SelectCategoryUpdates(Client* client, Header header);
-			static void JoinRoom(Client* client, Header header);
-			static void SelectPseudoRoomUpdates(Client* client, Header header);
+			static void SelectViewUpdates(Request& request);
+			static void SelectCategoryUpdates(Request& request);
+			static void JoinRoom(Request& request);
+			static void SelectPseudoRoomUpdates(Request& request);
 	};
 }
 

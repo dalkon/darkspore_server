@@ -59,6 +59,9 @@ bool Application::OnInit() {
 	mPssServer = std::make_unique<Blaze::Server>(mIoService, 8443);
 	mTickServer = std::make_unique<Blaze::Server>(mIoService, 8999);
 
+	// QoS
+	mTestServer = std::make_unique<QoS::Server>(mIoService, 3659);
+
 	// HTTP
 	mHttpServer = std::make_unique<HTTP::Server>(mIoService, 80);
 	mQosServer = std::make_unique<HTTP::Server>(mIoService, 17502);

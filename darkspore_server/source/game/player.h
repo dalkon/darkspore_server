@@ -11,6 +11,9 @@ namespace Game {
 	// Player
 	class Player {
 		public:
+			static uint32_t GetXPForLevel(uint32_t level);
+
+		public:
 			Player(Instance& instance, uint8_t playerIndex, uint64_t blazeId);
 
 			RakNet::labsPlayer& GetData();
@@ -18,9 +21,11 @@ namespace Game {
 
 			uint8_t GetId() const;
 
+			void Setup(const SporeNet::UserPtr& user);
+
 			void SetStatus(uint32_t status, float progress);
 
-			const ObjectPtr& GetCharacterObject(uint32_t index) const;
+			ObjectPtr GetCharacterObject(uint32_t index) const;
 
 			const RakNet::labsCharacter& GetCharacter(uint32_t index) const;
 			void SetCharacter(RakNet::labsCharacter&& character, uint32_t index);

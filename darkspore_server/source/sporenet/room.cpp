@@ -97,7 +97,7 @@ namespace SporeNet {
 		packet.put_string("DISR", "");
 		packet.put_integer("EMAX", 10);
 		packet.put_integer("EPCT", 0);
-		packet.put_integer("FLAG", 4); // What enum is this?
+		packet.put_integer("FLAG", 0); // RoomCategoryFlags::Unknown
 		packet.put_string("LOCL", "");
 		packet.put_string("NAME", mName);
 		packet.put_integer("NEXP", 1);

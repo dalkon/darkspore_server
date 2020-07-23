@@ -4,6 +4,7 @@
 
 // Include
 #include "raknet/types.h"
+#include <memory>
 
 // Game
 namespace Game {

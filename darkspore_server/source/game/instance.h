@@ -91,6 +91,7 @@ namespace Game {
 			void Stop();
 
 			PlayerPtr GetPlayer(int64_t id) const;
+			PlayerPtr GetPlayerByIndex(uint8_t index) const;
 			PlayerPtr AddPlayer(int64_t id, uint8_t index);
 			void RemovePlayer(int64_t id);
 

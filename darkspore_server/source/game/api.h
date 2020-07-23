@@ -5,6 +5,7 @@
 // Include
 #include <rapidjson/document.h>
 #include <pugixml.hpp>
+#include <boost/beast/http/status.hpp>
 
 // HTTP
 namespace HTTP {
@@ -68,8 +69,10 @@ namespace Game {
 		private:
 			void add_broadcasts(pugi::xml_node& node);
 
-			void add_common_keys(pugi::xml_node& node, bool success = true);
+			void add_common_keys(pugi::xml_node& node, bool success = true, uint32_t successStatus = 200);
 			void add_common_keys(rapidjson::Document& document);
+
+			void set_response_body(HTTP::Response& response, pugi::xml_document& xmlDocument, boost::beast::http::status result) const;
 		
 		private:
 			std::string mVersion;

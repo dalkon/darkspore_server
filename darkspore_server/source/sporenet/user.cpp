@@ -115,10 +115,10 @@ namespace SporeNet {
 		utils::xml_add_text_node(node, "current_playgroup_id", currentPlaygroupId);
 		utils::xml_add_text_node(node, "default_deck_pve_id", defaultDeckPveId);
 		utils::xml_add_text_node(node, "default_deck_pvp_id", defaultDeckPvpId);
+		utils::xml_add_text_node(node, "dna", dna);
 		utils::xml_add_text_node(node, "level", level);
 		utils::xml_add_text_node(node, "avatar_id", avatarId);
 		utils::xml_add_text_node(node, "id", id);
-		utils::xml_add_text_node(node, "dna", dna);
 		utils::xml_add_text_node(node, "new_player_inventory", newPlayerInventory);
 		utils::xml_add_text_node(node, "new_player_progress", newPlayerProgress);
 		utils::xml_add_text_node(node, "cashout_bonus_time", cashoutBonusTime);
@@ -135,7 +135,7 @@ namespace SporeNet {
 		utils::xml_add_text_node(node, "upsell", upsell);
 		utils::xml_add_text_node(node, "xp", xp);
 		utils::xml_add_text_node(node, "grant_all_access", grantAllAccess ? 1 : 0);
-		utils::xml_add_text_node(node, "grant_online_access", grantOnlineAccess ? 1 : 0);
+		// utils::xml_add_text_node(node, "grant_online_access", grantOnlineAccess ? 1 : 0);
 		utils::xml_add_text_node(node, "cap_level", capLevel);
 		utils::xml_add_text_node(node, "cap_progression", capProgression);
 	}
@@ -164,149 +164,20 @@ namespace SporeNet {
 	}
 
 	void Feed::Write(pugi::xml_node& node) const {
-		if (auto feed = node.append_child("feed")) {
-			auto items = feed.append_child("items");
-			for (const auto& feedItem : mItems) {
-				auto item = items.append_child("item");
-				utils::xml_add_text_node(item, "account_id", feedItem.accountId);
-				utils::xml_add_text_node(item, "id", feedItem.id);
-				utils::xml_add_text_node(item, "message_id", feedItem.messageId);
-				utils::xml_add_text_node(item, "metadata", feedItem.metadata);
-				utils::xml_add_text_node(item, "name", feedItem.name);
-				utils::xml_add_text_node(item, "time", feedItem.timestamp);
-			}
-		}
-	}
-
-	// Part
-	Part::Part(uint32_t rigblock) {
-		SetRigblock(rigblock);
-		SetPrefix(0, false);
-		SetPrefix(0, true);
-		SetSuffix(0);
-	}
-
-	Part::Part(const pugi::xml_node& node) {
-		if (!Read(node)) {
-			SetRigblock(1);
-			SetPrefix(0, false);
-			SetPrefix(0, true);
-			SetSuffix(0);
-		}
-	}
-
-	bool Part::Read(const pugi::xml_node& node) {
-		std::string_view nodeName = node.name();
-		if (nodeName != "part") {
-			return false;
+		auto feed = node.append_child("feed");
+		if (mItems.empty()) {
+			return;
 		}
 
-		flair = utils::xml_get_text_node<bool>(node, "is_flair");
-		cost = utils::xml_get_text_node<uint32_t>(node, "cost");
-		equipped_to_creature_id = utils::xml_get_text_node<uint32_t>(node, "creature_id");
-		level = utils::xml_get_text_node<uint16_t>(node, "level");
-		market_status = utils::xml_get_text_node<uint8_t>(node, "market_status");
-		rarity = utils::xml_get_text_node<uint8_t>(node, "rarity");
-		status = utils::xml_get_text_node<uint8_t>(node, "status");
-		usage = utils::xml_get_text_node<uint8_t>(node, "usage");
-		timestamp = utils::xml_get_text_node<uint64_t>(node, "creation_date");
-
-		SetRigblock(utils::xml_get_text_node<uint32_t>(node, "rigblock_asset_id"));
-		SetPrefix(utils::xml_get_text_node<uint32_t>(node, "prefix_asset_id"), false);
-		SetPrefix(utils::xml_get_text_node<uint32_t>(node, "prefix_secondary_asset_id"), true);
-		SetSuffix(utils::xml_get_text_node<uint32_t>(node, "suffix_asset_id"));
-
-		return true;
-	}
-
-	void Part::Write(pugi::xml_node& node, uint32_t index, bool api) const {
-		if (auto part = node.append_child("part")) {
-			utils::xml_add_text_node(part, "is_flair", flair);
-			utils::xml_add_text_node(part, "cost", cost);
-			utils::xml_add_text_node(part, "creature_id", equipped_to_creature_id);
-			utils::xml_add_text_node(part, "level", level);
-			utils::xml_add_text_node(part, "market_status", market_status);
-			utils::xml_add_text_node(part, "rarity", rarity);
-			utils::xml_add_text_node(part, "status", status);
-			utils::xml_add_text_node(part, "usage", usage);
-			utils::xml_add_text_node(part, "creation_date", timestamp);
-			if (api) {
-				utils::xml_add_text_node(part, "id", index);
-				utils::xml_add_text_node(part, "reference_id", index);
-
-				utils::xml_add_text_node(part, "rigblock_asset_id", rigblock_asset_hash);
-				utils::xml_add_text_node(part, "prefix_asset_id", prefix_asset_hash);
-				utils::xml_add_text_node(part, "prefix_secondary_asset_id", prefix_secondary_asset_hash);
-				utils::xml_add_text_node(part, "suffix_asset_id", suffix_asset_hash);
-			} else {
-				utils::xml_add_text_node(part, "rigblock_asset_id", rigblock_asset_id);
-				utils::xml_add_text_node(part, "prefix_asset_id", prefix_asset_id);
-				utils::xml_add_text_node(part, "prefix_secondary_asset_id", prefix_secondary_asset_id);
-				utils::xml_add_text_node(part, "suffix_asset_id", suffix_asset_id);
-			}
-		}
-	}
-
-	void Part::SetRigblock(uint16_t rigblock) {
-		if (!(rigblock >= 1 && rigblock <= 1573) && !(rigblock >= 10001 && rigblock <= 10835)) {
-			rigblock = 1;
-		}
-
-		const std::string& rigblock_string = "_Generated/LootRigblock" + std::to_string(rigblock) + ".LootRigblock";
-		rigblock_asset_id = rigblock;
-		rigblock_asset_hash = utils::hash_id(rigblock_string.c_str());
-	}
-
-	void Part::SetPrefix(uint16_t prefix, bool secondary) {
-		if (!(prefix >= 1 && prefix <= 338)) {
-			prefix = 0;
-		}
-
-		std::string prefix_string;
-		if (prefix > 0) {
-			prefix_string = "_Generated/LootPrefix" + std::to_string(prefix) + ".LootPrefix";
-		}
-
-		if (secondary) {
-			prefix_secondary_asset_id = prefix;
-			prefix_secondary_asset_hash = utils::hash_id(prefix_string.c_str());
-		} else {
-			prefix_asset_id = prefix;
-			prefix_asset_hash = utils::hash_id(prefix_string.c_str());
-		}
-	}
-
-	void Part::SetSuffix(uint16_t suffix) {
-		if (!(suffix >= 1 && suffix <= 83) && !(suffix >= 10001 && suffix <= 10275)) {
-			suffix = 0;
-		}
-
-		std::string suffix_string;
-		if (suffix > 0) {
-			suffix_string = "_Generated/LootSuffix" + std::to_string(suffix) + ".LootSuffix";
-		}
-
-		suffix_asset_id = suffix;
-		suffix_asset_hash = utils::hash_id(suffix_string.c_str());
-	}
-
-	void Part::SetStatus(uint8_t newStatus) {
-		status = newStatus;
-	}
-
-	// Parts
-	void Parts::Read(const pugi::xml_node& node) {
-		for (const auto& part : node.child("parts")) {
-			mItems.emplace_back(part);
-		}
-	}
-
-	void Parts::Write(pugi::xml_node& node, bool api) const {
-		if (auto parts = node.append_child("parts")) {
-			uint32_t index = 0;
-			for (const auto& part : mItems) {
-				part.Write(parts, ++index, api);
-			}
+		auto items = feed.append_child("items");
+		for (const auto& feedItem : mItems) {
+			auto item = items.append_child("item");
+			utils::xml_add_text_node(item, "account_id", feedItem.accountId);
+			utils::xml_add_text_node(item, "id", feedItem.id);
+			utils::xml_add_text_node(item, "message_id", feedItem.messageId);
+			utils::xml_add_text_node(item, "metadata", feedItem.metadata);
+			utils::xml_add_text_node(item, "name", feedItem.name);
+			utils::xml_add_text_node(item, "time", feedItem.timestamp);
 		}
 	}
 
@@ -560,6 +431,21 @@ namespace SporeNet {
 
 			mFeed.Read(docUser);
 			mParts.Read(docUser);
+			/*
+			for (uint16_t i = 0x7F; i < 0xFF; ++i) {
+				Part part(267 + (i++));
+				part.SetCreationDate(utils::get_unix_time() + i);
+				part.SetIsFlair(false);
+				part.SetMarketStatus(1);
+				part.SetCost(1000);
+				part.SetLevel(30);
+				part.SetRarity(PartRarity::Rare);
+				part.SetStatus(i);
+				part.SetUsage(1);
+
+				mParts.data().push_back(std::move(part));
+			}
+			*/
 		}
 
 		return true;

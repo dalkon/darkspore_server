@@ -32,6 +32,7 @@ namespace RakNet {
 namespace SporeNet {
 	// classes
 	class Instance;
+	class Vendor;
 
 	class TemplateCreature;
 	class TemplateDatabase;

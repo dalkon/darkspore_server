@@ -21,6 +21,18 @@ namespace Blaze {
 		void Write(TDF::Packet& packet) const;
 	};
 
+	struct PresenceInfo {
+		PresenceState state;
+
+		uint32_t level;
+
+		uint16_t playgroupId;
+		uint16_t extra;
+
+		void Read(const rapidjson::Value& value);
+		void Write(TDF::Packet& packet) const;
+	};
+
 	struct IpAddress {
 		uint32_t address;
 		uint16_t port;
@@ -42,6 +54,52 @@ namespace Blaze {
 		IpAddress inip;
 
 		void Read(const rapidjson::Value& value);
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct UserOptions {
+		TelemetryOpt value;
+
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct TickerServer {
+		std::string address;
+		std::string skey;
+
+		uint32_t port;
+
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct TelemetryServer {
+		std::string address;
+		std::string disa;
+		std::string filter;
+		std::string nook;
+		std::string session;
+		std::string skey;
+
+		uint32_t location;
+		uint32_t port;
+		uint32_t sdly;
+		uint32_t spct;
+
+		bool anonymous;
+
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct PssConfig {
+		std::vector<std::string> oids;
+
+		std::string address;
+		std::string pjid;
+
+		uint32_t port;
+		uint32_t rprt;
+		uint32_t tiid;
+
 		void Write(TDF::Packet& packet) const;
 	};
 
@@ -70,6 +128,27 @@ namespace Blaze {
 		void Write(TDF::Packet& packet) const;
 	};
 
+	struct UserSessionExtendedData {
+		NetworkQosData qos;
+
+		IpPairAddress ip;
+
+		std::map<uint32_t, int32_t> cmap;
+		std::map<uint32_t, int64_t> dmap;
+
+		std::vector<int32_t> pslm;
+		std::vector<object_id> ulst;
+
+		std::string country;
+
+		uint64_t userAttributes;
+
+		uint32_t hardwareFlags;
+
+		void Read(const rapidjson::Value& value);
+		void Write(TDF::Packet& packet) const;
+	};
+
 	struct HostInfo {
 		int64_t id;
 		uint8_t slot;
@@ -87,6 +166,7 @@ namespace Blaze {
 		uint64_t externalReference = 0;
 		ExternalRefType externalReferenceType = ExternalRefType::Unknown;
 
+		void Read(const rapidjson::Value& value);
 		void Write(TDF::Packet& packet) const;
 	};
 
@@ -109,6 +189,7 @@ namespace Blaze {
 		std::string name;
 		uint32_t type;
 
+		void Read(const rapidjson::Value& value);
 		void Write(TDF::Packet& packet) const;
 	};
 
@@ -121,6 +202,7 @@ namespace Blaze {
 		uint32_t lms;
 		uint32_t prid;
 
+		void Read(const rapidjson::Value& value);
 		void Write(TDF::Packet& packet) const;
 	};
 
@@ -132,6 +214,7 @@ namespace Blaze {
 		uint64_t externalReference = 0;
 		ExternalRefType externalReferenceType = ExternalRefType::Unknown;
 
+		void Read(const rapidjson::Value& value);
 		void Write(TDF::Packet& packet) const;
 	};
 
@@ -147,6 +230,17 @@ namespace Blaze {
 		ListMemberInfo info;
 
 		ListUpdateType type;
+
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct ListMembers {
+		std::vector<ListMemberInfo> memberList;
+
+		ListInfo info;
+
+		uint32_t ofrc;
+		uint32_t toct;
 
 		void Write(TDF::Packet& packet) const;
 	};
@@ -186,6 +280,17 @@ namespace Blaze {
 
 		uint32_t localization;
 
+		void Read(const rapidjson::Value& value);
+		void Write(TDF::Packet& packet) const;
+	};
+
+	struct UserData {
+		UserSessionExtendedData extendedData;
+		UserIdentification user;
+
+		uint32_t flags = 0;
+
+		void Read(const rapidjson::Value& value);
 		void Write(TDF::Packet& packet) const;
 	};
 
@@ -265,7 +370,6 @@ namespace Blaze {
 		Slot slotType;
 		PlayerState state;
 
-
 		void Write(TDF::Packet& packet) const;
 	};
 
@@ -310,6 +414,36 @@ namespace Blaze {
 
 		void Write(TDF::Packet& packet) const;
 	};
+
+	namespace Authentication {
+		struct UserDetails {
+			std::vector<PersonaDetails> personaDetailsList;
+			std::string mail;
+
+			void Read(const rapidjson::Value& value);
+			void Write(TDF::Packet& packet) const;
+		};
+
+		struct PasswordRulesInfo {
+			std::string vdch;
+
+			uint16_t minS;
+			uint16_t maxS;
+
+			void Read(const rapidjson::Value& value);
+			void Write(TDF::Packet& packet) const;
+		};
+	}
+
+	namespace Rooms {
+		struct RoomMemberData {
+			int64_t memberId;
+			uint32_t roomId;
+
+			void Read(const rapidjson::Value& value);
+			void Write(TDF::Packet& packet) const;
+		};
+	}
 }
 
 #endif

@@ -1,6 +1,8 @@
 
 // Include
 #include "messagingcomponent.h"
+#include "gamemanagercomponent.h"
+#include "usersessioncomponent.h"
 
 #include "sporenet/instance.h"
 #include "sporenet/user.h"
@@ -14,26 +16,6 @@
 #include <iostream>
 
 /*
-	Packet IDs
-		0x01 = SendMessage
-		0x02 = FetchMessages
-		0x03 = PurgeMessages
-		0x04 = TouchMessages
-		0x05 = GetMessages
-
-	Notification Packet IDs
-		0x01 = NotifyMessage
-
-	Blaze fields
-		ServerMessage (NotifyMessage)
-			FLAG = 0x28
-			MGID = 0x38
-			NAME = 0x24
-			PYLD = 0x18
-			SRCE = 0x08
-			TIME = 0x38
-
-
 	Message types
 		0-2 = user message types
 		2 = playgroup, lobby & game message types
@@ -47,40 +29,84 @@
 		static var kMessageType_SporeNetBroadcast = 16;
 */
 
+#ifdef SendMessage
+#	undef SendMessage
+#endif
+
+enum PacketID : uint16_t {
+	SendMessage = 0x01,
+	FetchMessages = 0x02,
+	PurgeMessages = 0x03,
+	TouchMessages = 0x04,
+	GetMessages = 0x05,
+
+	// Notifications
+	NotifyMessage = 0x01
+};
+
 // Blaze
 namespace Blaze {
 	// MessagingComponent
-	void MessagingComponent::Parse(Client* client, const Header& header) {
-		switch (header.command) {
-			case 0x01:
-				OnSendMessage(client, header);
-				break;
+	uint16_t MessagingComponent::GetId() const {
+		return Id;
+	}
 
-			case 0x02:
-				OnFetchMessages(client, header);
-				break;
+	std::string_view MessagingComponent::GetName() const {
+		return "Messaging";
+	}
 
-			case 0x03:
-				OnPurgeMessages(client, header);
-				break;
+	std::string_view MessagingComponent::GetReplyPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::SendMessage: return "sendMessage";
+			case PacketID::FetchMessages: return "fetchMessages";
+			case PacketID::PurgeMessages: return "purgeMessages";
+			case PacketID::TouchMessages: return "touchMessages";
+			case PacketID::GetMessages: return "getMessages";
 
-			case 0x04:
-				OnTouchMessages(client, header);
-				break;
-
-			case 0x05:
-				OnGetMessages(client, header);
-				break;
-
-			default:
-				std::cout << "Unknown messaging command: 0x" << std::hex << header.command << std::dec << std::endl;
-				break;
+			default: return "";
 		}
 	}
 
-	void MessagingComponent::OnSendMessageResponse(Client* client) {
+	std::string_view MessagingComponent::GetNotificationPacketName(uint16_t command) const {
+		switch (static_cast<PacketID>(command)) {
+			case PacketID::NotifyMessage: return "NotifyMessage";
+
+			default: return "";
+		}
+	}
+
+	bool MessagingComponent::ParsePacket(Request& request) {
+		switch (request.get_command()) {
+			case PacketID::SendMessage:
+				OnSendMessage(request);
+				break;
+
+			case PacketID::FetchMessages:
+				OnFetchMessages(request);
+				break;
+
+			case PacketID::PurgeMessages:
+				OnPurgeMessages(request);
+				break;
+
+			case PacketID::TouchMessages:
+				OnTouchMessages(request);
+				break;
+
+			case PacketID::GetMessages:
+				OnGetMessages(request);
+				break;
+
+			default:
+				return false;
+		}
+
+		return true;
+	}
+
+	void MessagingComponent::OnSendMessageResponse(Request& request) {
 		ClientMessage message;
-		message.Read(client->get_request());
+		message.Read(request.get_request());
 
 		uint32_t id;
 		if (!message.attributes.empty()) {
@@ -97,54 +123,81 @@ namespace Blaze {
 		}
 		packet.pop();
 
-		NotifyMessage(client, message);
+		request.reply(packet);
 
-		client->reply({
-			.component = Component::Messaging,
-			.command = 0x01
-		}, packet);
+		// Notifications
+		NotifyMessage(request, message);
 	}
 
-	void MessagingComponent::NotifyMessage(Client* client, const ClientMessage& clientMessage) {
-		int64_t gameId = std::get<2>(clientMessage.target);
+	void MessagingComponent::NotifyMessage(Request& request, const ClientMessage& clientMessage) {
+		ServerMessage serverMessage;
+		serverMessage.flags = 0;
+		serverMessage.messageId = 1;
+		serverMessage.time = static_cast<uint32_t>(utils::get_unix_time());
+		serverMessage.message = clientMessage;
 
-		const auto& game = Game::GameManager::GetGame(static_cast<uint32_t>(gameId));
-		if (game) {
-			ServerMessage serverMessage;
-			serverMessage.flags = 0;
-			serverMessage.messageId = 1;
-			serverMessage.name = "Testing";
-			serverMessage.time = static_cast<uint32_t>(utils::get_unix_time());
-			serverMessage.message = clientMessage;
+		auto componentId = std::get<0>(clientMessage.target);
+		auto localId = std::get<2>(clientMessage.target);
+		switch (componentId) {
+			case GameManagerComponent::Id: {
+				uint32_t gameId = static_cast<uint32_t>(localId);
 
+				const auto& game = Game::GameManager::GetGame(gameId);
+				if (!game) {
+					break;
+				}
+
+				const auto& player = game->GetPlayerByIndex(0);
+				if (!player) {
+					break;
+				}
+
+				auto userId = player->GetData().mPlayerOnlineId;
+
+				const auto& user = SporeNet::Get().GetUserManager().GetUserByAuthToken(std::to_string(userId));
+				if (user) {
+					serverMessage.name = user->get_name();
+				}
+
+				break;
+			}
+
+			case UserSessionComponent::Id: {
+				const auto& user = SporeNet::Get().GetUserManager().GetUserByAuthToken(std::to_string(localId));
+				if (user) {
+					serverMessage.name = user->get_name();
+				}
+
+				break;
+			}
+		}
+
+		if (!serverMessage.name.empty()) {
 			TDF::Packet packet;
 			serverMessage.Write(packet);
 
-			client->notify({
-				.component = Component::Messaging,
-				.command = 0x01
-			}, packet);
+			request.notify(packet, Id, PacketID::NotifyMessage);
 		}
 	}
 
-	void MessagingComponent::OnSendMessage(Client* client, Header header) {
+	void MessagingComponent::OnSendMessage(Request& request) {
 		std::cout << "OnSendMessage" << std::endl;
-		OnSendMessageResponse(client);
+		OnSendMessageResponse(request);
 	}
 
-	void MessagingComponent::OnFetchMessages(Client* client, Header header) {
+	void MessagingComponent::OnFetchMessages(Request& request) {
 		std::cout << "OnFetchMessages" << std::endl;
 	}
 
-	void MessagingComponent::OnPurgeMessages(Client* client, Header header) {
+	void MessagingComponent::OnPurgeMessages(Request& request) {
 		std::cout << "OnPurgeMessages" << std::endl;
 	}
 
-	void MessagingComponent::OnTouchMessages(Client* client, Header header) {
+	void MessagingComponent::OnTouchMessages(Request& request) {
 		std::cout << "OnTouchMessages" << std::endl;
 	}
 
-	void MessagingComponent::OnGetMessages(Client* client, Header header) {
+	void MessagingComponent::OnGetMessages(Request& request) {
 		std::cout << "OnGetMessages" << std::endl;
 	}
 }

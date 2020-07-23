@@ -51,6 +51,15 @@ namespace Game {
 		return (it != mPlayers.end()) ? it->second : nullptr;
 	}
 
+	PlayerPtr Instance::GetPlayerByIndex(uint8_t index) const {
+		for (const auto& [_, player] : mPlayers) {
+			if (player->GetId() == index) {
+				return player;
+			}
+		}
+		return nullptr;
+	}
+
 	PlayerPtr Instance::AddPlayer(int64_t id, uint8_t index) {
 		auto it = mPlayers.try_emplace(id);
 		if (it.second) {

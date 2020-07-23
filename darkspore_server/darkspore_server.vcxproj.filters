@@ -61,6 +61,12 @@
     <Filter Include="Header Files\sporenet">
       <UniqueIdentifier>{04a12394-d603-48ec-aa2e-d2d24e574bf2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\qos">
+      <UniqueIdentifier>{b2072fe4-1af2-45d4-94ee-90ebcf6bb781}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\qos">
+      <UniqueIdentifier>{ac205851-552e-45f3-b50d-081982eff58b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\tcptest.h">
@@ -192,6 +198,18 @@
     <ClInclude Include="source\game\instance.h">
       <Filter>Header Files\game</Filter>
     </ClInclude>
+    <ClInclude Include="source\sporenet\vendor.h">
+      <Filter>Header Files\sporenet</Filter>
+    </ClInclude>
+    <ClInclude Include="source\sporenet\part.h">
+      <Filter>Header Files\sporenet</Filter>
+    </ClInclude>
+    <ClInclude Include="source\blaze\component.h">
+      <Filter>Header Files\blaze</Filter>
+    </ClInclude>
+    <ClInclude Include="source\qos\server.h">
+      <Filter>Header Files\qos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -316,6 +334,18 @@
     </ClCompile>
     <ClCompile Include="source\game\instance.cpp">
       <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\sporenet\vendor.cpp">
+      <Filter>Source Files\sporenet</Filter>
+    </ClCompile>
+    <ClCompile Include="source\sporenet\part.cpp">
+      <Filter>Source Files\sporenet</Filter>
+    </ClCompile>
+    <ClCompile Include="source\blaze\component.cpp">
+      <Filter>Source Files\blaze</Filter>
+    </ClCompile>
+    <ClCompile Include="source\qos\server.cpp">
+      <Filter>Source Files\qos</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

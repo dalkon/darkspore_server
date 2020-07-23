@@ -177,11 +177,11 @@ namespace SporeNet {
 		from_string(utils::xml_get_text_node(node, "class"), mClass);
 		from_string(utils::xml_get_text_node(node, "creature_parts"), mEquipableParts);
 
-		mAbility[0] = utils::hash_id(utils::xml_get_text_node(node, "ability_basic").c_str());
-		mAbility[1] = utils::hash_id(utils::xml_get_text_node(node, "ability_special_1").c_str());
-		mAbility[2] = utils::hash_id(utils::xml_get_text_node(node, "ability_special_2").c_str());
-		mAbility[3] = utils::hash_id(utils::xml_get_text_node(node, "ability_random").c_str());
-		mAbility[4] = utils::hash_id(utils::xml_get_text_node(node, "ability_passive").c_str());
+		mAbility[0] = utils::hash_id(utils::xml_get_text_node(node, "ability_basic"));
+		mAbility[1] = utils::hash_id(utils::xml_get_text_node(node, "ability_special_1"));
+		mAbility[2] = utils::hash_id(utils::xml_get_text_node(node, "ability_special_2"));
+		mAbility[3] = utils::hash_id(utils::xml_get_text_node(node, "ability_random"));
+		mAbility[4] = utils::hash_id(utils::xml_get_text_node(node, "ability_passive"));
 
 		// parse stats
 		const auto& statsString = utils::xml_get_text_node(node, "stats_template");
@@ -354,7 +354,7 @@ namespace SporeNet {
 		}
 	}
 
-	const std::string& Creature::GetName() const {
+	std::string Creature::GetName() const {
 		return mTemplate != nullptr ? mTemplate->GetName() : std::string();
 	}
 

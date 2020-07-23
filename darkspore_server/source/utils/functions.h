@@ -4,6 +4,7 @@
 
 // Include
 #include <cstdint>
+#include <algorithm>
 #include <vector>
 #include <string>
 #include <string_view>
@@ -104,6 +105,13 @@ namespace utils {
 	// XML
 	void xml_add_text_node(pugi::xml_node& node, const std::string& name, const std::string& value);
 	std::string xml_get_text_node(const pugi::xml_node& node, const std::string& name);
+
+	template<typename T, size_t S = sizeof(T)>
+	void xml_add_text_node(pugi::xml_node& node, const std::string& name, const std::basic_string_view<T>& value) {
+		char buf[512];
+		std::memcpy(buf, value.data(), std::min<size_t>(sizeof(buf), S * value.length()));
+		node.append_child(name.c_str()).append_child(pugi::node_pcdata).set_value(buf);
+	}
 
 	template<typename T>
 	std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, void> xml_add_text_node(pugi::xml_node& node, const std::string& name, T value) {

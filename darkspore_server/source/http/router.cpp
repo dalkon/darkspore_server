@@ -70,15 +70,14 @@ namespace HTTP {
 			response.content_length(size);
 			session.send(std::move(response));
 		} else {
-			boost::beast::http::response<boost::beast::http::string_body> response {
-				mResult, realVersion
-			};
-
+			boost::beast::http::response<boost::beast::http::string_body> response { mResult, realVersion };
 			for (const auto& [field, value] : mFields) {
 				response.set(field, value);
 			}
 
-			response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+			if (response[boost::beast::http::field::server].empty()) {
+				response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+			}
 
 			response.keep_alive(mKeepAlive);
 			response.body() = mBody;
