@@ -52,16 +52,22 @@ namespace Game {
 			void game_account_getAccount(HTTP::Session& session, HTTP::Response& response);
 			void game_account_logout(HTTP::Session& session, HTTP::Response& response);
 			void game_account_unlock(HTTP::Session& session, HTTP::Response& response);
+			void game_account_setSettings(HTTP::Session& session, HTTP::Response& response);
+			void game_account_searchAccounts(HTTP::Session& session, HTTP::Response& response);
 
 			void game_game_getGame(HTTP::Session& session, HTTP::Response& response);
+			void game_game_getRandomGame(HTTP::Session& session, HTTP::Response& response);
 			void game_game_exitGame(HTTP::Session& session, HTTP::Response& response);
 
 			void game_creature_resetCreature(HTTP::Session& session, HTTP::Response& response);
 			void game_creature_unlockCreature(HTTP::Session& session, HTTP::Response& response);
 			void game_creature_getCreature(HTTP::Session& session, HTTP::Response& response);
 			void game_creature_getTemplate(HTTP::Session& session, HTTP::Response& response);
+			void game_creature_updateCreature(HTTP::Session& session, HTTP::Response& response);
 
 			void game_deck_updateDecks(HTTP::Session& session, HTTP::Response& response);
+
+			void game_leaderboard_getLeaderboard(HTTP::Session& session, HTTP::Response& response);
 
 			// survey
 			void survey_survey_getSurveyList(HTTP::Session& session, HTTP::Response& response);

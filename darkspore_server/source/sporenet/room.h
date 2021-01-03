@@ -122,16 +122,18 @@ namespace SporeNet {
 	// RoomManager
 	class RoomManager {
 		public:
+			RoomManager();
+
 			RoomPtr GetRoom(uint32_t id) const;
-			RoomPtr CreateRoom();
+			RoomPtr CreateRoom(uint32_t id = 0);
 			void RemoveRoom(uint32_t id);
 
 			RoomCategoryPtr GetRoomCategory(uint32_t id) const;
-			RoomCategoryPtr CreateRoomCategory();
+			RoomCategoryPtr CreateRoomCategory(uint32_t id = 0);
 			void RemoveRoomCategory(uint32_t id);
 
 			RoomViewPtr GetRoomView(uint32_t id) const;
-			RoomViewPtr CreateRoomView();
+			RoomViewPtr CreateRoomView(uint32_t id = 0);
 			void RemoveRoomView(uint32_t id);
 
 		private:

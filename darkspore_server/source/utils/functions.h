@@ -59,8 +59,34 @@ namespace utils {
 
 	// Numbers
 	template<typename T>
+	std::enable_if_t<std::is_enum_v<T>, T> to_number(std::string_view str) {
+		return static_cast<T>(tonumber<std::underlying_type_t<T>>(str));
+	}
+
+	template<typename T>
 	std::enable_if_t<std::is_enum_v<T>, T> to_number(const std::string& str) {
 		return static_cast<T>(tonumber<std::underlying_type_t<T>>(str));
+	}
+
+	template<typename T>
+	std::enable_if_t<std::is_integral_v<T>, T> to_number(std::string_view str, int base = 10) {
+		T value;
+		try {
+			if constexpr (std::is_signed_v<T>) {
+				if constexpr (sizeof(T) >= sizeof(int64_t)) {
+					value = std::strtoll(str.data(), nullptr, base);
+				} else {
+					value = static_cast<T>(std::strtol(str.data(), nullptr, base));
+				}
+			} else if constexpr (sizeof(T) >= sizeof(uint64_t)) {
+				value = std::strtoull(str.data(), nullptr, base);
+			} else {
+				value = static_cast<T>(std::strtoul(str.data(), nullptr, base));
+			}
+		} catch (...) {
+			value = static_cast<T>(0);
+		}
+		return value;
 	}
 
 	template<typename T>
@@ -77,6 +103,23 @@ namespace utils {
 				value = std::stoull(str, nullptr, base);
 			} else {
 				value = static_cast<T>(std::stoul(str, nullptr, base));
+			}
+		} catch (...) {
+			value = static_cast<T>(0);
+		}
+		return value;
+	}
+
+	template<typename T>
+	std::enable_if_t<std::is_floating_point_v<T>, T> to_number(std::string_view str) {
+		T value;
+		try {
+			if constexpr (std::is_same_v<T, double>) {
+				value = std::strtod(str.data());
+			} else if constexpr (std::is_same_v<T, float>) {
+				value = std::strtof(str.data());
+			} else {
+				value = static_cast<T>(0);
 			}
 		} catch (...) {
 			value = static_cast<T>(0);

@@ -2,7 +2,7 @@
 // Include
 #include "server.h"
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/beast/core.hpp>
 #include <iostream>
 
@@ -26,6 +26,10 @@ namespace HTTP {
 
 	Server::~Server() {
 
+	}
+
+	uint16_t Server::get_port() const {
+		return mAcceptor.local_endpoint().port();
 	}
 
 	const std::shared_ptr<Router>& Server::get_router() const {

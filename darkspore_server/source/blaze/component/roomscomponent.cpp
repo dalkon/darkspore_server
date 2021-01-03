@@ -209,47 +209,7 @@ namespace Blaze {
 		return true;
 	}
 
-	void RoomsComponent::WriteSelectCategoryUpdates(TDF::Packet& packet, uint32_t viewId) {
-		packet.put_integer("VWID", viewId);
-	}
-
-	void RoomsComponent::WriteJoinRoom(TDF::Packet& packet, const SporeNet::RoomPtr& room, int64_t userId) {
-		if (!room) {
-			// No.
-			return;
-		}
-
-		Rooms::RoomMemberData memberData;
-		memberData.memberId = userId;
-		memberData.roomId = room->GetId();
-
-		const auto& category = room->GetCategory();
-		const auto& view = category->GetView();
-
-		packet.put_string("CRIT", "");
-		packet.put_integer("VERS", 1);
-
-		// Category data
-		packet.push_struct("CDAT");
-		category->WriteTo(packet);
-		packet.pop();
-
-		// Room data
-		packet.push_struct("RDAT");
-		room->WriteTo(packet);
-		packet.pop();
-
-		// View data
-		packet.push_struct("VDAT");
-		view->WriteTo(packet);
-		packet.pop();
-
-		// Member data
-		packet.push_struct("MDAT");
-		memberData.Write(packet);
-		packet.pop();
-	}
-
+	// Blaze functions
 	void RoomsComponent::NotifyRoomViewUpdated(Request& request, uint32_t viewId) {
 		const auto& roomView = SporeNet::Get().GetRoomManager().GetRoomView(viewId);
 		if (roomView) {
@@ -398,6 +358,47 @@ namespace Blaze {
 		request.notify(packet, Id, PacketID::NotifyRoomAttributesSet);
 	}
 
+	void RoomsComponent::WriteSelectCategoryUpdates(TDF::Packet& packet, uint32_t viewId) {
+		packet.put_integer("VWID", viewId);
+	}
+
+	void RoomsComponent::WriteJoinRoom(TDF::Packet& packet, const SporeNet::RoomPtr& room, int64_t userId) {
+		if (!room) {
+			// No.
+			return;
+		}
+
+		Rooms::RoomMemberData memberData;
+		memberData.memberId = userId;
+		memberData.roomId = room->GetId();
+
+		const auto& category = room->GetCategory();
+		const auto& view = category->GetView();
+
+		packet.put_string("CRIT", "");
+		packet.put_integer("VERS", 1);
+
+		// Category data
+		packet.push_struct("CDAT");
+		category->WriteTo(packet);
+		packet.pop();
+
+		// Room data
+		packet.push_struct("RDAT");
+		room->WriteTo(packet);
+		packet.pop();
+
+		// View data
+		packet.push_struct("VDAT");
+		view->WriteTo(packet);
+		packet.pop();
+
+		// Member data
+		packet.push_struct("MDAT");
+		memberData.Write(packet);
+		packet.pop();
+	}
+
 	void RoomsComponent::SelectViewUpdates(Request& request) {
 		const auto& user = request.get_user();
 		if (!user) {
@@ -411,34 +412,8 @@ namespace Blaze {
 		bool add = false;
 		bool update = request["UPDT"].GetUint() != 0;
 		if (update) {
-			SporeNet::RoomViewPtr roomView;
-			SporeNet::RoomCategoryPtr roomCategory;
-
-			auto room = user->GetRoom();
-			if (room) {
-				roomCategory = room->GetCategory();
-				roomView = roomCategory->GetView();
-
-				roomId = room->GetId();
-				roomCategoryId = roomCategory->GetId();
-				roomViewId = roomView->GetId();
-			} else {
-				SporeNet::RoomManager& manager = SporeNet::Get().GetRoomManager();
-				room = manager.CreateRoom();
-
-				roomCategory = manager.CreateRoomCategory();
-				roomView = manager.CreateRoomView();
-
-				roomCategory->SetView(roomView);
-				room->SetCategory(roomCategory);
-				user->SetRoom(room);
-
-				roomId = room->GetId();
-				roomCategoryId = roomCategory->GetId();
-				roomViewId = roomView->GetId();
-
-				add = true;
-			}
+			roomViewId = 1;
+			add = true;
 		}
 
 		TDF::Packet packet;
@@ -452,24 +427,50 @@ namespace Blaze {
 		// Notifications
 		if (add) {
 			NotifyRoomViewAdded(request, roomViewId);
-			NotifyRoomCategoryAdded(request, roomCategoryId);
-			NotifyRoomAdded(request, roomId);
+			// NotifyRoomCategoryAdded(request, roomCategoryId);
+			// NotifyRoomAdded(request, roomId);
 		}
 
 		if (update) {
 			NotifyRoomViewUpdated(request, roomViewId);
-			NotifyRoomCategoryUpdated(request, roomCategoryId);
-			NotifyRoomUpdated(request, roomId);
+			// NotifyRoomCategoryUpdated(request, roomCategoryId);
+			// NotifyRoomUpdated(request, roomId);
 		}
 	}
 
 	void RoomsComponent::SelectCategoryUpdates(Request& request) {
 		uint32_t viewId = request["VWID"].GetUint();
 
+		// Notifications
+		if (viewId == 0) {
+			// pseudo room categories?
+		} else {
+			decltype(auto) roomManager = SporeNet::Get().GetRoomManager();
+			for (uint32_t i = 0; i < 4; ++i) {
+				uint32_t categoryId = i + 1;
+				NotifyRoomCategoryAdded(request, categoryId);
+				NotifyRoomCategoryUpdated(request, categoryId);
+			}
+		}
+
+		// Response
 		TDF::Packet packet;
 		WriteSelectCategoryUpdates(packet, viewId);
 
 		request.reply(packet);
+		/*
+		if (add) {
+			NotifyRoomViewAdded(request, roomViewId);
+			// NotifyRoomCategoryAdded(request, roomCategoryId);
+			// NotifyRoomAdded(request, roomId);
+		}
+
+		if (update) {
+			NotifyRoomViewUpdated(request, roomViewId);
+			// NotifyRoomCategoryUpdated(request, roomCategoryId);
+			// NotifyRoomUpdated(request, roomId);
+		}
+		*/
 	}
 
 	void RoomsComponent::JoinRoom(Request& request) {
@@ -489,23 +490,53 @@ namespace Blaze {
 		uint32_t roomId = request["RMID"].GetUint();
 
 		// Get room data
+		bool newRoom = false;
+		bool newCategory = false;
+
+		decltype(auto) roomManager = SporeNet::Get().GetRoomManager();
+
 		SporeNet::RoomPtr room;
 		if (roomId == 0) {
-			room = user->GetRoom();
+			room = roomManager.CreateRoom();
+			roomId = room->GetId();
+			newRoom = true;
 		} else {
-			room = SporeNet::Get().GetRoomManager().GetRoom(roomId);
+			room = roomManager.GetRoom(roomId);
 		}
 
 		if (!room) {
-			// Some error
-			request.reply();
+			request.reply(ErrorCode::ROOMS_ERR_NOT_FOUND);
 			return;
+		}
+
+		SporeNet::RoomCategoryPtr roomCategory;
+		if (categoryId == 0) {
+			roomCategory = roomManager.CreateRoomCategory();
+			categoryId = roomCategory->GetId();
+			newCategory = true;
+		} else {
+			roomCategory = roomManager.GetRoomCategory(categoryId);
+		}
+
+		if (!roomCategory) {
+			request.reply(ErrorCode::ROOMS_ERR_CREATE_UNKNOWN_CATEGORY);
+			return;
+		}
+
+		if (!roomCategory->GetView()) {
+			roomCategory->SetView(roomManager.CreateRoomView());
 		}
 
 		auto userId = user->get_id();
 
 		// TODO: proper room handling
+		room->SetCategory(roomCategory);
 		room->AddUser(user);
+
+		if (newRoom) {
+			NotifyRoomAdded(request, roomId);
+			NotifyRoomUpdated(request, roomId);
+		}
 
 		// Write packet
 		TDF::Packet packet;

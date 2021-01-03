@@ -442,7 +442,7 @@ namespace Blaze {
 
 		// Write packet
 		packet.put_integer("NTOS", 0);
-		packet.put_string("PCTK", "");
+		packet.put_string("PCTK", "unknown_data");
 
 		packet.push_list("PLST", TDF::Type::Struct);
 			packet.push_struct("");
@@ -451,7 +451,7 @@ namespace Blaze {
 		packet.pop();
 
 		packet.put_string("PRIV", "");
-		packet.put_string("SKEY", "test");
+		packet.put_string("SKEY", "test_session_key");
 		packet.put_integer("SPAM", 0);
 		packet.put_string("THST", "");
 		packet.put_string("TURI", "");
@@ -470,7 +470,7 @@ namespace Blaze {
 		SessionInfo sessionInfo;
 		sessionInfo.blazeId = userId;
 		sessionInfo.firstLogin = false;
-		sessionInfo.key = "";
+		sessionInfo.key = "test_session_key";
 		sessionInfo.lastLogin = currentTime;
 		sessionInfo.uid = userId;
 
@@ -563,9 +563,9 @@ namespace Blaze {
 		}
 
 		NetworkQosData& qos = extendedData.qos;
-		qos.dbps = 10;
+		qos.dbps = 128000;
 		qos.type = NatType::Open;
-		qos.ubps = 10;
+		qos.ubps = 2;
 
 		// Assign user to client
 		request.set_user(user);
@@ -635,7 +635,7 @@ namespace Blaze {
 		SessionInfo sessionInfo;
 		sessionInfo.blazeId = userId;
 		sessionInfo.firstLogin = false;
-		sessionInfo.key = "";
+		sessionInfo.key = "test_session_key";
 		sessionInfo.lastLogin = currentTime;
 		sessionInfo.uid = userId;
 

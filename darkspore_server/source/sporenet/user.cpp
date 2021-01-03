@@ -3,6 +3,7 @@
 #include "user.h"
 #include "instance.h"
 
+#include "blaze/component/associationcomponent.h"
 #include "utils/functions.h"
 
 #include <algorithm>
@@ -156,7 +157,16 @@ namespace SporeNet {
 			decltype(auto) feedItem = mItems.emplace_back();
 			feedItem.accountId = utils::xml_get_text_node<uint32_t>(item, "account_id");
 			feedItem.id = utils::xml_get_text_node<uint32_t>(item, "id");
-			feedItem.messageId = utils::xml_get_text_node<uint32_t>(item, "message_id");
+
+			auto messageId = utils::xml_get_text_node<FeedMessageType>(item, "message_id");
+			switch (messageId) {
+				case FeedMessageType::Friend: // metadata = friend account id
+				case FeedMessageType::Creature: // metadata = creature_id;localized_name_id
+				case FeedMessageType::Upgrade: // metadata = maybe upgrade id?
+					feedItem.messageId = messageId;
+					break;
+			}
+
 			feedItem.metadata = utils::xml_get_text_node(item, "metadata");
 			feedItem.name = utils::xml_get_text_node(item, "name");
 			feedItem.timestamp = utils::xml_get_text_node<uint64_t>(item, "time");
@@ -475,6 +485,67 @@ namespace SporeNet {
 		}
 
 		return document.save_file(filepath.c_str(), "\t", 1U, pugi::encoding_latin1);
+	}
+
+	bool User::IsFriend(const User& user) const {
+		auto it = mAssociationLists.find(Blaze::AssociationListId::Friend);
+		if (it == mAssociationLists.end()) {
+			return false;
+		}
+
+		const auto& friendList = it->second;
+		for (const auto& memberInfo : friendList.memberList) {
+			const auto& memberId = memberInfo.id;
+			if (memberId.id == user.get_account().id) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void User::AddFriendUser(const User& user) {
+		if (IsFriend(user)) {
+			return;
+		}
+
+		auto& friendList = mAssociationLists[Blaze::AssociationListId::Friend];
+		auto& memberInfo = friendList.memberList.emplace_back();
+
+		memberInfo.id.id = user.get_account().id;
+		memberInfo.id.name = user.get_name();
+
+		memberInfo.time = utils::get_unix_time();
+	}
+
+	void User::RemoveFriendUser(const User& user) {
+		auto& friendList = mAssociationLists[Blaze::AssociationListId::Friend];
+	}
+
+	bool User::IsIgnored(const User& user) const {
+		auto it = mAssociationLists.find(Blaze::AssociationListId::Ignore);
+		if (it == mAssociationLists.end()) {
+			return false;
+		}
+
+		const auto& ignoreList = it->second;
+		for (const auto& memberInfo : ignoreList.memberList) {
+			const auto& memberId = memberInfo.id;
+			if (memberId.id == user.get_account().id) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void User::AddIgnoredUser(const User& user) {
+		auto& ignoreList = mAssociationLists[Blaze::AssociationListId::Ignore];
+	}
+
+	void User::RemoveIgnoredUser(const User& user) {
+		auto& ignoreList = mAssociationLists[Blaze::AssociationListId::Ignore];
+
 	}
 
 	void User::WriteAccountAPI(pugi::xml_node& node) const {

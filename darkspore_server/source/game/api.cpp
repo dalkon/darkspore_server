@@ -20,6 +20,9 @@
 
 #include <boost/beast/version.hpp>
 
+#include <base64.h>
+#include <lodepng.h>
+
 #include <iostream>
 #include <iomanip>
 #include <filesystem>
@@ -391,7 +394,9 @@ namespace Game {
 			if (request.data.method() == boost::beast::http::verb::post) {
 				// TODO: Fetch boundary later from request.data[boost::beast::http::field::content_type]
 				
-				HTTP::Multipart multipart(request.data.body(), "EA_HTTP_REQUEST_SIMPLE_BOUNDARY");
+				HTTP::Multipart multipart;
+				multipart.parse(request);
+
 				for (const auto&[name, value] : multipart) {
 					request.uri.set_parameter(name, value);
 				}
@@ -460,8 +465,14 @@ namespace Game {
 				game_account_logout(session, response);
 			} else if (method == "api.account.unlock") {
 				game_account_unlock(session, response);
-			} else if (method == "api.game.getGame" || method == "api.game.getRandomGame") {
+			} else if (method == "api.account.setSettings") {
+				game_account_setSettings(session, response);
+			} else if (method == "api.account.searchAccounts") {
+				game_account_searchAccounts(session, response);
+			} else if (method == "api.game.getGame") {
 				game_game_getGame(session, response);
+			} else if (method == "api.game.getRandomGame") {
+				game_game_getRandomGame(session, response);
 			} else if (method == "api.game.exitGame") {
 				game_game_exitGame(session, response);
 			} else if (method == "api.creature.resetCreature") {
@@ -472,8 +483,12 @@ namespace Game {
 				game_creature_getCreature(session, response);
 			} else if (method == "api.creature.getTemplate") {
 				game_creature_getTemplate(session, response);
+			} else if (method == "api.creature.updateCreature") {
+				game_creature_updateCreature(session, response);
 			} else if (method == "api.deck.updateDecks") {
 				game_deck_updateDecks(session, response);
+			} else if (method == "api.leaderboard.getLeaderboard") {
+				game_leaderboard_getLeaderboard(session, response);
 			} else if (method == "api.game.log") {
 				recap_game_log(session, response);
 			} else {
@@ -564,6 +579,11 @@ namespace Game {
 			response.body() = "<html><head><title>x</title></head><body>Announces</body></html>";
 		});
 
+		router->add("/web/sporelabsgame/manualen", { boost::beast::http::verb::get, boost::beast::http::verb::post }, [this](HTTP::Session& session, HTTP::Response& response) {
+			response.set(boost::beast::http::field::content_type, "text/html");
+			response.body() = "<html><head><title>Manual test 123</title></head><body>Why won't this game work?</body></html>";
+		});
+
 		router->add("/web/sporelabsgame/persona", { boost::beast::http::verb::get, boost::beast::http::verb::post }, [this](HTTP::Session& session, HTTP::Response& response) {
 			response.set(boost::beast::http::field::content_type, "text/html");
 			response.body() = "";
@@ -640,13 +660,13 @@ namespace Game {
 
 			// Ips
 			auto ipsNode = docResponse.append_child("ips");
-			for (auto i = 0; i < interfaceCount; ++i) {
+			for (uint32_t i = 0; i < interfaceCount; ++i) {
 				utils::xml_add_text_node(ipsNode, "ips", boost::asio::ip::address_v4::from_string("127.0.0.1").to_ulong());
 			}
 
 			// Ports
 			auto portsNode = docResponse.append_child("ports");
-			for (auto i = 0; i < interfaceCount; ++i) {
+			for (uint32_t i = 0; i < interfaceCount; ++i) {
 				utils::xml_add_text_node(portsNode, "ports", 3659);
 			}
 
@@ -678,7 +698,8 @@ namespace Game {
 
 			auto [document, docResponse] = create_xml_response();
 			docResponse.set_name("firetype");
-			docResponse.append_child(pugi::node_pcdata).set_value(std::to_string(1).c_str());
+
+			utils::xml_add_text_node(docResponse, "firetype", static_cast<uint32_t>(Blaze::NatType::Open) + 1);
 
 			set_response_body(response, document, boost::beast::http::status::ok);
 		});
@@ -1027,32 +1048,32 @@ namespace Game {
 		add_common_keys(docResponse);
 
 		if (auto status = docResponse.append_child("status")) {
-			utils::xml_add_text_node(status, "health", 1);
+			utils::xml_add_text_node(status, "health", 0x11);
 
 			if (auto api = status.append_child("api")) {
-				utils::xml_add_text_node(api, "health", 1);
-				utils::xml_add_text_node(api, "revision", 1);
-				utils::xml_add_text_node(api, "version", 1);
+				utils::xml_add_text_node(api, "health", 1); // this+4Ah 1/0
+				utils::xml_add_text_node(api, "revision", 1); // this+5Ch integer, setz to this+59h
+				utils::xml_add_text_node(api, "version", 1); // this+60h integer
 			}
 
 			if (auto blaze = status.append_child("blaze")) {
-				utils::xml_add_text_node(blaze, "health", 1);
+				utils::xml_add_text_node(blaze, "health", 1); // this+4Bh 1/0
 			}
 
 			if (auto gms = status.append_child("gms")) {
-				utils::xml_add_text_node(gms, "health", 1);
+				utils::xml_add_text_node(gms, "health", 1); // this+57h 1/0
 			}
 
 			if (auto nucleus = status.append_child("nucleus")) {
-				utils::xml_add_text_node(nucleus, "health", 1);
+				utils::xml_add_text_node(nucleus, "health", 1); // this+58h 1/0
 			}
 
 			if (auto game = status.append_child("game")) {
-				utils::xml_add_text_node(game, "health", 1);
-				utils::xml_add_text_node(game, "countdown", 90);
-				utils::xml_add_text_node(game, "open", 1);
-				utils::xml_add_text_node(game, "throttle", 0);
-				utils::xml_add_text_node(game, "vip", 0);
+				utils::xml_add_text_node(game, "health", 1); // this+4Ch 1/0
+				utils::xml_add_text_node(game, "countdown", 90); // this+50h integer
+				utils::xml_add_text_node(game, "open", 1); // this+54h 1/0
+				utils::xml_add_text_node(game, "throttle", 1); // this+55h 1/0
+				utils::xml_add_text_node(game, "vip", 1); // this+56h 1/0
 			}
 			/*
 			if (auto unk = status.append_child("$\x84")) {
@@ -1085,13 +1106,22 @@ namespace Game {
 	}
 
 	void API::game_inventory_getPartList(HTTP::Session& session, HTTP::Response& response) {
+
+		/*
+			market status
+				0 = unknown
+				1 = full ownership
+				2 = unknown
+				3 = buyback
+		*/
+
 		auto [document, docResponse] = create_xml_response();
 
 		const auto& user = session.get_user();
 		add_common_keys(docResponse, user != nullptr);
 
 		if (user) {
-			user->get_parts().Write(docResponse, true);
+			user->get_parts().WriteApi(docResponse, false);
 		} else {
 			docResponse.append_child("parts");
 		}
@@ -1111,7 +1141,7 @@ namespace Game {
 			utils::xml_add_text_node(docResponse, "expires", timestamp + (3 * 60 * 60 * 1000));
 
 			const auto& vendor = SporeNet::Get().GetVendor();
-			vendor.GetPartOfferList().Write(docResponse, true);
+			vendor.GetPartOfferList().WriteApi(docResponse, true);
 		}
 
 		set_response_body(response, document, boost::beast::http::status::ok);
@@ -1131,20 +1161,28 @@ namespace Game {
 			for (const auto& transaction : utils::explode_string(transactionsString, ';')) {
 				// w = weapon, check for more later
 				char type = transaction[0];
-				int64_t data = utils::to_number<int64_t>(&transaction[1]);
+				int64_t data = utils::to_number<int64_t>(std::string_view(&transaction[1]));
 
 				SporeNet::Part part(0);
 				switch (type) {
 					case 'w': {
-						part.SetRigblock(data);
+						// weapon
+						part.SetRigblock(static_cast<uint16_t>(data));
 						part.SetIsFlair(false);
 						part.SetLevel(5);
 						part.SetMarketStatus(1);
-						part.SetRarity(SporeNet::PartRarity::Epic);
+						part.SetRarity(SporeNet::PartRarity::Rare);
 						part.SetStatus(0);
 						part.SetUsage(1);
 						part.SetCreationDate(utils::get_unix_time());
 
+						break;
+					}
+
+					case 'p': {
+						// parts
+						const auto& vendor = SporeNet::Get().GetVendor();
+						part = vendor.GetPartOfferList().GetPart(data);
 						break;
 					}
 
@@ -1155,6 +1193,11 @@ namespace Game {
 
 					case 's': {
 						// sell
+						break;
+					}
+
+					case 'f': {
+						// flair
 						break;
 					}
 				}
@@ -1168,8 +1211,8 @@ namespace Game {
 		auto [document, docResponse] = create_xml_response();
 		add_common_keys(docResponse);
 
-		parts.Write(docResponse, true);
-		utils::xml_add_text_node(docResponse, "dna", 50000000);
+		parts.WriteApi(docResponse, false);
+		utils::xml_add_text_node(docResponse, "dna", user->get_account().dna);
 
 		set_response_body(response, document, boost::beast::http::status::ok);
 	}
@@ -1220,7 +1263,7 @@ namespace Game {
 
 		if (user) {
 			auto timestamp = utils::get_unix_time();
-			utils::xml_add_text_node(docResponse, "timestamp", timestamp);
+			utils::xml_add_text_node(docResponse, "timestamp", timestamp * 1000);
 
 			if (auto docAccount = docResponse.append_child("account")) {
 				// Write "account" data
@@ -1247,6 +1290,17 @@ namespace Game {
 				user->get_feed().Write(docResponse);
 			}
 
+			if (request.uri.parameter("include_settings") == "true") {
+				if (auto settingsDoc = docResponse.append_child("settings")) {
+					// Values can be an integer(long) or "on/off"
+					/*
+					utils::xml_add_text_node(settingsDoc, "showConfigAlerts", "on");
+					utils::xml_add_text_node(settingsDoc, "cheat", "on");
+					utils::xml_add_text_node(settingsDoc, "safeMode", "on");
+					*/
+				}
+			}
+
 			if (request.uri.parameter("include_server_tuning") == "true") {
 				if (auto server_tuning = docResponse.append_child("server_tuning")) {
 					utils::xml_add_text_node(server_tuning, "itemstore_offer_period", timestamp);
@@ -1258,17 +1312,6 @@ namespace Game {
 					utils::xml_add_text_node(server_tuning, "itemstore_cost_multiplier_unique", 1.4);
 					utils::xml_add_text_node(server_tuning, "itemstore_cost_multiplier_rareunique", 1.5);
 					utils::xml_add_text_node(server_tuning, "itemstore_cost_multiplier_epicunique", 1.6);
-				}
-			}
-
-			if (request.uri.parameter("include_settings") == "true") {
-				if (auto settingsDoc = docResponse.append_child("settings")) {
-					// Values can be an integer(long) or "on/off"
-					/*
-					utils::xml_add_text_node(settingsDoc, "showConfigAlerts", "on");
-					utils::xml_add_text_node(settingsDoc, "cheat", "on");
-					utils::xml_add_text_node(settingsDoc, "safeMode", "on");
-					*/
 				}
 			}
 
@@ -1433,6 +1476,7 @@ namespace Game {
 	void API::game_account_getAccount(HTTP::Session& session, HTTP::Response& response) {
 		const auto& user = session.get_user();
 		if (!user) {
+			std::cout << "No user in api.account.getAccount" << std::endl;
 			// Send some error?
 			return;
 		}
@@ -1442,11 +1486,6 @@ namespace Game {
 
 		auto [document, docResponse] = create_xml_response();
 		add_common_keys(docResponse);
-
-		utils::xml_add_text_node(docResponse, "blaze_id", account.id);
-		utils::xml_add_text_node(docResponse, "name", user->get_name());
-		utils::xml_add_text_node(docResponse, "grant_online_access", account.grantOnlineAccess);
-		utils::xml_add_text_node(docResponse, "cashout_bonus_time", account.cashoutBonusTime);
 
 		if (auto docAccount = docResponse.append_child("account")) {
 			account.Write(docAccount);
@@ -1468,7 +1507,33 @@ namespace Game {
 			auto stats = docResponse.append_child("stats");
 			auto stat = stats.append_child("stat");
 			utils::xml_add_text_node(stat, "wins", 0);
+
+			/*
+ if(detailstats.childNodes[i].tagName != 'pve_swaps'
+		  && detailstats.childNodes[i].tagName != 'pve_overcharges'
+		  && detailstats.childNodes[i].tagName != 'pve_dna'
+		  && detailstats.childNodes[i].tagName != 'pve_abilitiesUsed'
+		  && detailstats.childNodes[i].tagName != 'pve_healthCollected'
+		  && detailstats.childNodes[i].tagName != 'pve_powerCollected'
+		  && detailstats.childNodes[i].tagName != 'pve_obelisks'
+		  && detailstats.childNodes[i].tagName != 'pve_catalysts'
+		  && detailstats.childNodes[i].tagName != 'pvp_xp'
+		  && detailstats.childNodes[i].tagName != 'pvp_swaps'
+		  && detailstats.childNodes[i].tagName != 'pvp_overcharges'
+		  && detailstats.childNodes[i].tagName != 'pvp_abilitiesUsed'
+		  && detailstats.childNodes[i].tagName != 'pvp_healthCollected'
+		  && detailstats.childNodes[i].tagName != 'pvp_powerCollected'
+		  && detailstats.childNodes[i].tagName != 'wins'
+		  && detailstats.childNodes[i].tagName != 'pvp_glickoSkill'
+		  && detailstats.childNodes[i].tagName != 'pvp_glickoRD'
+		  && detailstats.childNodes[i].tagName != 'pve_progression'
+			*/
 		}
+
+		utils::xml_add_text_node(docResponse, "blaze_id", account.id);
+		utils::xml_add_text_node(docResponse, "name", user->get_name());
+		utils::xml_add_text_node(docResponse, "grant_online_access", account.grantOnlineAccess);
+		utils::xml_add_text_node(docResponse, "cashout_bonus_time", account.cashoutBonusTime);
 
 		set_response_body(response, document, boost::beast::http::status::ok);
 	}
@@ -1495,7 +1560,75 @@ namespace Game {
 		}
 
 		add_common_keys(docResponse, success);
+		set_response_body(response, document, boost::beast::http::status::ok);
+	}
 
+	void API::game_account_setSettings(HTTP::Session& session, HTTP::Response& response) {
+		const auto& request = session.get_request();
+		const auto& user = session.get_user();
+
+		bool success = false;
+
+		auto [document, docResponse] = create_xml_response();
+		if (user) {
+			auto settings = request.uri.parameter("settings");
+			for (const auto& setting : utils::explode_string(settings, ';')) {
+				auto settingData = utils::explode_string(setting, ',');
+				if (settingData.size() < 2) {
+					continue;
+				}
+
+				const auto& key = settingData[0];
+				const auto& value = settingData[1];
+
+				// parse/save settings
+			}
+
+			success = true;
+		}
+
+		add_common_keys(docResponse, success);
+		set_response_body(response, document, boost::beast::http::status::ok);
+	}
+
+	void API::game_account_searchAccounts(HTTP::Session& session, HTTP::Response& response) {
+		const auto& request = session.get_request();
+		const auto& user = session.get_user();
+
+		bool success = false;
+
+		auto [document, docResponse] = create_xml_response();
+		if (user) {
+			auto sortBy = request.uri.parameter("sort");
+			auto terms = request.uri.parameter("terms");
+
+			auto start = request.uri.parameter<uint32_t>("start");
+			auto count = request.uri.parameter<uint32_t>("count");
+
+			/*
+				count = 10
+				method = api.account.searchAccounts
+				sort = name
+				start = 0
+				terms = Search for Players
+			*/
+
+			if (sortBy == "name") {
+
+			} else if (sortBy == "presence_level") {
+
+			} else if (sortBy == "presence") {
+
+			} else if (sortBy == "party") {
+
+			} else if (sortBy == "XP") {
+
+			}
+
+			success = true;
+		}
+
+		add_common_keys(docResponse, success);
 		set_response_body(response, document, boost::beast::http::status::ok);
 	}
 
@@ -1530,6 +1663,55 @@ namespace Game {
 					utils::xml_add_text_node(player, "creature2_version", 0);
 					utils::xml_add_text_node(player, "creature3_id", 0);
 					utils::xml_add_text_node(player, "creature3_version", 0);
+				}
+			}
+		}
+
+		set_response_body(response, document, boost::beast::http::status::ok);
+	}
+
+	void API::game_game_getRandomGame(HTTP::Session& session, HTTP::Response& response) {
+		const auto& request = session.get_request();
+		const auto& user = session.get_user();
+
+		bool success = false;
+		if (user) {
+			success = true;
+		}
+
+		auto replay_version = request.uri.parameter<int32_t>("replay_version");
+
+		auto [document, docResponse] = create_xml_response();
+		add_common_keys(docResponse, success);
+
+		if (auto game = docResponse.append_child("game")) {
+			utils::xml_add_text_node(game, "game_id", 1);
+			utils::xml_add_text_node(game, "cashed_out", 0);
+			utils::xml_add_text_node(game, "finish", "2"); // string (time?)
+			utils::xml_add_text_node(game, "starting_difficulty", 1);
+			utils::xml_add_text_node(game, "start", "1"); // string (time?)
+
+			if (auto rounds = game.append_child("rounds")) {
+				utils::xml_add_text_node(rounds, "chain_id", 1);
+				utils::xml_add_text_node(rounds, "finish", "2"); // string (time?)
+				utils::xml_add_text_node(rounds, "planet_id", utils::hash_id("zelems_1.Level"));
+				utils::xml_add_text_node(rounds, "success", "N");
+				utils::xml_add_text_node(rounds, "round_id", 1);
+				utils::xml_add_text_node(rounds, "start", "1"); // string (time?)
+
+				if (auto players = rounds.append_child("players")) {
+					if (auto player = players.append_child("player")) {
+						utils::xml_add_text_node(player, "deaths", 0);
+						utils::xml_add_text_node(player, "kills", 0);
+						utils::xml_add_text_node(player, "account_id", 100);
+						utils::xml_add_text_node(player, "result", "completed");
+						utils::xml_add_text_node(player, "creature1_id", 10);
+						utils::xml_add_text_node(player, "creature1_version", 1);
+						utils::xml_add_text_node(player, "creature2_id", 11);
+						utils::xml_add_text_node(player, "creature2_version", 1);
+						utils::xml_add_text_node(player, "creature3_id", 12);
+						utils::xml_add_text_node(player, "creature3_version", 1);
+					}
 				}
 			}
 		}
@@ -1633,6 +1815,74 @@ namespace Game {
 		set_response_body(response, document, boost::beast::http::status::ok);
 	}
 
+	void API::game_creature_updateCreature(HTTP::Session& session, HTTP::Response& response) {
+		/*
+cost = 0
+gear = 1.000
+id = 10
+large = iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAgAElEQVR4nOy9d7Cl533f93nKW06/
+large_crc = 2739193539
+method = api.creature.updateCreature
+parts = 6
+points = 313.814
+stats = STR,14,3;DEX,23,5;MIND,13,0;HLTH,200,107;MANA,100,13;PDEF,150,168;EDEF,50,78;CRTR,100,112
+stats_ability_keyvalues = 868969257!minDamage,4;868969257!maxDamage,12;4022963036!percent,50;1137096183!minDamage,24;1137096183!maxDamage,36;1137096183!stunDuration,3;3492557026!minSecondaryDamage,8;3492557026!maxSecondaryDamage,20;3492557026!minDamage,24;3492557026!maxDamage,40;3492557026!radius,4;2779439490!numOrbs,6;2779439490!minDamage,16;2779439490!maxDamage,40;2779439490!deflectionIncrease,100
+thumb = iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAgAElEQVR4nGy9abBtx3kdtlb3Hs5w
+thumb_crc = 2819438930
+token = 100
+version = 1
+	*/
+
+		const auto& request = session.get_request();
+		const auto& uri = request.uri;
+
+		auto [document, docResponse] = create_xml_response();
+		add_common_keys(docResponse);
+
+		const auto& user = session.get_user();
+		if (user) {
+			auto creature_id = uri.parameter<uint32_t>("id");
+			auto creature = user->GetCreatureById(creature_id);
+			if (creature) {
+				auto version = creature->GetVersion();
+
+				// save large/thumb images
+				std::string storagePath = Config::Get(CONFIG_STORAGE_PATH) + "creature_png/";
+				std::string creaturePath = std::to_string(creature_id) + "_" + std::to_string(version);
+
+				if (auto largePng = uri.parameter("large"); !largePng.empty()) {
+					auto largeCrc = uri.parameter<uint32_t>("large_crc");
+					auto data = base64_decode(largePng, true);
+					lodepng::save_file(std::vector<uint8_t>(data.begin(), data.end()), storagePath + creaturePath + "_large.png");
+				}
+
+				if (auto thumbPng = uri.parameter("thumb"); !thumbPng.empty()) {
+					auto thumbCrc = uri.parameter<uint32_t>("thumb_crc");
+					auto data = base64_decode(thumbPng, true);
+					lodepng::save_file(std::vector<uint8_t>(data.begin(), data.end()), storagePath + creaturePath + "_thumb.png");
+				}
+
+				const auto& partsString = uri.parameter("parts");
+				// parse parts
+
+				creature->Update(
+					uri.parameter<float>("gear"),
+					uri.parameter<float>("points"),
+					partsString,
+					uri.parameter("stats"),
+					uri.parameter("stats_ability_keyvalues")
+				);
+
+				auto creatureNode = docResponse.append_child("creature");
+				utils::xml_add_text_node(docResponse, "version", version);
+			}
+		} else {
+			// TODO: Error, no user logged in.
+		}
+
+		set_response_body(response, document, boost::beast::http::status::ok);
+	}
+
 	void API::game_deck_updateDecks(HTTP::Session& session, HTTP::Response& response) {
 		const auto& user = session.get_user();
 		if (!user) {
@@ -1650,29 +1900,95 @@ namespace Game {
 		set_response_body(response, document, boost::beast::http::status::ok);
 	}
 
-	/*
-/game/api?version=1&token=cookie
-cost = 0
-gear = 0.000
-id = 749013658
-large = iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAgAElEQVR4nOy9Z7Bl13WY+e1wwk0v
-large_crc = 692908162
-method = api.creature.updateCreature
-parts = 117957934
-points = 300.000
-stats = STR,14,0;DEX,13,0;MIND,23,0;HLTH,100,70;MANA,125,23;PDEF,50,78;EDEF,150,138;CRTR,50,52
-stats_ability_keyvalues = 885660025!minDamage,5;885660025!maxDamage,8;885660025!percentToHeal,20;1152331895!duration,20;1152331895!spawnMax,2;424126604!radius,8;424126604!healing,5;424126604!duration,6;424126604!minHealing,21;424126604!maxHealing,32;1577880566!Enrage.damage,9;1577880566!Enrage.duration,30;1577880566!Enrage.healing,35;1829107826!diameter,12;1829107826!damage,6;1829107826!duration,10;1829107826!speedDebuff,75
-thumb = iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAgAElEQVR4nGy8adRm11kduJ9zh3f6
-thumb_crc = 1921048798
-token = ABCDEFGHIJKLMNOPQRSTUVWXYZ
-version = 1
-	*/
+	void API::game_leaderboard_getLeaderboard(HTTP::Session& session, HTTP::Response& response) {
+		// DR:225364700
+
+		constexpr std::string_view pveCategories[] {
+			"progression",
+			"xp",
+			"totalKills",
+			"deaths",
+			"killDeathRatio",
+			"damageMax",
+			"healingMax"
+		};
+
+		constexpr std::string_view pvpCategories[] {
+			"wins",
+			"playerKills",
+			"damageMax",
+			"healingMax"
+		};
+
+		const auto& request = session.get_request();
+		const auto& user = session.get_user();
+
+		bool success = false;
+
+		auto [document, docResponse] = create_xml_response();
+		if (user) {
+			auto sortBy = request.uri.parameter("name");
+			auto varient = request.uri.parameter("varient");
+			auto teamSize = request.uri.parameter<uint32_t>("vs");
+
+			auto start = request.uri.parameter<uint32_t>("start");
+			auto count = request.uri.parameter<uint32_t>("count");
+
+			bool pvp = sortBy.find("pvp") != std::string::npos;
+
+			add_common_keys(docResponse, true);
+			if (auto statsNode = docResponse.append_child("stats")) {
+				// priority order
+				if (pvp) {
+					for (const auto& category : pvpCategories) {
+						utils::xml_add_text_node(statsNode, "stat", category);
+					}
+				} else {
+					for (const auto& category : pveCategories) {
+						utils::xml_add_text_node(statsNode, "stat", category);
+					}
+				}
+			}
+
+			if (auto playersNode = docResponse.append_child("players")) {
+				const auto& account = user->get_account();
+
+				auto playerNode = playersNode.append_child("player");
+				utils::xml_add_text_node(playerNode, "id", account.id);
+				utils::xml_add_text_node(playerNode, "name", user->get_name());
+
+				auto playerStatsNode = playerNode.append_child("stats");
+				if (pvp) {
+					for (const auto& category : pvpCategories) {
+						utils::xml_add_text_node(playerStatsNode, "stat", category);
+					}
+				} else {
+					for (const auto& category : pveCategories) {
+						utils::xml_add_text_node(playerStatsNode, "stat", category);
+					}
+				}
+			}
+		} else {
+			add_common_keys(docResponse, false);
+		}
+
+		set_response_body(response, document, boost::beast::http::status::ok);
+	}
 
 	void API::survey_survey_getSurveyList(HTTP::Session& session, HTTP::Response& response) {
 		auto [document, docResponse] = create_xml_response();
 		add_common_keys(docResponse);
 
 		if (auto surveys = docResponse.append_child("surveys")) {
+			/*
+				<surveys>
+					<survey>
+						<id>some_id</id>
+						<trigger1>some_integer</trigger1>
+						<trigger2>some_integer</trigger2>
+					</survey>
+				</surveys>
+			*/
 			// Empty
 		}
 
@@ -1681,18 +1997,21 @@ version = 1
 
 	void API::add_broadcasts(pugi::xml_node& node) {
 		if (auto broadcasts = node.append_child("broadcasts")) {
-			/*
+			
 			if (auto broadcast = broadcasts.append_child("broadcast")) {
-				utils::xml_add_text_node(broadcast, "id", 12);
-				utils::xml_add_text_node(broadcast, "start", 23);
-				utils::xml_add_text_node(broadcast, "end", 34);
-				utils::xml_add_text_node(broadcast, "type", 45);
-				utils::xml_add_text_node(broadcast, "message", "Hello World!");
-				utils::xml_add_text_node(broadcast, "tokens", "512");
+				utils::xml_add_text_node(broadcast, "id", 0x10);
+				utils::xml_add_text_node(broadcast, "end", 0x11);
+				utils::xml_add_text_node(broadcast, "start", 0x12);
+				utils::xml_add_text_node(broadcast, "type", 0x13);
+				utils::xml_add_text_node(broadcast, "message", "Bananas for sale! Come get your bananas for only 50 bucks each!");
+				utils::xml_add_text_node(broadcast, "tokens", "12345678");
+				/*
 				if (auto tokens = broadcast.append_child("tokens")) {
+					utils::xml_add_text_node(broadcast, "token", "12345");
 				}
+				*/
 			}
-			*/
+			
 		}
 	}
 
@@ -1723,13 +2042,15 @@ version = 1
 
 	void API::set_response_body(HTTP::Response& response, pugi::xml_document& xmlDocument, boost::beast::http::status result) const {
 		xml_string_writer writer;
-		xmlDocument.save(writer, "\t", pugi::format_default | pugi::format_write_bom, pugi::encoding_utf8);
+		xmlDocument.save(writer, "\t", pugi::format_default | pugi::format_write_bom, pugi::encoding_latin1);
 
 		// response.set(boost::beast::http::field::host, "127.0.0.1");
-		// response.set(boost::beast::http::field::user_agent, "Darkspore/5.3.0.127 (Pollinator; 6.2.9200)");
+		response.set(boost::beast::http::field::user_agent, "Darkspore/5.3.0.127 (Pollinator; 6.2.9200)");
 		// response.set(boost::beast::http::field::date, utils::get_utc_date_string());
+		// response.set(boost::beast::http::field::user_agent, "EA/2.0 (compatible)");
 		response.set(boost::beast::http::field::content_language, "en-us");
-		response.set(boost::beast::http::field::content_type, "text/xml; charset=utf-8");
+		response.set(boost::beast::http::field::content_type, "text/xml");
+		// response.set(boost::beast::http::field::content_type, "text/xml; charset=utf-8");
 
 		response.result() = result;
 		response.body() = std::move(writer.result);

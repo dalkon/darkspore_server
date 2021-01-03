@@ -51,12 +51,16 @@ namespace SporeNet {
 			Part part(id);
 			part.SetCreationDate(utils::get_unix_time());
 			part.SetIsFlair(false);
-			part.SetMarketStatus(1);
-			part.SetCost(1000);
+			part.SetMarketStatus(0xAB);
+			part.SetCost(0x1234);
 			part.SetLevel(30);
-			part.SetRarity(PartRarity::Basic);
-			part.SetStatus(0);
-			part.SetUsage(1);
+			part.SetRarity(PartRarity::Rare);
+			part.SetStatus(0x62);
+			part.SetUsage(0x55);
+
+			part.SetPrefix(1, false);
+			part.SetPrefix(2, true);
+			part.SetSuffix(3);
 
 			parts.push_back(std::move(part));
 		}

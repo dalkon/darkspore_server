@@ -20,6 +20,13 @@
 
 // SporeNet
 namespace SporeNet {
+	// FeedMessageType
+	enum class FeedMessageType : uint32_t {
+		Friend = 1,
+		Creature = 2,
+		Upgrade = 3
+	};
+
 	// Account
 	struct Account {
 		bool tutorialCompleted = false;
@@ -72,11 +79,12 @@ namespace SporeNet {
 		std::string metadata;
 		std::string name;
 
-		uint64_t timestamp;
+		uint64_t timestamp; // time in seconds?
 
 		uint32_t accountId;
 		uint32_t id;
-		uint32_t messageId;
+
+		FeedMessageType messageId;
 	};
 
 	// Feed
@@ -167,6 +175,15 @@ namespace SporeNet {
 			bool Load();
 			bool Save();
 
+			// AssociationLists
+			bool IsFriend(const User& user) const;
+			void AddFriendUser(const User& user);
+			void RemoveFriendUser(const User& user);
+
+			bool IsIgnored(const User& user) const;
+			void AddIgnoredUser(const User& user);
+			void RemoveIgnoredUser(const User& user);
+
 			// WebAPI
 			void WriteAccountAPI(pugi::xml_node& node) const;
 			void WriteCreaturesAPI(pugi::xml_node& node) const;
@@ -175,6 +192,7 @@ namespace SporeNet {
 		private:
 			Account mAccount;
 
+			std::map<uint32_t, Blaze::ListMembers> mAssociationLists;
 			std::vector<SquadPtr> mSquads;
 
 			Creatures mCreatures;

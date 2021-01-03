@@ -66,20 +66,19 @@ namespace SporeNet {
 
 	void RoomView::WriteTo(Blaze::TDF::Packet& packet) const {
 		packet.put_string("DISP", "hello");
+
+		packet.push_map("GMET", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
+		// packet.put_string("abc", "def");
+		packet.pop();
+
+		packet.push_map("META", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
+		// packet.put_string("123", "456");
+		packet.pop();
+
 		packet.put_integer("MXRM", 1); // Maxis room?
 		packet.put_string("NAME", mName);
 		packet.put_integer("USRM", 0); // User room?
 		packet.put_integer("VWID", mId);
-
-		// GMET = unknown
-		packet.push_map("GMET", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
-		packet.put_string("abc", "def");
-		packet.pop();
-
-		// META = unknown
-		packet.push_map("META", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
-		packet.put_string("123", "456");
-		packet.pop();
 	}
 
 	// RoomCategory
@@ -90,7 +89,21 @@ namespace SporeNet {
 	}
 
 	void RoomCategory::WriteTo(Blaze::TDF::Packet& packet) const {
-		packet.put_integer("CAPA", 10); // Capacity?
+		uint32_t viewId;
+		if (mView) {
+			viewId = mView->GetId();
+		} else {
+			viewId = 0;
+		}
+
+		packet.put_integer("CAPA", 10);
+
+		packet.push_map("CMET", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
+		packet.pop();
+
+		packet.push_map("CRIT", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
+		packet.pop();
+
 		packet.put_integer("CTID", mId);
 		packet.put_string("DESC", mDescription);
 		packet.put_string("DISP", "");
@@ -98,28 +111,16 @@ namespace SporeNet {
 		packet.put_integer("EMAX", 10);
 		packet.put_integer("EPCT", 0);
 		packet.put_integer("FLAG", 0); // RoomCategoryFlags::Unknown
+
+		packet.push_map("GMET", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
+		packet.pop();
+
 		packet.put_string("LOCL", "");
 		packet.put_string("NAME", mName);
 		packet.put_integer("NEXP", 1);
 		packet.put_string("PASS", mPassword);
 		packet.put_integer("UCRT", 1); // ?
-		if (mView) {
-			packet.put_integer("VWID", mView->GetId());
-		} else {
-			packet.put_integer("VWID", 0);
-		}
-
-		// CRIT = Category join criteria?
-		packet.push_map("CRIT", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
-		packet.pop();
-
-		// CMET = Category metadata? (unknown use)
-		packet.push_map("CMET", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
-		packet.pop();
-
-		// GMET = unknown
-		packet.push_map("GMET", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
-		packet.pop();
+		packet.put_integer("VWID", viewId);
 	}
 
 	// Room
@@ -147,13 +148,24 @@ namespace SporeNet {
 	}
 
 	void Room::WriteTo(Blaze::TDF::Packet& packet) {
+		std::string categoryName;
+
+		uint32_t categoryId;
 		uint32_t population = 0;
 
-		// ATTR = Room attributes?
+		if (mCategory) {
+			categoryName = mCategory->GetName();
+			categoryId = mCategory->GetId();
+		} else {
+			categoryName = "Unknown category";
+			categoryId = 0;
+		}
+
+		packet.put_integer("AREM", 1);
+
 		packet.push_map("ATTR", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
 		packet.pop();
 
-		// BLST = Member list?
 		packet.push_list("BLST", Blaze::TDF::Type::Integer);
 		for (auto it = mUsers.begin(); it != mUsers.end(); ) {
 			const auto& [id, weakUser] = *it;
@@ -167,14 +179,15 @@ namespace SporeNet {
 		}
 		packet.pop();
 
-		// CRIT = Room join criteria?
+		packet.put_integer("CAP", mCapacity);
+		packet.put_string("CNAM", categoryName);
+		packet.put_integer("CRET", 0);
+
 		packet.push_map("CRIT", Blaze::TDF::Type::String, Blaze::TDF::Type::String);
 		packet.pop();
 
-		// Other
-		packet.put_integer("AREM", 1);
-		packet.put_integer("CAP", mCapacity);
 		packet.put_integer("CRTM", 0);
+		packet.put_integer("CTID", categoryId);
 		packet.put_integer("ENUM", 1);
 		packet.put_string("HNAM", "Lobby");
 		packet.put_integer("HOST", 1);
@@ -183,41 +196,45 @@ namespace SporeNet {
 		packet.put_string("PSWD", mPassword);
 		packet.put_string("PVAL", "");
 		packet.put_integer("RMID", mId);
-
-		if (mCategory) {
-			packet.put_string("CNAM", mCategory->GetName());
-			packet.put_integer("CRET", 0);
-			packet.put_integer("CTID", mCategory->GetId());
-			packet.put_integer("UCRT", 1); // ?
-		} else {
-			packet.put_string("CNAM", "Unknown category");
-			packet.put_integer("CRET", 0);
-			packet.put_integer("CTID", 0);
-			packet.put_integer("UCRT", 1); // ?
-		}
+		packet.put_integer("UCRT", 1); // ?
 	}
 
 	// RoomManager
+	RoomManager::RoomManager() {
+		//	Create static room data
+		//		Views
+		auto roomView = CreateRoomView(1);
+		//		Categories
+		//		lobby/ship category?
+		for (uint32_t i = 0; i < 4; ++i) {
+			CreateRoomCategory(i + 1)->SetView(roomView);
+		}
+	}
+
 	RoomPtr RoomManager::GetRoom(uint32_t id) const {
 		auto it = mRooms.find(id);
 		return it != mRooms.end() ? it->second : nullptr;
 	}
 
-	RoomPtr RoomManager::CreateRoom() {
-		uint32_t id;
-		if (mRooms.empty()) {
-			id = 1;
-		} else {
-			auto it = mRooms.end();
-			id = (--it)->first + 1;
+	RoomPtr RoomManager::CreateRoom(uint32_t id) {
+		if (id == 0) {
+			if (mRooms.empty()) {
+				id = 1;
+			} else {
+				auto it = mRooms.end();
+				id = (--it)->first + 1;
+			}
 		}
 
-		auto room = RoomPtr(new Room(*this));
-		room->mId = id;
-		room->mName = "Lobby #" + std::to_string(id);
+		const auto& [it, success] = mRooms.try_emplace(id, nullptr);
+		if (success) {
+			auto room = RoomPtr(new Room(*this));
+			room->mId = id;
+			room->mName = "Lobby #" + std::to_string(id);
+			it->second = std::move(room);
+		}
 
-		mRooms.emplace(id, room);
-		return room;
+		return it->second;
 	}
 
 	void RoomManager::RemoveRoom(uint32_t id) {
@@ -234,21 +251,25 @@ namespace SporeNet {
 		return it != mRoomCategories.end() ? it->second : nullptr;
 	}
 
-	RoomCategoryPtr RoomManager::CreateRoomCategory() {
-		uint32_t id;
-		if (mRoomCategories.empty()) {
-			id = 1;
-		} else {
-			auto it = mRoomCategories.end();
-			id = (--it)->first + 1;
+	RoomCategoryPtr RoomManager::CreateRoomCategory(uint32_t id) {
+		if (id == 0) {
+			if (mRoomCategories.empty()) {
+				id = 1;
+			} else {
+				auto it = mRoomCategories.end();
+				id = (--it)->first + 1;
+			}
 		}
 
-		auto roomCategory = RoomCategoryPtr(new RoomCategory(*this));
-		roomCategory->mId = id;
-		roomCategory->mName = "Lobby Category #" + std::to_string(id);
+		const auto& [it, success] = mRoomCategories.try_emplace(id, nullptr);
+		if (success) {
+			auto roomCategory = RoomCategoryPtr(new RoomCategory(*this));
+			roomCategory->mId = id;
+			roomCategory->mName = "Lobby Category #" + std::to_string(id);
+			it->second = std::move(roomCategory);
+		}
 
-		mRoomCategories.emplace(id, roomCategory);
-		return roomCategory;
+		return it->second;
 	}
 
 	void RoomManager::RemoveRoomCategory(uint32_t id) {
@@ -263,21 +284,26 @@ namespace SporeNet {
 		return it != mRoomViews.end() ? it->second : nullptr;
 	}
 
-	RoomViewPtr RoomManager::CreateRoomView() {
-		uint32_t id;
-		if (mRoomViews.empty()) {
-			id = 1;
-		} else {
-			auto it = mRoomViews.end();
-			id = (--it)->first + 1;
+	RoomViewPtr RoomManager::CreateRoomView(uint32_t id) {
+		// TODO: always create, same with the others
+		if (id == 0) {
+			if (mRoomViews.empty()) {
+				id = 1;
+			} else {
+				auto it = mRoomViews.end();
+				id = (--it)->first + 1;
+			}
 		}
 
-		auto roomView = RoomViewPtr(new RoomView(*this));
-		roomView->mId = id;
-		roomView->mName = "Lobby View #" + std::to_string(id);
+		const auto& [it, success] = mRoomViews.try_emplace(id, nullptr);
+		if (success) {
+			auto roomView = RoomViewPtr(new RoomView(*this));
+			roomView->mId = id;
+			roomView->mName = "Lobby View #" + std::to_string(id);
+			it->second = std::move(roomView);
+		}
 
-		mRoomViews.emplace(id, roomView);
-		return roomView;
+		return it->second;
 	}
 
 	void RoomManager::RemoveRoomView(uint32_t id) {

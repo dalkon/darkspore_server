@@ -9,7 +9,6 @@
 #include <boost/beast/http.hpp>
 #include <array>
 #include <map>
-#include <regex>
 
 // HTTP
 namespace HTTP {

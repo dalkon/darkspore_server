@@ -14,18 +14,22 @@ namespace Game {
 			static uint32_t GetXPForLevel(uint32_t level);
 
 		public:
-			Player(Instance& instance, uint8_t playerIndex, uint64_t blazeId);
+			Player(Instance& instance, const SporeNet::UserPtr& user, uint8_t playerIndex);
 
 			RakNet::labsPlayer& GetData();
 			const RakNet::labsPlayer& GetData() const;
 
 			uint8_t GetId() const;
 
-			void Setup(const SporeNet::UserPtr& user);
+			void Setup();
 
+			void GetStatus(uint32_t& status, float& progress) const;
 			void SetStatus(uint32_t status, float progress);
 
 			ObjectPtr GetCharacterObject(uint32_t index) const;
+
+			SporeNet::SquadPtr GetSquad() const;
+			void SetSquad(const SporeNet::SquadPtr& squad);
 
 			const RakNet::labsCharacter& GetCharacter(uint32_t index) const;
 			void SetCharacter(RakNet::labsCharacter&& character, uint32_t index);
@@ -44,6 +48,9 @@ namespace Game {
 			Instance& mInstance;
 
 			std::array<ObjectPtr, 3> mCharacterObjects;
+
+			SporeNet::UserPtr mUser;
+			SporeNet::SquadPtr mSquad;
 
 			RakNet::labsPlayer mData;
 

@@ -2,7 +2,7 @@
 // Include
 #include "uri.h"
 
-#include "../utils/functions.h"
+#include "utils/functions.h"
 
 #include <charconv>
 

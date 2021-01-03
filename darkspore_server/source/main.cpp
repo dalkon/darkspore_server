@@ -58,16 +58,17 @@ bool Application::OnInit() {
 
 	mPssServer = std::make_unique<Blaze::Server>(mIoService, 8443);
 	mTickServer = std::make_unique<Blaze::Server>(mIoService, 8999);
+	mTelemetryServer = std::make_unique<Blaze::Server>(mIoService, 9988);
 
 	// QoS
-	mTestServer = std::make_unique<QoS::Server>(mIoService, 3659);
+	mQosServer = std::make_unique<QoS::Server>(mIoService, 3659);
 
 	// HTTP
 	mHttpServer = std::make_unique<HTTP::Server>(mIoService, 80);
-	mQosServer = std::make_unique<HTTP::Server>(mIoService, 17502);
+	mHttpQosServer = std::make_unique<HTTP::Server>(mIoService, 17502);
 
 	const auto& router = mHttpServer->get_router();
-	mQosServer->set_router(router);
+	mHttpQosServer->set_router(router);
 
 	//
 	mGameAPI->setup();
@@ -114,11 +115,23 @@ Blaze::Server* Application::get_blaze_server() const {
 	return mBlazeServer.get();
 }
 
+Blaze::Server* Application::get_pss_server() const {
+	return mPssServer.get();
+}
+
+Blaze::Server* Application::get_tick_server() const {
+	return mTickServer.get();
+}
+
+Blaze::Server* Application::get_telemetry_server() const {
+	return mTelemetryServer.get();
+}
+
 HTTP::Server* Application::get_http_server() const {
 	return mHttpServer.get();
 }
 
-HTTP::Server* Application::get_qos_server() const {
+QoS::Server* Application::get_qos_server() const {
 	return mQosServer.get();
 }
 

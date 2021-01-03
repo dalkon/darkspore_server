@@ -18,6 +18,8 @@ namespace QoS {
 			void handle_read(const boost::system::error_code& error, size_t bytes_transferred);
 			void handle_write(const boost::system::error_code& error);
 
+			uint16_t get_port() const;
+
 		private:
 			boost::asio::io_context& mIoService;
 			boost::asio::ip::udp::socket mSocket;

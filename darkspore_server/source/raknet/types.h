@@ -3,8 +3,9 @@
 #define _RAKNET_TYPES_HEADER
 
 // Include
+#include "blaze/types.h"
+
 #include <BitStream.h>
-#include <cstdint>
 #include <array>
 #include <bitset>
 
@@ -293,15 +294,15 @@ namespace RakNet {
 
 	// cAIDirector
 	struct cAIDirector {
-		tObjID mBossId;
+		tObjID mBossId = 0;
 
-		int32_t mActiveHordeWaves;
+		int32_t mActiveHordeWaves = 0;
 
-		bool mbBossSpawned;
-		bool mbBossHorde;
-		bool mbCaptainSpawned;
-		bool mbBossComplete;
-		bool mbHordeSpawned;
+		bool mbBossSpawned = false;
+		bool mbBossHorde = false;
+		bool mbCaptainSpawned = false;
+		bool mbBossComplete = false;
+		bool mbHordeSpawned = false;
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;
@@ -316,15 +317,15 @@ namespace RakNet {
 		uint64_t mDeployCooldownMs = 0;
 		uint32_t mAbilityPoints = 0;
 		std::array<uint32_t, 9> mAbilityRanks;
-		float mHealthPoints = 50.f;
-		float mMaxHealthPoints = 100.f;
-		float mManaPoints = 75.f;
-		float mMaxManaPoints = 100.f;
+		float mHealthPoints = 0;
+		float mMaxHealthPoints = 0;
+		float mManaPoints = 0;
+		float mMaxManaPoints = 0;
 		float mGearScore = 300.f;
 		float mGearScoreFlattened = 300.f;
 
 		// make some sort of map?
-		std::array<float, Ability::Count> partsAttributes;
+		std::array<float, Ability::Count> partsAttributes { 0.f };
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;
@@ -370,10 +371,10 @@ namespace RakNet {
 			Thorns
 		};
 
-		uint32_t crystalNoun;
-		uint16_t level;
+		uint32_t crystalNoun = 0;
+		uint16_t level = 0;
 
-		labsCrystal() : crystalNoun(0), level(0) {}
+		labsCrystal() = default;
 		labsCrystal(Type type, uint16_t rarity, bool prismatic);
 
 		uint32_t GetType() const;
@@ -404,10 +405,10 @@ namespace RakNet {
 			void WriteReflection(BitStream& stream) const;
 
 		public:
-			bool mbDataSetup = false;
+			bool mbDataSetup = false; // if true then game thinks your lvl/xp is capped (demo mode?)
 			int32_t mCurrentDeckIndex = 0;
 			int32_t mQueuedDeckIndex = 0;
-			std::array<labsCharacter, 3> mCharacters;
+			std::array<labsCharacter, 3> mCharacters {};
 			uint8_t mPlayerIndex = 0;
 			uint8_t mTeam = 0;
 			uint64_t mPlayerOnlineId = 0;
@@ -418,8 +419,8 @@ namespace RakNet {
 			bool mbIsCharged = false;
 			int32_t mDNA = 0;
 
-			std::array<labsCrystal, 9> mCrystals;
-			std::array<bool, 8> mCrystalBonuses;
+			std::array<labsCrystal, 9> mCrystals {};
+			std::array<bool, 8> mCrystalBonuses { false };
 
 			uint32_t mAvatarLevel = 0;
 			float mAvatarXP = 0.f;
@@ -427,9 +428,9 @@ namespace RakNet {
 			bool mLockCamera = false;
 			bool mbLockedOverdrive = false;
 			bool mbLockedCrystals = false;
-			uint32_t mLockedAbilityMin;
-			uint32_t mLockedDeckIndexMin;
-			uint32_t mDeckScore;
+			uint32_t mLockedAbilityMin = 0;
+			uint32_t mLockedDeckIndexMin = 0;
+			uint32_t mDeckScore = 0;
 
 		private:
 			std::bitset<FieldCount> mReflectionBits;
@@ -640,32 +641,32 @@ namespace RakNet {
 
 		};
 
-		uint32_t simpleSwarmEffectID;
-		uint8_t objectFxIndex;
-		bool bRemove;
-		bool bHardStop;
-		bool bForceAttach;
-		bool bCritical;
-		asset ServerEventDef;
-		tObjID objectId;
-		tObjID secondaryObjectId;
-		tObjID attackerId;
-		cSPVector3 position;
-		cSPVector3 facing;
-		cSPQuaternion orientation;
-		cSPVector3 targetPoint;
-		int32_t textValue;
-		uint32_t clientEventID;
-		uint8_t clientIgnoreFlags;
-		uint64_t lootReferenceId;
-		uint64_t lootInstanceId;
-		uint32_t lootRigblockId;
-		uint32_t lootSuffixAssetId;
-		uint32_t lootPrefixAssetId1;
-		uint32_t lootPrefixAssetId2;
-		int32_t lootItemLevel;
-		int32_t lootRarity;
-		uint64_t lootCreationTime;
+		uint32_t simpleSwarmEffectID = 0;
+		uint8_t objectFxIndex = 0;
+		bool bRemove = false;
+		bool bHardStop = false;
+		bool bForceAttach = false;
+		bool bCritical = false;
+		asset ServerEventDef = 0;
+		tObjID objectId = 0;
+		tObjID secondaryObjectId = 0;
+		tObjID attackerId = 0;
+		cSPVector3 position {};
+		cSPVector3 facing {};
+		cSPQuaternion orientation {};
+		cSPVector3 targetPoint {};
+		int32_t textValue = 0;
+		uint32_t clientEventID = 0;
+		uint8_t clientIgnoreFlags = 0;
+		uint64_t lootReferenceId = 0;
+		uint64_t lootInstanceId = 0;
+		uint32_t lootRigblockId = 0;
+		uint32_t lootSuffixAssetId = 0;
+		uint32_t lootPrefixAssetId1 = 0;
+		uint32_t lootPrefixAssetId2 = 0;
+		int32_t lootItemLevel = 0;
+		int32_t lootRarity = 0;
+		uint64_t lootCreationTime = 0;
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;
@@ -705,6 +706,7 @@ namespace RakNet {
 
 			uint32_t GetLevelIndex() const;
 			void SetLevelByIndex(uint32_t index);
+			void SetLevelInstance(uint32_t index);
 
 			uint32_t GetMarkerSet() const;
 			uint32_t GetMinorDifficulty() const;
@@ -716,6 +718,7 @@ namespace RakNet {
 			bool IsCompleted() const;
 			void SetCompleted(bool completed);
 
+			void SetEnemyNoun(std::string_view nounStr, uint32_t index);
 			void SetTest(uint32_t val) { mPlayerAsset = val; }
 
 			void WriteTo(RakNet::BitStream& stream) const;
@@ -733,6 +736,14 @@ namespace RakNet {
 			uint32_t mPlayerAsset = 0;
 
 			bool mCompletedLevel = false;
+	};
+
+	// GameStateData
+	struct GameStateData {
+		double var;
+
+		uint32_t state;
+		Blaze::GameType type;
 	};
 }
 

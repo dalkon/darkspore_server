@@ -40,6 +40,8 @@ namespace SporeNet {
 
 	class Room;
 
+	class Squad;
+
 	class User;
 	class UserManager;
 
@@ -48,6 +50,8 @@ namespace SporeNet {
 	using CreaturePtr = std::shared_ptr<Creature>;
 
 	using RoomPtr = std::shared_ptr<Room>;
+
+	using SquadPtr = std::shared_ptr<Squad>;
 
 	using UserPtr = std::shared_ptr<User>;
 }

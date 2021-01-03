@@ -444,6 +444,51 @@ namespace Blaze {
 			void Write(TDF::Packet& packet) const;
 		};
 	}
+
+	namespace GameManager {
+		struct CreateGameRequest {
+			std::map<std::string, std::string> attributes;
+			std::map<std::string, std::string> playerAttributes;
+			std::map<std::string, std::string> criteria;
+			std::map<std::string, std::string> matr;
+
+			std::vector<int64_t> administrators;
+			std::vector<int64_t> seat;
+			std::vector<uint32_t> sidl;
+			std::vector<uint16_t> capacity;
+			std::vector<uint16_t> tids;
+
+			std::string name;
+			std::string type;
+			std::string playgroupId;
+			std::string playgroupSc;
+			std::string version;
+			std::string ctr;
+			std::string url;
+
+			IpPairAddress hostNetwork;
+
+			object_id btpl;
+
+			uint32_t rgid; // requested game id?
+			uint32_t settings;
+			uint32_t slot;
+
+			uint16_t maxPlayers;
+			uint16_t queueCapacity;
+			uint16_t tcap;
+			uint16_t tIndex;
+
+			GameNetworkTopology networkTopology;
+			PresenceMode presence;
+
+			bool ignore;
+			bool resetable;
+
+			void Read(const rapidjson::Value& value);
+			void Write(TDF::Packet& packet) const;
+		};
+	}
 }
 
 #endif

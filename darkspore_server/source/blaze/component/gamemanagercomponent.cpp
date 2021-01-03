@@ -7,6 +7,8 @@
 #include "blaze/client.h"
 #include "blaze/functions.h"
 #include "game/gamemanager.h"
+#include "sporenet/instance.h"
+#include "sporenet/user.h"
 #include "utils/functions.h"
 
 #include <iostream>
@@ -690,7 +692,7 @@ namespace Blaze {
 		request.notify(packet, Id, PacketID::NotifyGameRemoved);
 	}
 
-	void GameManagerComponent::NotifyGameSetup(Request& request) {
+	void GameManagerComponent::NotifyGameSetup(Request& request, ReplicatedGameData& gameData, std::vector<ReplicatedGamePlayer>& gamePlayers) {
 		const auto& user = request.get_user();
 		if (!user) {
 			return;
@@ -701,35 +703,16 @@ namespace Blaze {
 			return;
 		}
 
-		auto userId = user->get_id();
-
-		const auto& gameInfo = game->GetInfo();
-
-		std::cout << "Playgroup ID: " << gameInfo.playgroupId << std::endl;
-
 		TDF::Packet packet;
 		
 		// Game data
 #if 1
 		packet.push_struct("GAME");
-		gameInfo.Write(packet);
+		gameData.Write(packet);
 		packet.pop();
 
 		packet.push_list("PROS", TDF::Type::Struct);
-		{
-			ReplicatedGamePlayer player;
-			player.gameId = game->GetId();
-			player.localization = request.get_client().data().lang;
-			player.name = user->get_name();
-			player.id = userId;
-			player.hostNetwork = gameInfo.hostNetwork;
-			player.slot = 1;
-			player.slotType = Slot::Public;
-			player.state = PlayerState::Connected;
-			player.tIndex = 0xFFFF;
-			player.time = utils::get_unix_time();
-			player.uid = userId;
-
+		for (const auto& player : gamePlayers) {
 			packet.push_struct("");
 			player.Write(packet);
 			packet.pop();
@@ -878,41 +861,17 @@ namespace Blaze {
 		request.notify(packet, Id, PacketID::NotifyGameSetup);
 	}
 
-	void GameManagerComponent::NotifyPlayerJoining(Request& request, uint32_t gameId) {
+	void GameManagerComponent::NotifyPlayerJoining(Request& request, const ReplicatedGamePlayer& gamePlayer) {
 		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
 
-		const auto& game = Game::GameManager::GetGame(gameId);
-		if (!game) {
-			return;
-		}
-
-		user->set_game(game);
-
-		const auto& client = request.get_client();
-		const auto& gameInfo = game->GetInfo();
-
-		ReplicatedGamePlayer player;
-		player.gameId = game->GetId();
-		player.localization = client.data().lang;
-		player.name = user->get_name();
-		player.id = user->get_id();
-		player.hostNetwork = gameInfo.hostNetwork;
-		player.slot = 1;
-		player.slotType = Slot::Public;
-		player.state = PlayerState::Connected;
-		player.tIndex = 0xFFFF;
-		player.time = utils::get_unix_time();
-		player.uid = client.get_id();
-
-		//
 		TDF::Packet packet;
-		packet.put_integer("GID", player.gameId);
+		packet.put_integer("GID", gamePlayer.gameId);
 
 		packet.push_struct("PDAT");
-		player.Write(packet);
+		gamePlayer.Write(packet);
 		packet.pop();
 
 		request.notify(packet, Id, PacketID::NotifyPlayerJoining);
@@ -952,96 +911,16 @@ namespace Blaze {
 		request.notify(packet, Id, PacketID::NotifyGameStateChange);
 	}
 
-	void GameManagerComponent::NotifyGameReset(Request& request) {
+	void GameManagerComponent::NotifyGameReset(Request& request, ReplicatedGameData& gameData) {
 		const auto& user = request.get_user();
 		if (!user) {
 			return;
 		}
 
-		const auto& game = user->get_game();
-		if (!game) {
-			return;
-		}
-
-		const auto& gameInfo = game->GetInfo();
-
-		bool gameIgnore = request["IGNO"].GetUint();
-		uint32_t tCap = request["TCAP"].GetUint();
-		std::string versionString = request["VSTR"].GetString();
-
 		TDF::Packet packet;
-		{
-			auto& dataStruct = packet.CreateStruct(nullptr, "DATA");
-			{
-				auto& admnList = packet.CreateList(&dataStruct, "ADMN", TDF::Type::Integer);
-				packet.PutInteger(&admnList, "", 1);
-			} {
-				auto& attrMap = packet.CreateMap(&dataStruct, "ATTR", TDF::Type::String, TDF::Type::String);
-				for (const auto& [key, value] : gameInfo.attributes) {
-					packet.PutString(&attrMap, key, value);
-				}
-			} {
-				auto& capList = packet.CreateList(&dataStruct, "CAP", TDF::Type::Integer);
-				for (auto value : gameInfo.capacity) {
-					packet.PutInteger(&capList, "", value);
-				}
-			}
-			packet.PutInteger(&dataStruct, "GID", game->GetId());
-			packet.PutString(&dataStruct, "GNAM", gameInfo.name);
-			packet.PutInteger(&dataStruct, "GPVH", 1);
-			packet.PutInteger(&dataStruct, "GSET", gameInfo.settings);
-			packet.PutInteger(&dataStruct, "GSID", 1);
-			packet.PutInteger(&dataStruct, "GSTA", gameInfo.state);
-			packet.PutString(&dataStruct, "GTYP", gameInfo.type);
-			{
-				auto& hnetList = packet.CreateList(&dataStruct, "HNET", TDF::Type::Struct, true);
-				{
-					auto& inipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
-				} {
-					auto& exipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
-				}
-			}
-			packet.PutInteger(&dataStruct, "HSES", 0);
-			packet.PutInteger(&dataStruct, "IGNO", gameIgnore);
-			packet.PutInteger(&dataStruct, "MCAP", gameInfo.maxPlayers);
-			{
-				auto& nqosStruct = packet.CreateStruct(&dataStruct, "NQOS");
-				packet.PutInteger(&nqosStruct, "DBPS", 0);
-				packet.PutInteger(&nqosStruct, "NATT", NatType::Open);
-				packet.PutInteger(&nqosStruct, "UBPS", 0);
-			}
-			packet.PutInteger(&dataStruct, "NRES", gameInfo.resetable ? 0 : 1);
-			packet.PutInteger(&dataStruct, "NTOP", gameInfo.networkTopology);
-			packet.PutString(&dataStruct, "PGID", "d4c9d072-24d7-4142-b648-b43c8fe97b4d"); // b6852db1-ba37-4b40-aea3-0bd16efba4f9
-			packet.PutBlob(&dataStruct, "PGSR", nullptr, 0);
-			{
-				auto& phstStruct = packet.CreateStruct(&dataStruct, "PHST");
-				packet.PutInteger(&phstStruct, "HPID", user->get_id()); // blaze id? i64
-				packet.PutInteger(&phstStruct, "HSLT", 1); // host slot? u8
-			}
-			packet.PutInteger(&dataStruct, "PRES", gameInfo.presence);
-			packet.PutString(&dataStruct, "PSAS", "ams");
-			packet.PutInteger(&dataStruct, "QCAP", gameInfo.queueCapacity);
-			packet.PutInteger(&dataStruct, "SEED", 1);
-			packet.PutInteger(&dataStruct, "TCAP", tCap);
-			{
-				auto& thstStruct = packet.CreateStruct(&dataStruct, "THST");
-				packet.PutInteger(&thstStruct, "HPID", 1);
-				packet.PutInteger(&thstStruct, "HSLT", 0);
-			} {
-				auto& tidsList = packet.CreateList(&dataStruct, "TIDS", TDF::Type::Integer);
-				packet.PutInteger(&tidsList, "", 1);
-			}
-			packet.PutString(&dataStruct, "UUID", "71bc4bdb-82ec-494d-8d75-ca5123b827ac"); // 714b05dc-93bc-49ac-961c-cb38b574f30a
-			packet.PutInteger(&dataStruct, "VOIP", VoipTopology::Disabled);
-			packet.PutString(&dataStruct, "VSTR", versionString);
-			packet.PutBlob(&dataStruct, "XNNC", nullptr, 0);
-			packet.PutBlob(&dataStruct, "XSES", nullptr, 0);
-		}
+		packet.push_struct("DATA");
+		gameData.Write(packet);
+		packet.pop();
 
 		request.notify(packet, Id, PacketID::NotifyGameReset);
 	}
@@ -1064,7 +943,7 @@ namespace Blaze {
 		request.notify(packet, Id, PacketID::NotifyGamePlayerStateChange);
 	}
 
-	void GameManagerComponent::NotifyCreateDynamicDedicatedServerGame(Request& request) {
+	void GameManagerComponent::NotifyCreateDynamicDedicatedServerGame(Request& request, GameManager::CreateGameRequest& gameData) {
 		// Sending this should make the client send back a CreateGameRequest or ResetDedicatedServer
 		const auto& user = request.get_user();
 		if (!user) {
@@ -1078,120 +957,19 @@ namespace Blaze {
 
 		const auto& gameInfo = game->GetInfo();
 
-		std::string gameCtr = request["GCTR"].GetString();
-		std::string gameUrl = request["GURL"].GetString();
-		bool gameIgnore = request["IGNO"].GetUint();
-
-		uint32_t rgId = request["RGID"].GetUint();
-		uint32_t slot = request["SLOT"].GetUint();
-		uint32_t tidx = request["TIDX"].GetUint();
-		uint32_t tCap = request["TCAP"].GetUint();
-		std::string versionString = request["VSTR"].GetString();
-
 		TDF::Packet packet;
-		{
-			/*
-			PATT = 0x54
-			*/
-			auto& greqStruct = packet.CreateStruct(nullptr, "GREQ");
-			{
-				auto& admnList = packet.CreateList(&greqStruct, "ADMN", TDF::Type::Integer);
-				packet.PutInteger(&admnList, "", 1);
-			} {
-				auto& attrMap = packet.CreateMap(&greqStruct, "ATTR", TDF::Type::String, TDF::Type::String);
-				for (const auto& [key, value] : gameInfo.attributes) {
-					packet.PutString(&attrMap, key, value);
-				}
-			}
-			packet.PutObjectId(&greqStruct, "BTPL", 0, 0, 0);
-			packet.PutString(&greqStruct, "GCTR", gameCtr);
-			packet.PutString(&greqStruct, "GNAM", gameInfo.name);
-			packet.PutInteger(&greqStruct, "GSET", gameInfo.settings);
-			packet.PutString(&greqStruct, "GTYP", gameInfo.type);
-			packet.PutString(&greqStruct, "GURL", gameUrl);
-			{
-				auto& hnetList = packet.CreateList(&greqStruct, "HNET", TDF::Type::Struct, true);
-				{
-					auto& exipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&exipStruct, "IP", gameInfo.hostNetwork.exip.address);
-					packet.PutInteger(&exipStruct, "PORT", gameInfo.hostNetwork.exip.port);
-				} {
-					auto& inipStruct = packet.CreateStruct(&hnetList, "");
-					packet.PutInteger(&inipStruct, "IP", gameInfo.hostNetwork.inip.address);
-					packet.PutInteger(&inipStruct, "PORT", gameInfo.hostNetwork.inip.port);
-				}
-			}
-			packet.PutInteger(&greqStruct, "IGNO", gameIgnore);
-			packet.PutInteger(&greqStruct, "NRES", gameInfo.resetable ? 0 : 1);
-			packet.PutInteger(&greqStruct, "NTOP", gameInfo.networkTopology);
-			packet.PutString(&greqStruct, "PGID", gameInfo.playgroupId);
-			packet.PutBlob(&greqStruct, "PGSC", nullptr, 0);
-			{
-				auto& pcapList = packet.CreateList(&greqStruct, "PCAP", TDF::Type::Integer);
-				for (auto value : gameInfo.capacity) {
-					packet.PutInteger(&pcapList, "", value);
-				}
-			}
-			packet.PutInteger(&greqStruct, "PMAX", gameInfo.maxPlayers);
-			packet.PutInteger(&greqStruct, "PRES", gameInfo.presence);
-			packet.PutInteger(&greqStruct, "QCAP", gameInfo.queueCapacity);
-			packet.PutInteger(&greqStruct, "RGID", rgId);
-			{
-				auto& sidlList = packet.CreateList(&greqStruct, "SIDL", TDF::Type::Integer);
-				packet.PutInteger(&sidlList, "", 1);
-			} {
-				auto& seatList = packet.CreateList(&greqStruct, "SEAT", TDF::Type::Integer);
-				packet.PutInteger(&seatList, "", 1);
-			}
-			packet.PutInteger(&greqStruct, "SLOT", slot);
-			packet.PutInteger(&greqStruct, "TCAP", tCap);
-			{
-				auto& tidsList = packet.CreateList(&greqStruct, "TIDS", TDF::Type::Integer);
-				packet.PutInteger(&tidsList, "", 1);
-			}
-			packet.PutInteger(&greqStruct, "TIDX", tidx);
-			packet.PutInteger(&greqStruct, "VOIP", VoipTopology::Disabled);
-			packet.PutString(&greqStruct, "VSTR", versionString);
-		}
-		packet.PutString(nullptr, "MID", "1");
+		packet.push_struct("GREQ");
+		gameData.Write(packet);
+		packet.pop();
+
+		packet.put_string("MID", "1");
 
 		request.notify(packet, Id, PacketID::NotifyCreateDynamicDedicatedServerGame);
 	}
 
 	void GameManagerComponent::CreateGame(Request& request) {
-		// TODO: read request to struct
-		/*
-864b6e00 - ADMN
-874d3200 - ATTR
-8b4c2c00 - BTPL
-8f2a7400 - CRIT
-9e3d3200 - GCTR
-9ee86d00 - GNAM
-9f397400 - GSET
-9f4e7000 - GTYP
-9f5cac00 - GURL
-a2e97400 - HNET
-a67baf00 - IGNO
-b61d3200 - MATR
-bb297300 - NRES
-bb4bf000 - NTOP
-c21d3400 - PATT
-c2387000 - PCAP
-c27a6400 - PGID
-c27ce300 - PGSC
-c2d87800 - PMAX
-c3297300 - PRES
-c6387000 - QCAP
-ca7a6400 - RGID
-ce587400 - SEAT
-ce992c00 - SIDL
-cecbf400 - SLOT
-d2387000 - TCAP
-d2993300 - TIDS
-d2993800 - TIDX
-dafa7000 - VOIP
-db3d3200 - VSTR
-		*/
+		GameManager::CreateGameRequest data;
+		data.Read(request.get_request());
 
 		TDF::Packet packet;
 		WriteCreateGame(packet, 1);
@@ -1200,7 +978,7 @@ db3d3200 - VSTR
 
 		// Notifications
 		NotifyGameStateChange(request, 1, GameState::Initializing);
-		NotifyGameSetup(request);
+		// NotifyGameSetup(request);
 	}
 
 	void GameManagerComponent::DestroyGame(Request& request) {
@@ -1229,22 +1007,56 @@ db3d3200 - VSTR
 
 		uint32_t gameId = request["GID"].GetUint();
 
+		const auto& game = Game::GameManager::GetGame(gameId);
+		if (!game) {
+			return;
+		}
+
+		user->set_game(game);
+
+		const auto& gameInfo = game->GetInfo();
+		const auto& client = request.get_client();
+
+		ReplicatedGamePlayer player;
+		player.gameId = gameId;
+		player.localization = client.data().lang;
+		player.name = user->get_name();
+		player.id = user->get_id();
+		player.hostNetwork = gameInfo.hostNetwork;
+		player.slot = 1;
+		player.slotType = Slot::Public;
+		player.state = PlayerState::Connected;
+		player.tIndex = 0xFFFF;
+		player.time = utils::get_unix_time();
+		player.uid = client.get_id();
+
 		TDF::Packet packet;
 		WriteJoinGame(packet, gameId);
 
 		request.reply(packet);
 
 		// Notifications
-		PlaygroupsComponent::NotifyJoinPlaygroup(request);
+		// PlaygroupsComponent::NotifyJoinPlaygroup(request);
 
-		NotifyPlayerJoining(request, gameId);
+		NotifyPlayerJoining(request, player);
 	}
 
 	void GameManagerComponent::RemovePlayer(Request& request) {
 		uint32_t gameId = request["GID"].GetUint();
-		uint32_t personaId = request["PID"].GetUint();
+		int64_t personaId = request["PID"].GetInt64();
 		PlayerRemovedReason reason = static_cast<PlayerRemovedReason>(request["REAS"].GetUint());
 
+		const auto& game = Game::GameManager::GetGame(gameId);
+		if (game) {
+			game->RemovePlayer(personaId);
+		}
+
+		const auto& user = SporeNet::Get().GetUserManager().GetUserById(personaId);
+		if (user) {
+			user->set_game(nullptr);
+		}
+
+		//
 		request.reply();
 
 		// Notifications
@@ -1273,6 +1085,7 @@ db3d3200 - VSTR
 	}
 
 	void GameManagerComponent::FinalizeGameCreation(Request& request) {
+		// Game ID = request["GID"].GetUint();
 		const auto& user = request.get_user();
 		if (!user) {
 			return;
@@ -1292,6 +1105,11 @@ db3d3200 - VSTR
 		WriteJoinGame(packet, gameId);
 
 		request.reply(packet);
+
+		// Notifications
+		NotifyGameStateChange(request, gameId, GameState::InGame);
+		NotifyGamePlayerStateChange(request, gameId, user->get_id(), PlayerState::Connected);
+		NotifyPlayerJoinCompleted(request, gameId, user->get_id());
 	}
 
 	void GameManagerComponent::ResetDedicatedServer(Request& request) {
@@ -1332,68 +1150,84 @@ db3d3200 - VSTR
 
 		user->set_game(game);
 
-		auto userId = user->get_id();
+		int64_t userId = user->get_id();
+		uint8_t userSlot = 0;
 
+		GameManager::CreateGameRequest gameData;
+		gameData.Read(request.get_request());
+
+		// Game data
 		auto& gameInfo = game->GetInfo();
+		gameInfo.attributes = gameData.attributes;
+		gameInfo.capacity = gameData.capacity;
+		gameInfo.hostNetwork = gameData.hostNetwork;
+		gameInfo.name = gameData.name;
+		gameInfo.settings = gameData.settings;
+		gameInfo.type = gameData.type;
+		gameInfo.ignore = gameData.ignore;
+		gameInfo.playgroupId = gameData.playgroupId;
+		gameInfo.tcap = gameData.tcap;
+		gameInfo.version = gameData.version;
+		gameInfo.presence = gameData.presence;
+		gameInfo.networkTopology = gameData.networkTopology;
+		gameInfo.maxPlayers = gameData.maxPlayers;
+		gameInfo.queueCapacity = gameData.queueCapacity;
+		gameInfo.resetable = gameData.resetable;
 
-		// Attributes
-		for (const auto& attribute : request["ATTR"]["_Content"].GetObject()) {
-			gameInfo.attributes.emplace(attribute.name.GetString(), attribute.value.GetString());
-		}
-
-		// Capacity
-		for (const auto& capacity : request["PCAP"]["_Content"].GetArray()) {
-			gameInfo.capacity.push_back(capacity.GetUint());
-		}
-
-		// IPs
-		const auto& hnetData = request["HNET"]["_Content"];
-		gameInfo.hostNetwork.inip.Read(hnetData[0]);
-		gameInfo.hostNetwork.exip.Read(hnetData[1]);
-
-		// Other
-		gameInfo.name = request["GNAM"].GetString();
-		gameInfo.settings = request["GSET"].GetUint();
-		gameInfo.type = request["GTYP"].GetString();
-		gameInfo.ignore = request["IGNO"].GetUint() != 0;
-		gameInfo.playgroupId = request["PGID"].GetString();
-		gameInfo.tcap = request["TCAP"].GetUint();
-		gameInfo.version = request["VSTR"].GetString();
-
-		gameInfo.presence = static_cast<PresenceMode>(request["PRES"].GetUint());
 		gameInfo.state = GameState::Initializing;
-		gameInfo.networkTopology = static_cast<GameNetworkTopology>(request["NTOP"].GetUint());
-
-		gameInfo.maxPlayers = request["PMAX"].GetUint();
-		gameInfo.queueCapacity = request["QCAP"].GetUint();
-
-		gameInfo.resetable = request["NRES"].GetUint() != 0;
-
-		// Raw data
-		gameInfo.gpvh = 1;
-		gameInfo.gsid = 1;
+		gameInfo.gpvh = 0xABABABAB;
+		gameInfo.gsid = 0xCDCDCDCD;
 		gameInfo.hses = 13666;
 		gameInfo.psas = "ams";
-		gameInfo.seed = 0;
+		gameInfo.seed = 0xFAFAFAFA;
 		gameInfo.uuid = "71bc4bdb-82ec-494d-8d75-ca5123b827ac";
-		gameInfo.tids.push_back(0);
+		gameInfo.tids.push_back(userSlot);
 
 		NetworkQosData& networkQos = gameInfo.networkQos;
-		networkQos.dbps = 100;
+		networkQos.dbps = 128000;
 		networkQos.type = NatType::Open;
-		networkQos.ubps = 100;
+		networkQos.ubps = 2;
 
-		HostInfo& pHost = gameInfo.pHost;
+		HostInfo& pHost = gameInfo.pHost; // Party host? no fucking idea about these
 		pHost.id = userId;
-		pHost.slot = 0;
+		pHost.slot = userSlot;
 
-		// if TIDX == 0 then no team?
 		HostInfo& tHost = gameInfo.tHost; // Team host?
 		tHost.id = userId;
-		tHost.slot = 0;
+		tHost.slot = userSlot;
 
-		/////////////////
+		// Replace this with party data when that is made
+		// Player data
+		std::vector<ReplicatedGamePlayer> gamePlayers;
+		{
+			decltype(auto) player = gamePlayers.emplace_back();
+			player.gameId = gameInfo.id;
+			player.localization = request.get_client().data().lang;
+			player.name = user->get_name();
+			player.id = userId;
+			player.hostNetwork = gameInfo.hostNetwork;
+			player.slot = userSlot;
+			player.slotType = Slot::Public;
+			player.state = PlayerState::Connecting;
+			player.tIndex = gameData.tIndex;
+			player.time = utils::get_unix_time();
+			player.uid = userId;
+		}
 
+		// Game settings etc
+		auto levelId = utils::to_number<uint32_t>(gameInfo.attributes["SelectedDifficulty"]);
+
+		auto& chainData = game->GetChainData();
+		chainData.SetLevelByIndex(levelId);
+		chainData.SetStarLevel(0);
+		chainData.SetCompleted(false);
+
+		chainData.SetEnemyNoun("TutorialBasicPoison.Noun", 0);
+		chainData.SetEnemyNoun("TutorialBasicDiseased.Noun", 1);
+		chainData.SetEnemyNoun("TutorialBasicRanged.Noun", 2);
+		chainData.SetEnemyNoun("TutorialSloth.Noun", 3);
+
+		// Packet
 		TDF::Packet packet;
 		WriteJoinGame(packet, gameInfo.id);
 
@@ -1401,12 +1235,13 @@ db3d3200 - VSTR
 
 		// Notifications
 		NotifyGameCreated(request, gameInfo.id);
-		NotifyCreateDynamicDedicatedServerGame(request);
-		NotifyGameStateChange(request, gameInfo.id, gameInfo.state);
-		// NotifyGameReset(request);
-		NotifyGameSetup(request);
-		// NotifyPlayerJoining(request, gameId);
-		// NotifyPlayerJoinCompleted(request, gameId, user->get_id());
+		// NotifyGameStateChange(request, gameInfo.id, gameInfo.state);
+		// NotifyGameReset(request, gameInfo);
+		NotifyGameSetup(request, gameInfo, gamePlayers);
+		for (const auto& player : gamePlayers) {
+			NotifyPlayerJoining(request, player);
+		}
+		// NotifyPlayerJoinCompleted(request, gameInfo.id, userId);
 	}
 
 	void GameManagerComponent::UpdateMeshConnection(Request& request) {

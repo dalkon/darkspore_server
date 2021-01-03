@@ -7,7 +7,7 @@
 
 #include "utils/log.h"
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <iostream>
 
 // Blaze

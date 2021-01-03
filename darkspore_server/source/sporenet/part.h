@@ -35,7 +35,8 @@ namespace SporeNet {
 			Part(const pugi::xml_node& node);
 
 			bool Read(const pugi::xml_node& node);
-			void Write(pugi::xml_node& node, uint32_t index, bool api = false) const;
+			void Write(pugi::xml_node& node) const;
+			void WriteApi(pugi::xml_node& node, uint32_t index, bool offer) const;
 
 			std::string_view GetName() const;
 
@@ -92,11 +93,12 @@ namespace SporeNet {
 			size_t size() const { return mItems.size(); }
 			bool empty() const { return mItems.empty(); }
 
-			// Part& GetPart(size_t index);
-			// const Part& GetPart(size_t index) const;
+			Part& GetPart(size_t index);
+			const Part& GetPart(size_t index) const;
 
 			void Read(const pugi::xml_node& node);
-			void Write(pugi::xml_node& node, bool api = false) const;
+			void Write(pugi::xml_node& node) const;
+			void WriteApi(pugi::xml_node& node, bool offer) const;
 
 		private:
 			std::vector<Part> mItems;

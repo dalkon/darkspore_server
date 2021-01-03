@@ -67,11 +67,11 @@
     <Filter Include="Source Files\qos">
       <UniqueIdentifier>{ac205851-552e-45f3-b50d-081982eff58b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\external">
+      <UniqueIdentifier>{8368c5b9-4bcf-4e91-9d93-6597ef782e51}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\tcptest.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="source\databuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -215,9 +215,6 @@
     <ClCompile Include="source\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\tcptest.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\databuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -346,6 +343,12 @@
     </ClCompile>
     <ClCompile Include="source\qos\server.cpp">
       <Filter>Source Files\qos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\C++ Libraries\cpp-base64\base64.cpp">
+      <Filter>Source Files\external</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\C++ Libraries\lodepng\lodepng.cpp">
+      <Filter>Source Files\external</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

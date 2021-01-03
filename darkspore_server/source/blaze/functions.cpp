@@ -188,17 +188,20 @@ namespace Blaze {
 	}
 
 	void UserSessionExtendedData::Write(TDF::Packet& packet) const {
+		/*
+			switch (bps) {
+				case iad = room category 2
+				case gva = room category 3
+				case nrt = room category 4
+				default: room category = 1
+			}
+		*/
 		constexpr std::array<const char*, 4> bpsValues { "iad", "gva", "nrt", "" };
 		
-		size_t bpsIndex = 2;
+		size_t bpsIndex = 1;
 		if (bpsIndex >= bpsValues.size()) {
 			bpsIndex = bpsValues.size() - 1;
 		}
-
-		packet.put_string("BPS", bpsValues[bpsIndex]);
-		packet.put_string("CTY", country);
-		packet.put_integer("HWFG", hardwareFlags); // maybe?
-		packet.put_integer("UATT", userAttributes); // maybe?
 
 		if (ip.exip.address == 0 && ip.inip.address == 0) {
 			packet.push_union("ADDR", NetworkAddressMember::Unset);
@@ -211,49 +214,46 @@ namespace Blaze {
 			packet.pop();
 		}
 
-		if (!cmap.empty()) {
-			packet.push_map("CMAP", TDF::Type::Integer, TDF::Type::Integer); // map<uint32_t, int32_t>
-			for (auto [key, value] : cmap) {
-				packet.put_integer(std::to_string(key), value);
-			}
-			packet.pop();
-		}
+		packet.put_string("BPS", bpsValues[bpsIndex]);
 
-		packet.push_integer_list("CVAR"); // off_106BAB4
-		{
-
+		packet.push_map("CMAP", TDF::Type::Integer, TDF::Type::Integer); // map<uint32_t, int32_t>
+		for (auto [key, value] : cmap) {
+			packet.put_integer(std::to_string(key), value);
 		}
 		packet.pop();
 
-		if (!dmap.empty()) {
-			packet.push_map("DMAP", TDF::Type::Integer, TDF::Type::Integer); // map<uint32_t, int64_t>
-			for (auto [key, value] : dmap) {
-				packet.put_integer(std::to_string(key), value);
-			}
-			// packet.put_integer("0x70001", 55);
-			// packet.put_integer("0x70002", 707);
-			packet.pop();
-		}
+		packet.put_string("CTY", country);
 
-		if (!pslm.empty()) {
-			packet.push_list("PSLM", TDF::Type::Integer); // vector<int32_t>
-			for (auto value : pslm) {
-				packet.put_integer("", value);
-			}
-			packet.pop();
+		packet.push_integer_list("CVAR"); // off_106BAB4
+		packet.pop();
+
+		packet.push_map("DMAP", TDF::Type::Integer, TDF::Type::Integer); // map<uint32_t, int64_t>
+		for (auto [key, value] : dmap) {
+			packet.put_integer(std::to_string(key), value);
 		}
+		// packet.put_integer("0x70001", 55);
+		// packet.put_integer("0x70002", 707);
+		packet.pop();
+
+		packet.put_integer("HWFG", hardwareFlags); // maybe?
+
+		packet.push_list("PSLM", TDF::Type::Integer); // vector<int32_t>
+		for (auto value : pslm) {
+			packet.put_integer("", value);
+		}
+		packet.pop();
 
 		packet.push_struct("QDAT");
 		qos.Write(packet);
 		packet.pop();
 
-		if (!ulst.empty()) {
-			packet.push_list("ULST", TDF::Type::ObjectId); // vector<vec3>
-			for (auto value : ulst) {
-				packet.put_object_id("", value);
-			}
-			packet.pop();
+		packet.put_integer("UATT", userAttributes); // maybe?
+
+		packet.push_list("ULST", TDF::Type::ObjectId); // vector<vec3>
+		for (const auto& value : ulst) {
+			packet.put_object_id("", value);
 		}
+		packet.pop();
 	}
 
 	// HostInfo
@@ -411,7 +411,9 @@ namespace Blaze {
 		const auto& attrIterator = value.FindMember("ATTR");
 		if (attrIterator != value.MemberEnd()) {
 			for (const auto& attribute : attrIterator->value["_Content"].GetObject()) {
-				attributes.emplace(utils::to_number<uint32_t>(attribute.name.GetString(), 0), attribute.value.GetString());
+				std::string_view nameView = attribute.name.GetString();
+				std::string_view valueView = attribute.value.GetString();
+				attributes.emplace(utils::to_number<uint32_t>(nameView, 0), valueView);
 			}
 		}
 
@@ -769,6 +771,199 @@ namespace Blaze {
 		void RoomMemberData::Write(TDF::Packet& packet) const {
 			packet.put_integer("BZID", memberId);
 			packet.put_integer("RMID", roomId);
+		}
+	}
+
+	namespace GameManager {
+		// CreateGameRequest
+		void CreateGameRequest::Read(const rapidjson::Value& value) {
+			if (!value.IsObject()) {
+				return;
+			}
+
+			const auto end = value.MemberEnd();
+
+			auto iterator = value.FindMember("ADMN");
+			if (iterator != end) {
+				for (const auto& child : iterator->value["_Content"].GetArray()) {
+					administrators.push_back(child.GetInt64());
+				}
+			}
+
+			for (const auto& child : value["ATTR"]["_Content"].GetObject()) {
+				attributes.emplace(child.name.GetString(), child.value.GetString());
+			}
+
+			const auto& inBtpl = value["BTPL"];
+			std::get<0>(btpl) = inBtpl["_X"].GetUint();
+			std::get<1>(btpl) = inBtpl["_Y"].GetUint();
+			std::get<2>(btpl) = inBtpl["_Z"].GetUint64();
+
+			iterator = value.FindMember("CRIT");
+			if (iterator != end) {
+				for (const auto& child : iterator->value["_Content"].GetObject()) {
+					criteria.emplace(child.name.GetString(), child.value.GetString());
+				}
+			}
+
+			ctr = value["GCTR"].GetString();
+			name = value["GNAM"].GetString();
+			settings = value["GSET"].GetUint();
+			type = value["GTYP"].GetString();
+			url = value["GURL"].GetString();
+
+			const auto& hnetData = value["HNET"]["_Content"];
+			hostNetwork.inip.Read(hnetData[0]);
+			hostNetwork.exip.Read(hnetData[1]);
+
+			ignore = value["IGNO"].GetUint() != 0;
+
+			iterator = value.FindMember("MATR");
+			if (iterator != end) {
+				for (const auto& child : iterator->value["_Content"].GetObject()) {
+					matr.emplace(child.name.GetString(), child.value.GetString());
+				}
+			}
+
+			resetable = value["NRES"].GetUint() != 0;
+			networkTopology = static_cast<GameNetworkTopology>(value["NTOP"].GetUint());
+
+			iterator = value.FindMember("PATT");
+			if (iterator != end) {
+				for (const auto& child : iterator->value["_Content"].GetObject()) {
+					playerAttributes.emplace(child.name.GetString(), child.value.GetString());
+				}
+			}
+
+			for (const auto& child : value["PCAP"]["_Content"].GetArray()) {
+				capacity.push_back(child.GetUint());
+			}
+
+			playgroupId = value["PGID"].GetString();
+			playgroupSc = value["PGSC"].GetString();
+			maxPlayers = value["PMAX"].GetUint();
+			presence = static_cast<PresenceMode>(value["PRES"].GetUint());
+			queueCapacity = value["QCAP"].GetUint();
+			rgid = value["RGID"].GetUint();
+
+			iterator = value.FindMember("SEAT");
+			if (iterator != end) {
+				for (const auto& child : iterator->value["_Content"].GetArray()) {
+					seat.push_back(child.GetInt64());
+				}
+			}
+
+			iterator = value.FindMember("SIDL");
+			if (iterator != end) {
+				for (const auto& child : iterator->value["_Content"].GetArray()) {
+					sidl.push_back(child.GetUint());
+				}
+			}
+
+			slot = value["SLOT"].GetUint();
+			tcap = value["TCAP"].GetUint();
+
+			iterator = value.FindMember("TIDS");
+			if (iterator != end) {
+				for (const auto& child : iterator->value["_Content"].GetArray()) {
+					tids.push_back(child.GetUint());
+				}
+			}
+
+			tIndex = value["TIDX"].GetUint();
+			// Ignore VOIP
+			version = value["VSTR"].GetString();
+		}
+
+		void CreateGameRequest::Write(TDF::Packet& packet) const {
+			packet.push_list("ADMN", TDF::Type::Integer);
+			for (const auto value : administrators) {
+				packet.put_integer("", value);
+			}
+			packet.pop();
+
+			packet.push_map("ATTR", TDF::Type::String, TDF::Type::String);
+			for (const auto& [key, value] : attributes) {
+				packet.put_string(key, value);
+			}
+			packet.pop();
+
+			packet.put_object_id("BTPL", btpl);
+
+			packet.push_map("CRIT", TDF::Type::String, TDF::Type::String);
+			for (const auto& [key, value] : criteria) {
+				packet.put_string(key, value);
+			}
+			packet.pop();
+
+			packet.put_string("GCTR", ctr);
+			packet.put_string("GNAM", name);
+			packet.put_integer("GSET", settings);
+			packet.put_string("GTYP", type);
+			packet.put_string("GURL", url);
+
+			packet.push_list("HNET", TDF::Type::Struct, true);
+			{
+				packet.push_struct("");
+				hostNetwork.Write(packet);
+				packet.pop();
+			}
+			packet.pop();
+
+			packet.put_integer("IGNO", ignore ? 1 : 0);
+			
+			packet.push_map("MATR", TDF::Type::String, TDF::Type::String);
+			for (const auto& [key, value] : matr) {
+				packet.put_string(key, value);
+			}
+			packet.pop();
+
+			packet.put_integer("NRES", resetable ? 0 : 1);
+			packet.put_integer("NTOP", networkTopology);
+
+			packet.push_map("PATT", TDF::Type::String, TDF::Type::String);
+			for (const auto& [key, value] : playerAttributes) {
+				packet.put_string(key, value);
+			}
+			packet.pop();
+
+			packet.push_list("PCAP", TDF::Type::Integer);
+			for (const auto value : capacity) {
+				packet.put_integer("", value);
+			}
+			packet.pop();
+
+			packet.put_string("PGID", playgroupId);
+			packet.put_blob("PGSR", nullptr, 0); // ?
+			packet.put_integer("PMAX", maxPlayers);
+			packet.put_integer("PRES", presence);
+			packet.put_integer("QCAP", queueCapacity);
+			packet.put_integer("RGID", rgid);
+
+			packet.push_list("SEAT", TDF::Type::Integer);
+			for (const auto value : seat) {
+				packet.put_integer("", value);
+			}
+			packet.pop();
+
+			packet.push_list("SIDL", TDF::Type::Integer);
+			for (const auto value : sidl) {
+				packet.put_integer("", value);
+			}
+			packet.pop();
+
+			packet.put_integer("SLOT", slot);
+			packet.put_integer("TCAP", tcap);
+
+			packet.push_list("TIDS", TDF::Type::Integer);
+			for (const auto value : tids) {
+				packet.put_integer("", value);
+			}
+			packet.pop();
+
+			packet.put_integer("TIDX", tIndex);
+			packet.put_integer("VOIP", VoipTopology::Disabled);
+			packet.put_string("VSTR", version);
 		}
 	}
 }

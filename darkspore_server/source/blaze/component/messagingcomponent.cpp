@@ -9,6 +9,8 @@
 
 #include "game/gamemanager.h"
 
+#include "raknet/server.h"
+
 #include "blaze/client.h"
 #include "blaze/functions.h"
 #include "utils/functions.h"
@@ -157,6 +159,33 @@ namespace Blaze {
 				const auto& user = SporeNet::Get().GetUserManager().GetUserByAuthToken(std::to_string(userId));
 				if (user) {
 					serverMessage.name = user->get_name();
+				}
+
+				// Commands - Move this somewhere else when scripting is added
+				auto& messageText = serverMessage.message.attributes[0xFF02];
+				if (messageText.starts_with("!") && messageText.length() >= 2) {
+					std::string_view messageTextView = &messageText[1];
+					if (messageTextView.starts_with("packet ")) {
+						// !packet id extra_data
+						if (messageTextView.length() < 8) {
+							break;
+						}
+
+						messageTextView = &messageText[8];
+						if (messageTextView.starts_with("reload")) {
+							game->AddClientTask(0, RakNet::PacketID::ReloadLevel);
+							messageText = "<reloaded level>";
+						} else if (messageTextView.starts_with("deploycharacter")) {
+							game->AddClientTask(0, RakNet::PacketID::PlayerCharacterDeploy);
+							messageText = "<tried to deploy character>";
+						} else {
+							auto packetId = utils::to_number<MessageID>(messageTextView, 0);
+							game->AddClientTask(0, packetId);
+
+							std::string valueStr(messageTextView);
+							messageText = "<sent packet " + valueStr + ">";
+						}
+					}
 				}
 
 				break;

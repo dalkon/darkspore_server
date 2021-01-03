@@ -16,9 +16,7 @@
 #include <vector>
 #include <map>
 #include <memory>
-
-// RakNet
-namespace RakNet { class Server; }
+#include <functional>
 
 // Game
 namespace Game {
@@ -92,7 +90,7 @@ namespace Game {
 
 			PlayerPtr GetPlayer(int64_t id) const;
 			PlayerPtr GetPlayerByIndex(uint8_t index) const;
-			PlayerPtr AddPlayer(int64_t id, uint8_t index);
+			PlayerPtr AddPlayer(const SporeNet::UserPtr& user, uint8_t index);
 			void RemovePlayer(int64_t id);
 
 			uint32_t GetId() const;
@@ -100,11 +98,22 @@ namespace Game {
 			const RakNet::ChainVoteData& GetChainData() const;
 			RakNet::ChainVoteData& GetChainData();
 
+			const RakNet::GameStateData& GetStateData() const;
+			RakNet::GameStateData& GetStateData();
+
 			const Blaze::ReplicatedGameData& GetInfo() const;
 			Blaze::ReplicatedGameData& GetInfo();
 
 			const ObjectManager& GetObjectManager() const;
 			ObjectManager& GetObjectManager();
+
+			uint64_t GetTime() const;
+			uint64_t GetTimeElapsed() const;
+
+			void AddServerTask(std::function<void(void)> task);
+			void AddClientTask(uint8_t id, MessageID packet);
+
+			bool Update();
 
 		private:
 			std::unique_ptr<RakNet::Server> mServer;
@@ -113,8 +122,12 @@ namespace Game {
 			std::map<int64_t, PlayerPtr> mPlayers;
 
 			RakNet::ChainVoteData mChainData;
+			RakNet::GameStateData mStateData;
 
 			Blaze::ReplicatedGameData mData;
+
+			uint64_t mGameStartTime = 0;
+			uint64_t mGameTime = 0;
 
 			friend class GameManager;
 	};

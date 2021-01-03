@@ -5,6 +5,8 @@
 
 #include "game/instance.h"
 
+#include "sporenet/user.h"
+
 #include <iostream>
 
 bool IsValidStateChange(GameState fromState, GameState toState) {
@@ -105,15 +107,19 @@ namespace RakNet {
 		return result;
 	}
 
-	int64_t Client::GetBlazeId() const {
-		return mBlazeId;
+	SporeNet::UserPtr Client::GetUser() const {
+		return mUser;
 	}
 
-	void Client::SetBlazeId(int64_t id) {
-		auto& game = mServer.GetGame();
-		game.RemovePlayer(mBlazeId);
+	void Client::SetUser(const SporeNet::UserPtr& user) {
+		if (!user) {
+			return;
+		}
 
-		mBlazeId = id;
-		mPlayer = game.AddPlayer(mBlazeId, mId);
+		auto& game = mServer.GetGame();
+		game.RemovePlayer(user->get_id());
+
+		mUser = user;
+		mPlayer = game.AddPlayer(mUser, mId);
 	}
 }

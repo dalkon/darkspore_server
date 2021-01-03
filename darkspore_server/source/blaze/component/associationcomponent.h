@@ -8,6 +8,12 @@
 
 // Blaze
 namespace Blaze {
+	// AssociationListId
+	enum AssociationListId {
+		Ignore = 4,
+		Friend = 5
+	};
+
 	// AssociationComponent
 	class AssociationComponent : public Component {
 		public:

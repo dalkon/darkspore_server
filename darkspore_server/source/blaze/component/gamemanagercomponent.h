@@ -27,16 +27,16 @@ namespace Blaze {
 			static void NotifyMatchmakingAsyncStatus(Request& request, uint32_t id);
 			static void NotifyGameCreated(Request& request, uint32_t gameId);
 			static void NotifyGameRemoved(Request& request, uint32_t gameId, DestroyGameReason reason);
-			static void NotifyGameSetup(Request& request);
-			static void NotifyPlayerJoining(Request& request, uint32_t gameId);
+			static void NotifyGameSetup(Request& request, ReplicatedGameData& gameData, std::vector<ReplicatedGamePlayer>& gamePlayers);
+			static void NotifyPlayerJoining(Request& request, const ReplicatedGamePlayer& gamePlayer);
 			static void NotifyPlayerJoinCompleted(Request& request, uint32_t gameId, uint32_t personaId);
 			static void NotifyPlayerRemoved(Request& request, uint32_t gameId, uint32_t personaId, PlayerRemovedReason reason);
 			static void NotifyPlatformHostInitialized(Request& request, uint64_t gameId);
 			static void NotifyGameStateChange(Request& request, uint64_t gameId, GameState gameState);
-			static void NotifyGameReset(Request& request);
+			static void NotifyGameReset(Request& request, ReplicatedGameData& gameData);
 			static void NotifyGameSessionUpdated(Request& request, uint32_t gameId);
 			static void NotifyGamePlayerStateChange(Request& request, uint32_t gameId, uint32_t personaId, PlayerState playerState);
-			static void NotifyCreateDynamicDedicatedServerGame(Request& request);
+			static void NotifyCreateDynamicDedicatedServerGame(Request& request, GameManager::CreateGameRequest& gameData);
 
 		private:
 			// Responses

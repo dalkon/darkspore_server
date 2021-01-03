@@ -2,7 +2,9 @@
 // Include
 #include "redirectorcomponent.h"
 
+#include "main.h"
 #include "blaze/client.h"
+#include "game/config.h"
 
 #include <iostream>
 
@@ -190,8 +192,10 @@ namespace Blaze {
 	}
 
 	void RedirectorComponent::GetServerInstance(Request& request) {
+		auto blazeServer = GetApp().get_blaze_server();
+
 		TDF::Packet packet;
-		WriteServerInstanceInfo(packet, "127.0.0.1", 10041);
+		WriteServerInstanceInfo(packet, Game::Config::Get(Game::CONFIG_SERVER_HOST), blazeServer->get_port());
 		
 		request.reply(packet);
 	}

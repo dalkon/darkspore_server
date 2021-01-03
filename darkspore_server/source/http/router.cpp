@@ -100,14 +100,14 @@ namespace HTTP {
 	}
 
 	bool RoutePath::equals(const std::string& resource) const {
-		if (std::regex_match(resource, mRegExpr)) {
+		if (boost::regex_match(resource, mRegExpr)) {
 			return true;
 		}
 		return false;
 	}
 
 	void RoutePath::construct() {
-		mRegExpr = std::regex(mPath);
+		mRegExpr = boost::regex(mPath);
 	}
 
 	// Router

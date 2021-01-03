@@ -2,7 +2,7 @@
 #ifndef _RAKNET_SERVER_HEADER
 #define _RAKNET_SERVER_HEADER
 
-#define PACKET_LOGGING
+// #define PACKET_LOGGING
 
 // Include
 #include "predefined.h"
@@ -22,6 +22,8 @@
 #include <vector>
 #include <map>
 #include <array>
+#include <queue>
+#include <functional>
 
 // RakNet
 namespace RakNet {
@@ -43,8 +45,8 @@ namespace RakNet {
 		constexpr MessageID ObjectCreate = 0x8C;
 		constexpr MessageID ObjectUpdate = 0x8D;
 		constexpr MessageID ObjectDelete = 0x8E;
-		constexpr MessageID ObjectTeleport = 0x8F;
-		constexpr MessageID ObjectJump = 0x90;
+		constexpr MessageID ObjectJump = 0x8F;
+		constexpr MessageID ObjectTeleport = 0x90;
 		constexpr MessageID ObjectPlayerMove = 0x91;
 		constexpr MessageID ForcePhysicsUpdate = 0x92;
 		constexpr MessageID PhysicsChanged = 0x93;
@@ -132,6 +134,14 @@ namespace RakNet {
 		void WriteTo(RakNet::BitStream& stream) const;
 	};
 
+	struct CrystalData {
+		uint32_t unk32[4];
+
+		cSPVector3 position;
+
+		uint8_t unk8;
+	};
+
 	// Server
 	class Server {
 		public:
@@ -144,6 +154,9 @@ namespace RakNet {
 
 			void run_one();
 
+			void add_task(std::function<void(void)> task);
+			void add_client_task(uint8_t id, MessageID packet);
+
 			Game::Instance& GetGame();
 
 		private:
@@ -155,6 +168,7 @@ namespace RakNet {
 			ClientPtr GetClient(Packet* packet) const;
 
 			void Send(BitStream& stream, const ClientPtr& client);
+			void SendBroadcast(BitStream& stream);
 			
 			// RakNet
 			void OnNewIncomingConnection(Packet* packet);
@@ -177,6 +191,7 @@ namespace RakNet {
 			void SendPlayerDeparted(const ClientPtr& client);
 			void SendPlayerStatusUpdate(const ClientPtr& client, uint8_t playerState);
 			void SendGameState(const ClientPtr& client, const GameStateData& data);
+			void SendGameState();
 			void SendPlayerCharacterDeploy(const ClientPtr& client, const Game::PlayerPtr& player, uint32_t creatureIndex);
 			void SendLabsPlayerUpdate(const ClientPtr& client, const Game::PlayerPtr& player);
 			void SendObjectCreate(const ClientPtr& client, const Game::ObjectPtr& object);
@@ -184,16 +199,17 @@ namespace RakNet {
 			void SendObjectDelete(const ClientPtr& client, const Game::ObjectPtr& object);
 			void SendActionCommandResponse(const ClientPtr& client);
 			void SendObjectPlayerMove(const ClientPtr& client);
-			void SendObjectTeleport(const ClientPtr& client);
+			void SendObjectJump(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position, const cSPVector3& destination, const cSPVector3& direction);
+			void SendObjectTeleport(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position, const cSPVector3& direction);
 			void SendForcePhysicsUpdate(const ClientPtr& client);
 			void SendPhysicsChanged(const ClientPtr& client);
-			void SendLocomotionDataUpdate(const ClientPtr& client);
-			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client);
-			void SendAttributeDataUpdate(const ClientPtr& client);
-			void SendCombatantDataUpdate(const ClientPtr& client);
-			void SendInteractableDataUpdate(const ClientPtr& client);
-			void SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, cAgentBlackboard&& agentBlackboard);
-			void SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, cLootData&& lootData);
+			void SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cLocomotionData& locomotionData);
+			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position);
+			void SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cAttributeData& attributeData);
+			void SendCombatantDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cCombatantData& combatantData);
+			void SendInteractableDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cInteractableData& interactableData);
+			void SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cAgentBlackboard& agentBlackboard);
+			void SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cLootData& lootData);
 			void SendServerEvent(const ClientPtr& client, ServerEvent&& serverEvent);
 			void SendCombatEvent(const ClientPtr& client, CombatEvent&& combatEvent);
 			void SendModifierCreated(const ClientPtr& client);
@@ -204,9 +220,10 @@ namespace RakNet {
 			void SendArenaGameMessages(const ClientPtr& client);
 			void SendChainVoteMessages(const ClientPtr& client, uint8_t value);
 			void SendObjectivesInitForLevel(const ClientPtr& client, const std::vector<ObjectiveData>& objectives);
-			void SendDirectorState(const ClientPtr& client);
+			void SendDirectorState(const ClientPtr& client, const cAIDirector& director);
 			void SendPartyMergeComplete(const ClientPtr& client);
 			void SendReloadLevel(const ClientPtr& client);
+			void SendCrystalMessage(const ClientPtr& client, const CrystalData& crystalData);
 
 			void SendQuickGame(const ClientPtr& client);
 			void SendChainGame(const ClientPtr& client, uint8_t state);
@@ -224,17 +241,22 @@ namespace RakNet {
 
 			std::map<SystemAddress, ClientPtr> mClients;
 
+			// Thread
 			std::thread mThread;
 			std::mutex mMutex;
+
+			// Task queue
+			std::queue<std::function<void(void)>> mTasks;
+			std::mutex mTaskMutex;
+
+			// Misc
 #ifdef PACKET_LOGGING
 			PacketLogger mLogger;
 #endif
 
 			BitStream mInStream;
 
-			RakPeerInterface* mSelf;
-
-			uint32_t mGameId;
+			RakPeerInterface* mSelf = nullptr;
 
 			bool mRunning = true;
 	};

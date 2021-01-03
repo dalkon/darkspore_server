@@ -31,8 +31,12 @@ class Application {
 		Game::API* get_game_api() const;
 		Blaze::Server* get_redirector_server() const;
 		Blaze::Server* get_blaze_server() const;
+		Blaze::Server* get_pss_server() const;
+		Blaze::Server* get_telemetry_server() const;
+		Blaze::Server* get_tick_server() const;
 		HTTP::Server* get_http_server() const;
-		HTTP::Server* get_qos_server() const;
+		HTTP::Server* get_http_qos_server() const;
+		QoS::Server* get_qos_server() const;
 
 	private:
 		static Application* sApplication;
@@ -47,12 +51,13 @@ class Application {
 		std::unique_ptr<Blaze::Server> mRedirectorServer;
 		std::unique_ptr<Blaze::Server> mBlazeServer;
 		std::unique_ptr<Blaze::Server> mPssServer;
+		std::unique_ptr<Blaze::Server> mTelemetryServer;
 		std::unique_ptr<Blaze::Server> mTickServer;
 
 		std::unique_ptr<HTTP::Server> mHttpServer;
-		std::unique_ptr<HTTP::Server> mQosServer;
+		std::unique_ptr<HTTP::Server> mHttpQosServer;
 
-		std::unique_ptr<QoS::Server> mTestServer;
+		std::unique_ptr<QoS::Server> mQosServer;
 };
 
 static Application& GetApp() {

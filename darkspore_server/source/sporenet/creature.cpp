@@ -187,19 +187,17 @@ namespace SporeNet {
 		const auto& statsString = utils::xml_get_text_node(node, "stats_template");
 
 		mStats.clear();
-		for (const auto& stat : utils::explode_string(statsString, ';')) {
-			if (stat.empty()) {
+		for (const auto& statString : utils::explode_string(statsString, ';')) {
+			if (statString.empty()) {
 				continue;
 			}
 
-			const auto& statData = utils::explode_string(stat, ',');
+			const auto& statData = utils::explode_string(statString, ',');
 
-			Stats stat;
+			decltype(auto) stat = mStats.emplace_back();
 			stat.statName = statData[0];
 			stat.maxValue = utils::to_number<uint32_t>(statData[1]);
 			stat.currentValue = utils::to_number<uint32_t>(statData[2]);
-
-			mStats.push_back(std::move(stat));
 		}
 	}
 
@@ -352,6 +350,48 @@ namespace SporeNet {
 				// add parts
 			}
 		}
+	}
+
+	void Creature::Update(float gearScore, float itemPoints, const std::string& parts, const std::string& stats, const std::string& abilityStats) {
+		mGearScore = gearScore;
+		mItemPoints = itemPoints;
+
+		mStats.clear();
+		for (const auto& statString : utils::explode_string(stats, ';')) {
+			if (statString.empty()) {
+				continue;
+			}
+
+			const auto& statData = utils::explode_string(statString, ',');
+			if (statData.size() < 3) {
+				continue;
+			}
+
+			decltype(auto) stat = mStats.emplace_back();
+			stat.statName = statData[0];
+			stat.maxValue = utils::to_number<uint32_t>(statData[1]);
+			stat.currentValue = utils::to_number<uint32_t>(statData[2]);
+		}
+
+		mAbilityStats.clear();
+		for (const auto& abilityString : utils::explode_string(abilityStats, ';')) {
+			if (abilityString.empty()) {
+				continue;
+			}
+
+			const auto& abilityData = utils::explode_string(abilityString, '!');
+			if (abilityData.size() < 2) {
+				continue;
+			}
+
+			decltype(auto) ability = mAbilityStats.emplace_back();
+			ability.token = abilityData[0];
+			ability.value = abilityData[1];
+		}
+
+		/*
+stats_ability_keyvalues = 868969257!minDamage,4;868969257!maxDamage,12;4022963036!percent,50;1137096183!minDamage,24;1137096183!maxDamage,36;1137096183!stunDuration,3;3492557026!minSecondaryDamage,8;3492557026!maxSecondaryDamage,20;3492557026!minDamage,24;3492557026!maxDamage,40;3492557026!radius,4;2779439490!numOrbs,6;2779439490!minDamage,16;2779439490!maxDamage,40;2779439490!deflectionIncrease,100
+		*/
 	}
 
 	std::string Creature::GetName() const {

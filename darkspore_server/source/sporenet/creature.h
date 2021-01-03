@@ -195,6 +195,8 @@ namespace SporeNet {
 			void Write(pugi::xml_node& node) const;
 			void WriteApi(pugi::xml_node& node, bool profile_data, bool include_abilities, bool include_parts) const;
 
+			void Update(float gearScore, float itemPoints, const std::string& parts, const std::string& stats, const std::string& abilityStats);
+
 			std::string GetName() const;
 
 			uint32_t GetNoun() const;
@@ -219,15 +221,20 @@ namespace SporeNet {
 			void SetVersion(uint32_t version);
 
 		private:
+			// Parts mEquippedParts;
+
+			std::vector<AbilityStat> mAbilityStats;
+			std::vector<Stats> mStats;
+
 			TemplateCreaturePtr mTemplate;
 
 			std::string mPngLargeUrl;
 			std::string mPngThumbUrl;
 
+			int64_t mCreatorId = 0;
+
 			float mGearScore = 0;
 			float mItemPoints = 0;
-
-			int64_t mCreatorId = 0;
 
 			uint32_t mId = 0;
 			uint32_t mVersion = 0;

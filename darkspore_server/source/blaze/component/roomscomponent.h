@@ -21,11 +21,8 @@ namespace Blaze {
 
 			bool ParsePacket(Request& request) override;
 
-		public:
-			// Responses
-			static void WriteSelectCategoryUpdates(TDF::Packet& packet, uint32_t viewId);
-			static void WriteJoinRoom(TDF::Packet& packet, const SporeNet::RoomPtr& room, int64_t userId);
 
+		public:
 			// Notifications
 			static void NotifyRoomViewUpdated(Request& request, uint32_t viewId);
 			static void NotifyRoomViewAdded(Request& request, uint32_t viewId);
@@ -45,10 +42,15 @@ namespace Blaze {
 			static void NotifyRoomAttributesSet(Request& request, uint32_t roomId);
 
 		private:
-			static void SelectViewUpdates(Request& request);
-			static void SelectCategoryUpdates(Request& request);
-			static void JoinRoom(Request& request);
-			static void SelectPseudoRoomUpdates(Request& request);
+			// Responses
+			void WriteSelectCategoryUpdates(TDF::Packet& packet, uint32_t viewId);
+			void WriteJoinRoom(TDF::Packet& packet, const SporeNet::RoomPtr& room, int64_t userId);
+
+			// Requests
+			void SelectViewUpdates(Request& request);
+			void SelectCategoryUpdates(Request& request);
+			void JoinRoom(Request& request);
+			void SelectPseudoRoomUpdates(Request& request);
 	};
 }
 

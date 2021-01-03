@@ -5,6 +5,8 @@
 #include "gamemanagercomponent.h"
 #include "redirectorcomponent.h"
 
+#include "main.h"
+
 #include "blaze/client.h"
 #include "utils/functions.h"
 
@@ -151,6 +153,10 @@ namespace Blaze {
 	}
 
 	void UtilComponent::GetTelemetryServer(Request& request) {
+		decltype(auto) application = GetApp();
+
+		auto telemetryServer = application.get_telemetry_server();
+
 		TelemetryServer telemetry;
 		telemetry.address = "127.0.0.1";
 		telemetry.anonymous = true;
@@ -158,7 +164,7 @@ namespace Blaze {
 		telemetry.filter = "";
 		telemetry.location = request.get_client().data().lang;
 		telemetry.nook = "US,CA,MX";
-		telemetry.port = 9988;
+		telemetry.port = telemetryServer->get_port();
 		telemetry.sdly = 15000;
 		telemetry.session = "telemetry_session";
 		telemetry.skey = "telemetry_key";
@@ -171,6 +177,10 @@ namespace Blaze {
 	}
 
 	void UtilComponent::PreAuth(Request& request) {
+		// decltype(auto) application = GetApp();
+
+		// auto httpQosServer = application.get_http_qos_server();
+
 		const auto& clientInfo = request["CINF"];
 
 		auto& data = request.get_client().data();
@@ -189,31 +199,7 @@ namespace Blaze {
 		packet.push_struct("CONF");
 		{
 			packet.push_map("CONF", TDF::Type::String, TDF::Type::String);
-#if 0
-			packet.put_string("associationListSkipInitialSet", "1");
-			packet.put_string("blazeServerClientId", "GOS-Darkspore-PC");
-			packet.put_string("bytevaultHostname", "127.0.0.1");
-			packet.put_string("bytevaultPort", "42210");
-			packet.put_string("bytevaultSecure", "false");
-			packet.put_string("capsStringValidationUri", "127.0.0.1");
-			packet.put_string("connIdleTimeout", "90000");
-			packet.put_string("defaultRequestTimeout", "60000");
-			packet.put_string("identityDisplayUri", "console2/welcome");
-			packet.put_string("identityRedirectUri", "http://127.0.0.1/success");
-			packet.put_string("nucleusConnect", "http://127.0.0.1");
-			packet.put_string("nucleusProxy", "http://127.0.0.1/");
 			packet.put_string("pingPeriod", "20000");
-			packet.put_string("userManagerMaxCachedUsers", "0");
-			packet.put_string("voipHeadsetUpdateRate", "1000");
-			packet.put_string("xblTokenUrn", "http://127.0.0.1");
-			packet.put_string("xlspConnectionIdleTimeout", "300");
-#else
-			packet.put_string("connIdleTimeout", "90000");
-			packet.put_string("defaultRequestTimeout", "80000");
-			packet.put_string("pingPeriod", "20000");
-			packet.put_string("voipHeadsetUpdateRate", "1000");
-			packet.put_string("xlspConnectionIdleTimeout", "300");
-#endif
 			packet.pop();
 		}
 		packet.pop();
@@ -233,7 +219,7 @@ namespace Blaze {
 			
 			QosPingSiteInfo& qosPingSiteInfo = qosConfig.pingSiteInfoByAlias.try_emplace("ams").first->second;
 			qosPingSiteInfo.address = "127.0.0.1";
-			qosPingSiteInfo.port = 17502;
+			qosPingSiteInfo.port = 80;
 			qosPingSiteInfo.name = "ams";
 
 			qosConfig.Write(packet);
@@ -247,21 +233,27 @@ namespace Blaze {
 	}
 
 	void UtilComponent::PostAuth(Request& request) {
+		decltype(auto) application = GetApp();
+
+		auto pssServer = application.get_pss_server();
+		auto telemetryServer = application.get_telemetry_server();
+		auto tickServer = application.get_tick_server();
+
 		PssConfig pss;
 		pss.address = "127.0.0.1";
 		pss.pjid = "123071"; // Random numbers (means nothing)
-		pss.port = 8443;
+		pss.port = pssServer->get_port();
 		pss.rprt = 9;
 		pss.tiid = 0;
 
 		TelemetryServer telemetry;
 		telemetry.address = "127.0.0.1";
-		telemetry.anonymous = true;
+		telemetry.anonymous = false;
 		telemetry.disa = "AD,AF,AG,AI,AL,AM,AN,AO,AQ,AR,AS,AW,AX,AZ,BA,BB,BD,BF,BH,BI,BJ,BM,BN,BO,BR,BS,BT,BV,BW,BY,BZ,CC,CD,CF,CG,CI,CK,CL,CM,CN,CO,CR,CU,CV,CX,DJ,DM,DO,DZ,EC,EG,EH,ER,ET,FJ,FK,FM,FO,GA,GD,GE,GF,GG,GH,GI,GL,GM,GN,GP,GQ,GS,GT,GU,GW,GY,HM,HN,HT,ID,IL,IM,IN,IO,IQ,IR,IS,JE,JM,JO,KE,KG,KH,KI,KM,KN,KP,KR,KW,KY,KZ,LA,LB,LC,LI,LK,LR,LS,LY,MA,MC,MD,ME,MG,MH,ML,MM,MN,MO,MP,MQ,MR,MS,MU,MV,MW,MY,MZ,NA,NC,NE,NF,NG,NI,NP,NR,NU,OM,PA,PE,PF,PG,PH,PK,PM,PN,PS,PW,PY,QA,RE,RS,RW,SA,SB,SC,SD,SG,SH,SJ,SL,SM,SN,SO,SR,ST,SV,SY,SZ,TC,TD,TF,TG,TH,TJ,TK,TL,TM,TN,TO,TT,TV,TZ,UA,UG,UM,UY,UZ,VA,VC,VE,VG,VN,VU,WF,WS,YE,YT,ZM,ZW,ZZ";
 		telemetry.filter = "";
 		telemetry.location = request.get_client().data().lang;
 		telemetry.nook = "US,CA,MX";
-		telemetry.port = 9988;
+		telemetry.port = telemetryServer->get_port();
 		telemetry.sdly = 15000;
 		telemetry.session = "telemetry_session";
 		telemetry.skey = "telemetry_key";
@@ -269,11 +261,11 @@ namespace Blaze {
 
 		TickerServer tick;
 		tick.address = "127.0.0.1";
-		tick.port = 8999;
+		tick.port = tickServer->get_port();
 		tick.skey = "0,127.0.0.1:8999,darkspore-pc,10,50,50,50,50,0,0";
 
 		UserOptions options;
-		options.value = TelemetryOpt::OptOut;
+		options.value = TelemetryOpt::OptIn;
 
 		TDF::Packet packet;
 		WritePostAuth(packet, pss, telemetry, tick, options);

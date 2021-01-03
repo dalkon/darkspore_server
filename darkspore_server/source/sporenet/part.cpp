@@ -60,31 +60,51 @@ namespace SporeNet {
 		return true;
 	}
 
-	void Part::Write(pugi::xml_node& node, uint32_t index, bool api) const {
-		if (auto part = node.append_child("part")) {
+	void Part::Write(pugi::xml_node& node) const {
+		auto part = node.append_child("part");
+
+		utils::xml_add_text_node(part, "is_flair", mIsFlair);
+		utils::xml_add_text_node(part, "cost", mCost);
+		utils::xml_add_text_node(part, "creature_id", mEquippedToCreatureId);
+		utils::xml_add_text_node(part, "level", mLevel);
+		utils::xml_add_text_node(part, "market_status", mMarketStatus);
+		utils::xml_add_text_node(part, "rarity", mRarity);
+		utils::xml_add_text_node(part, "status", mStatus);
+		utils::xml_add_text_node(part, "usage", mUsage);
+		utils::xml_add_text_node(part, "creation_date", mTimestamp);
+		utils::xml_add_text_node(part, "rigblock_asset_id", mRigblockAssetId);
+		utils::xml_add_text_node(part, "prefix_asset_id", mPrefixAssetId);
+		utils::xml_add_text_node(part, "prefix_secondary_asset_id", mPrefixSecondaryAssetId);
+		utils::xml_add_text_node(part, "suffix_asset_id", mSuffixAssetId);
+	}
+
+	void Part::WriteApi(pugi::xml_node& node, uint32_t index, bool offer) const {
+		auto part = node.append_child("part");
+		if (offer) {
+			utils::xml_add_text_node(part, "cost", mCost);
+			utils::xml_add_text_node(part, "level", mLevel);
+			utils::xml_add_text_node(part, "prefix_asset_id", mPrefixAssetHash);
+			utils::xml_add_text_node(part, "prefix_secondary_asset_id", mPrefixSecondaryAssetHash);
+			utils::xml_add_text_node(part, "rarity", mRarity);
+			utils::xml_add_text_node(part, "reference_id", index);
+			utils::xml_add_text_node(part, "rigblock_asset_id", mRigblockAssetHash);
+			utils::xml_add_text_node(part, "suffix_asset_id", mSuffixAssetHash);
+		} else {
 			utils::xml_add_text_node(part, "is_flair", mIsFlair);
 			utils::xml_add_text_node(part, "cost", mCost);
 			utils::xml_add_text_node(part, "creature_id", mEquippedToCreatureId);
+			utils::xml_add_text_node(part, "id", index);
 			utils::xml_add_text_node(part, "level", mLevel);
 			utils::xml_add_text_node(part, "market_status", mMarketStatus);
+			utils::xml_add_text_node(part, "prefix_asset_id", mPrefixAssetHash);
+			utils::xml_add_text_node(part, "prefix_secondary_asset_id", mPrefixSecondaryAssetHash);
 			utils::xml_add_text_node(part, "rarity", mRarity);
+			utils::xml_add_text_node(part, "reference_id", index);
+			utils::xml_add_text_node(part, "rigblock_asset_id", mRigblockAssetHash);
 			utils::xml_add_text_node(part, "status", mStatus);
+			utils::xml_add_text_node(part, "suffix_asset_id", mSuffixAssetHash);
 			utils::xml_add_text_node(part, "usage", mUsage);
 			utils::xml_add_text_node(part, "creation_date", mTimestamp);
-			if (api) {
-				utils::xml_add_text_node(part, "id", index);
-				utils::xml_add_text_node(part, "reference_id", index);
-
-				utils::xml_add_text_node(part, "rigblock_asset_id", mRigblockAssetHash);
-				utils::xml_add_text_node(part, "prefix_asset_id", mPrefixAssetHash);
-				utils::xml_add_text_node(part, "prefix_secondary_asset_id", mPrefixSecondaryAssetHash);
-				utils::xml_add_text_node(part, "suffix_asset_id", mSuffixAssetHash);
-			} else {
-				utils::xml_add_text_node(part, "rigblock_asset_id", mRigblockAssetId);
-				utils::xml_add_text_node(part, "prefix_asset_id", mPrefixAssetId);
-				utils::xml_add_text_node(part, "prefix_secondary_asset_id", mPrefixSecondaryAssetId);
-				utils::xml_add_text_node(part, "suffix_asset_id", mSuffixAssetId);
-			}
 		}
 	}
 
@@ -164,13 +184,13 @@ namespace SporeNet {
 	}
 
 	// Parts
-	/*
 	Part& Parts::GetPart(size_t index) {
+		return mItems[index];
 	}
 
 	const Part& Parts::GetPart(size_t index) const {
+		return mItems[index];
 	}
-	*/
 
 	void Parts::Read(const pugi::xml_node& node) {
 		for (const auto& part : node.child("parts")) {
@@ -178,11 +198,19 @@ namespace SporeNet {
 		}
 	}
 
-	void Parts::Write(pugi::xml_node& node, bool api) const {
+	void Parts::Write(pugi::xml_node& node) const {
+		if (auto parts = node.append_child("parts")) {
+			for (const auto& part : mItems) {
+				part.Write(parts);
+			}
+		}
+	}
+
+	void Parts::WriteApi(pugi::xml_node& node, bool offer) const {
 		if (auto parts = node.append_child("parts")) {
 			uint32_t index = 0;
 			for (const auto& part : mItems) {
-				part.Write(parts, ++index, api);
+				part.WriteApi(parts, ++index, offer);
 			}
 		}
 	}

@@ -2,7 +2,7 @@
 // Include
 #include "server.h"
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <iostream>
 #include <ctime>
 #include <iomanip>
@@ -59,8 +59,8 @@ namespace QoS {
 				mWriteBuffer.write_u32_be(requestId);
 				mWriteBuffer.write_u32_be(ticks);
 
-				mWriteBuffer.write_u32_be(0x12345678); // offset: 0x130
-				mWriteBuffer.write_u16_be(0xABCD); // offset: 0x12E
+				mWriteBuffer.write_u32_be(mRemoteEndpoint.address().to_v4().to_uint()); // offset: 0x130
+				mWriteBuffer.write_u16_be(mRemoteEndpoint.port()); // offset: 0x12E
 
 				mWriteBuffer.write_u32_be(0x12345678);
 			} else if (version == 2) {
@@ -106,5 +106,9 @@ namespace QoS {
 		} else {
 			std::cout << "Error: " << error.message() << std::endl;
 		}
+	}
+
+	uint16_t Server::get_port() const {
+		return mSocket.local_endpoint().port();
 	}
 }

@@ -153,11 +153,36 @@ namespace Game {
 		return xpTable[level];
 	}
 
-	Player::Player(Instance& instance, uint8_t playerIndex, uint64_t blazeId) : mInstance(instance) {
+	/*
+if (mReflectionBits.test(0)) { reflector.write<0>(mbDataSetup); }
+if (mReflectionBits.test(1)) { reflector.write<1>(mCurrentDeckIndex); }
+if (mReflectionBits.test(2)) { reflector.write<2>(mQueuedDeckIndex); }
+if (mReflectionBits.test(3)) { reflector.write<3>(mCharacters); }
+if (mReflectionBits.test(4)) { reflector.write<4>(mPlayerIndex); }
+if (mReflectionBits.test(5)) { reflector.write<5>(mTeam); }
+if (mReflectionBits.test(6)) { reflector.write<6>(mPlayerOnlineId); }
+if (mReflectionBits.test(7)) { reflector.write<7>(mStatus); }
+if (mReflectionBits.test(8)) { reflector.write<8>(mStatusProgress); }
+if (mReflectionBits.test(9)) { reflector.write<9>(mCurrentCreatureId); }
+if (mReflectionBits.test(10)) { reflector.write<10>(mEnergyPoints); }
+if (mReflectionBits.test(11)) { reflector.write<11>(mbIsCharged); }
+if (mReflectionBits.test(12)) { reflector.write<12>(mDNA); }
+if (mReflectionBits.test(13)) { reflector.write<13>(mCrystals); }
+if (mReflectionBits.test(14)) { reflector.write<14>(mCrystalBonuses); }
+if (mReflectionBits.test(15)) { reflector.write<15>(mAvatarLevel); }
+if (mReflectionBits.test(16)) { reflector.write<16>(mAvatarXP); }
+if (mReflectionBits.test(17)) { reflector.write<17>(mChainProgression); }
+if (mReflectionBits.test(18)) { reflector.write<18>(mLockCamera); }
+if (mReflectionBits.test(19)) { reflector.write<19>(mbLockedOverdrive); }
+if (mReflectionBits.test(20)) { reflector.write<20>(mbLockedCrystals); }
+if (mReflectionBits.test(21)) { reflector.write<21>(mLockedAbilityMin); }
+if (mReflectionBits.test(22)) { reflector.write<22>(mLockedDeckIndexMin); }
+if (mReflectionBits.test(23)) { reflector.write<23>(mDeckScore); }
+	*/
+	Player::Player(Instance& instance, const SporeNet::UserPtr& user, uint8_t playerIndex) : mInstance(instance), mUser(user) {
 		mData.mPlayerIndex = playerIndex;
-		mData.mPlayerOnlineId = blazeId;
-		mData.mTeam = 1;
-		SetStatus(0, 0.f);
+		mData.SetUpdateBits(4);
+		Setup();
 	}
 
 	RakNet::labsPlayer& Player::GetData() {
@@ -173,24 +198,34 @@ namespace Game {
 		return mData.mPlayerIndex;
 	}
 
-	void Player::Setup(const SporeNet::UserPtr& user) {
-		if (!user) {
-			return;
-		}
+	void Player::Setup() {
+		SetStatus(0, 0.f);
 
 		mData.mbDataSetup = false;
+		mData.mTeam = 1;
+		mData.mPlayerOnlineId = mUser->get_id();
 		mData.mLockCamera = false;
-		mData.mCurrentDeckIndex = 0;
-		mData.mQueuedDeckIndex = 0;
-		mData.mCurrentCreatureId = 0;
+		mData.mLockedAbilityMin = 0;
+		mData.mLockedDeckIndexMin = 0;
+		// mData.mbIsCharged = true;
 
-		const auto& accountData = user->get_account();
+		const auto& accountData = mUser->get_account();
 		mData.mAvatarLevel = accountData.level;
 		mData.mDNA = accountData.dna;
 
 		auto prevXP = GetXPForLevel(accountData.level);
 		auto nextXP = GetXPForLevel(accountData.level + 1);
 		mData.mAvatarXP = (accountData.xp - prevXP) / static_cast<float>(std::max<uint32_t>(1, nextXP - prevXP));
+
+		mData.SetUpdateBits({
+			0, 5, 6, 12,
+			15, 16, 18, 21, 22
+		});
+	}
+
+	void Player::GetStatus(uint32_t& status, float& progress) const {
+		status = mData.mStatus;
+		progress = mData.mStatusProgress;
 	}
 
 	void Player::SetStatus(uint32_t status, float progress) {
@@ -205,6 +240,55 @@ namespace Game {
 			return nullptr;
 		}
 		return mCharacterObjects[index];
+	}
+
+	SporeNet::SquadPtr Player::GetSquad() const {
+		return mSquad;
+	}
+
+	void Player::SetSquad(const SporeNet::SquadPtr& squad) {
+		mSquad = squad;
+
+		mData.mCurrentDeckIndex = 0;
+		mData.mQueuedDeckIndex = 0;
+
+		if (mSquad) {
+			// mData.mDeckScore = mSquad->GetScore();
+
+			uint32_t creatureIndex = 0;
+			for (uint32_t creatureId : squad->GetCreatureIds()) {
+				RakNet::labsCharacter character;
+
+				// TODO: save/calculate health and "power"
+				character.mHealthPoints = 50.f * (creatureIndex + 1);
+				character.mMaxHealthPoints = 200.0f;
+				character.mManaPoints = 25.f * (creatureIndex + 1);
+				character.mMaxManaPoints = 200.0f;
+
+				const auto& creature = mUser->GetCreatureById(creatureId);
+				if (creature) {
+					character.nounDef = creature->GetNoun();
+					character.version = creature->GetVersion();
+					character.mCreatureType = static_cast<uint32_t>(creature->GetType());
+					character.mGearScore = creature->GetGearScore();
+					character.mGearScoreFlattened = creature->GetGearScoreFlattened();
+				} else {
+					character.nounDef = 0;
+					character.version = 0;
+					character.mCreatureType = static_cast<uint32_t>(SporeNet::CreatureType::Unknown);
+					character.mGearScore = 0.f;
+					character.mGearScoreFlattened = 0.f;
+				}
+
+				SetCharacter(std::move(character), creatureIndex);
+				creatureIndex++;
+			}
+		} else {
+			mData.mDeckScore = 0;
+		}
+
+		mData.SetUpdateBits({ 1, 2, 23 });
+		SetUpdateBits(RakNet::labsPlayerBits::PlayerBits);
 	}
 
 	const RakNet::labsCharacter& Player::GetCharacter(uint32_t index) const {
@@ -236,19 +320,23 @@ namespace Game {
 			characterRef.assetID = characterObject->GetId();
 			characterRef.mAbilityPoints = 0;
 			characterRef.mAbilityRanks.fill(1);
-			characterRef.partsAttributes.fill(1.0f);
+			characterRef.partsAttributes.fill(100.0f);
 
 			auto& characterObjectData = characterObject->GetData();
-			// characterObjectData.mOwnerID = 0;
+			characterObjectData.mOwnerID = 0;
 			characterObjectData.mPlayerIdx = mData.mPlayerIndex;
-			characterObjectData.mTeam = 1;
+			characterObjectData.mTeam = mData.mTeam;
 			characterObjectData.mbHasCollision = true;
 			characterObjectData.mbPlayerControlled = true;
+
+			if (mData.mCurrentCreatureId == 0) {
+				mData.mCurrentCreatureId = 0;
+			}
 		} else {
 			characterRef.assetID = 0;
 		}
 
-		// mData.SetUpdateBits(RakNet::labsPlayer::Characters);
+		mData.SetUpdateBits(RakNet::labsPlayer::Characters);
 		SetUpdateBits(RakNet::labsPlayerBits::CharacterBits << index);
 	}
 
@@ -266,7 +354,9 @@ namespace Game {
 		if (index < crystals.size()) {
 			crystals[index] = std::move(crystal);
 
+			mData.SetUpdateBits(13);
 			SetUpdateBits(RakNet::labsPlayerBits::CrystalBits << index);
+
 			UpdateCrystalBonuses();
 		}
 	}
@@ -284,13 +374,42 @@ namespace Game {
 	}
 
 	void Player::UpdateCrystalBonuses() {
+		// TODO: match catalyst colors
+
 		const auto& crystals = mData.mCrystals;
 		auto& crystalBonuses = mData.mCrystalBonuses;
 
 		constexpr size_t gridSize = 3;
 		for (size_t i = 0; i < gridSize; ++i) {
 			size_t index = i * gridSize;
-			crystalBonuses[i] = (crystals[index + 0].crystalNoun + crystals[index + 1].crystalNoun + crystals[index + 2].crystalNoun) != 0;
+			
+			auto horizontalCrystals =
+				(crystals[index + 0].crystalNoun != 0) +
+				(crystals[index + 1].crystalNoun != 0) +
+				(crystals[index + 2].crystalNoun != 0);
+
+			auto verticalCrystals =
+				(crystals[i + (gridSize * 0)].crystalNoun != 0) +
+				(crystals[i + (gridSize * 1)].crystalNoun != 0) +
+				(crystals[i + (gridSize * 2)].crystalNoun != 0);
+
+			crystalBonuses[i] = horizontalCrystals == 3;
+			crystalBonuses[i + gridSize] = verticalCrystals == 3;
 		}
+
+		// Diagonals
+		crystalBonuses[6] = (
+			(crystals[0].crystalNoun != 0) +
+			(crystals[4].crystalNoun != 0) +
+			(crystals[8].crystalNoun != 0)
+		) == 3;
+
+		crystalBonuses[7] = (
+			(crystals[2].crystalNoun != 0) +
+			(crystals[4].crystalNoun != 0) +
+			(crystals[6].crystalNoun != 0)
+		) == 3;
+
+		mData.SetUpdateBits(14);
 	}
 }

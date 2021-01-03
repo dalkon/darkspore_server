@@ -70,7 +70,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)source;E:\DevFolder\LibrarySources\raknet3\Source;E:\DevFolder\C++ Libraries\pugixml\include;E:\DevFolder\C++ Libraries\rapidjson\include;E:\DevFolder\C++ Libraries\openssl-1.1.1b\include;E:\DevFolder\C++ Libraries\boost_1_73_0;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)source;E:\DevFolder\LibrarySources\raknet3\Source;E:\DevFolder\C++ Libraries\lodepng;E:\DevFolder\C++ Libraries\cpp-base64;E:\DevFolder\C++ Libraries\pugixml\include;E:\DevFolder\C++ Libraries\rapidjson\include;E:\DevFolder\C++ Libraries\openssl-1.1.1b\include;E:\DevFolder\C++ Libraries\boost_1_73_0;$(IncludePath)</IncludePath>
     <LibraryPath>E:\DevFolder\C++ Libraries\RakNet\lib;E:\DevFolder\C++ Libraries\pugixml\lib;E:\DevFolder\C++ Libraries\openssl-1.1.1b\lib;E:\DevFolder\C++ Libraries\boost_1_73_0\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -175,11 +175,12 @@
     <ClInclude Include="source\sporenet\squad.h" />
     <ClInclude Include="source\sporenet\user.h" />
     <ClInclude Include="source\sporenet\vendor.h" />
-    <ClInclude Include="source\tcptest.h" />
     <ClInclude Include="source\utils\functions.h" />
     <ClInclude Include="source\utils\log.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\C++ Libraries\cpp-base64\base64.cpp" />
+    <ClCompile Include="..\..\..\C++ Libraries\lodepng\lodepng.cpp" />
     <ClCompile Include="source\blaze\client.cpp" />
     <ClCompile Include="source\blaze\component.cpp" />
     <ClCompile Include="source\blaze\component\associationcomponent.cpp" />
@@ -222,7 +223,6 @@
     <ClCompile Include="source\sporenet\squad.cpp" />
     <ClCompile Include="source\sporenet\user.cpp" />
     <ClCompile Include="source\sporenet\vendor.cpp" />
-    <ClCompile Include="source\tcptest.cpp" />
     <ClCompile Include="source\utils\functions.cpp" />
     <ClCompile Include="source\utils\log.cpp" />
   </ItemGroup>

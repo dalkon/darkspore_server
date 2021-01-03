@@ -4,10 +4,9 @@
 
 // Include
 #include "predefined.h"
+#include "types.h"
 
-#include "blaze/types.h"
 #include <RakPeerInterface.h>
-
 #include <memory>
 
 enum class GameState : uint32_t {
@@ -41,13 +40,6 @@ enum class GameState : uint32_t {
 
 // RakNet
 namespace RakNet {
-	struct GameStateData {
-		double var;
-
-		uint32_t state;
-		Blaze::GameType type;
-	};
-
 	class Client {
 		public:
 			Client(Server& server, const SystemAddress& systemAddress);
@@ -60,8 +52,8 @@ namespace RakNet {
 			GameState GetGameState() const;
 			bool SetGameState(GameState newState);
 
-			int64_t GetBlazeId() const;
-			void SetBlazeId(int64_t id);
+			SporeNet::UserPtr GetUser() const;
+			void SetUser(const SporeNet::UserPtr& user);
 
 		private:
 			// Client To Server
@@ -70,12 +62,12 @@ namespace RakNet {
 		private:
 			Server& mServer;
 
+			SporeNet::UserPtr mUser;
 			Game::PlayerPtr mPlayer;
 
 			SystemAddress mSystemAddress;
 
 			uint64_t mLastPing;
-			int64_t mBlazeId;
 
 			uint8_t mId;
 

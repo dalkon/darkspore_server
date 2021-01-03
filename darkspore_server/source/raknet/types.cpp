@@ -8,7 +8,7 @@
 // Campaign level order (incorrect)
 constexpr const char* levelNames[] {
 	// tutorial
-	"Darkspore_Tutorial_cryos_1_v2"
+	"Darkspore_Tutorial_cryos_1_v2",
 
 	// 1-1 to 1-4
 	"zelems_1",
@@ -318,6 +318,30 @@ namespace Hash {
 }
 #undef DEFINE_TYPE_HASH
 
+// helpers
+auto ReallocateStream(RakNet::BitStream& stream, BitSize_t sizeInBits) {
+	const auto writeOffset = stream.GetWriteOffset();
+	const auto writeOffsetMod8 = writeOffset & 7;
+
+	if (writeOffsetMod8 > 0) {
+		printf("ReallocateStream: not full bytes");
+	}
+
+	stream.AddBitsAndReallocate(sizeInBits);
+	/*
+	BitSize_t zeroLength = RakNet::bits_to_bytes(sizeInBits);
+	if (writeOffsetMod8 != 0) {
+		constexpr std::array<uint8_t, 7> zeroArray { 0 };
+		stream.WriteBits(zeroArray.data(), 8 - writeOffsetMod8);
+
+		zeroLength -= 1;
+	}
+
+	std::memset(stream.GetData() + RakNet::bits_to_bytes(writeOffset - writeOffsetMod8), 0, zeroLength);
+	*/
+	return writeOffset;
+}
+
 // reflection_serializer | Fields = max amount of fields
 template<uint8_t FieldCount>
 class reflection_serializer {
@@ -601,8 +625,7 @@ namespace RakNet {
 	void cAIDirector::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x4D0);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x00D));
 		Write<bool>(stream, mbBossSpawned);
@@ -665,8 +688,7 @@ namespace RakNet {
 	void labsCharacter::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x620);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x008));
 		Write<uint64_t>(stream, assetID);
@@ -676,20 +698,20 @@ namespace RakNet {
 		Write<asset>(stream, nounDef);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x0B8));
-		for (size_t i = 0; i < 0x4A; ++i) {
+		for (size_t i = 0; i <= 0x49; ++i) {
 			Write<float>(stream, partsAttributes[i]);
 		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1E4));
-		Write<float>(stream, partsAttributes[0x4B]);
+		Write<float>(stream, partsAttributes[0x4A]);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1EC));
-		for (size_t i = 0x4C; i < 0x63; ++i) {
+		for (size_t i = 0x4B; i <= 0x61; ++i) {
 			Write<float>(stream, partsAttributes[i]);
 		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x24C));
-		for (size_t i = 0x64; i < 0x6F; ++i) {
+		for (size_t i = 0x62; i <= 0x6E; ++i) {
 			Write<float>(stream, partsAttributes[i]);
 		}
 
@@ -730,12 +752,12 @@ namespace RakNet {
 		reflector.write<10>(mMaxManaPoints);
 		reflector.write<11>(mGearScore);
 		reflector.write<12>(mGearScoreFlattened);
-		/*
+		
 		uint8_t field = 13;
 		for (auto value : partsAttributes) {
 			reflector.write(field++, value);
 		}
-		*/
+
 		reflector.end();
 	}
 
@@ -923,7 +945,7 @@ namespace RakNet {
 
 	// labsPlayer
 	labsPlayer::labsPlayer() {
-		mReflectionBits.set();
+		// mReflectionBits.set();
 	}
 
 	void labsPlayer::SetUpdateBits(uint8_t bitIndex) {
@@ -943,8 +965,10 @@ namespace RakNet {
 	void labsPlayer::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x14B8);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		// auto writeOffset = stream.GetWriteOffset();
+		// stream.AddBitsAndReallocate(size);
+
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset);
 		Write(stream, mbDataSetup);
@@ -1053,8 +1077,7 @@ namespace RakNet {
 	void cGameObjectCreateData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x70);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset);
 		Write(stream, noun);
@@ -1094,7 +1117,16 @@ namespace RakNet {
 		Extra data ([offset] = value)
 			0x99 = mark cannot drop loot
 			0x9A = mark not worth xp
-			0x2CC = is dead
+
+			-- internal pointers --
+			0x2C4 = attribute data (edited via attribute update packet)
+			0x2C8 = locomotion data (edited via locomotion update packet(s))
+			0x2CC = combatant data (edited via combatant update packet)
+			0x2F0 = interactable data
+			0x2B0 = agent blackboard data
+			0x2E8 = loot data
+			0x2EC = gravity force
+			0x2C0 = team data?
 	*/
 	sporelabsObject::sporelabsObject() :
 		mTeam(1), mbPlayerControlled(false),
@@ -1113,8 +1145,7 @@ namespace RakNet {
 	void sporelabsObject::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x308);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x010));
 		Write<float>(stream, mScale);
@@ -1161,9 +1192,6 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x288));
 		Write(stream, mInteractableState);
 
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x2CC));
-		Write(stream, false);
-
 		stream.SetWriteOffset(writeOffset + size);
 	}
 
@@ -1200,8 +1228,7 @@ namespace RakNet {
 	void cAgentBlackboard::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x598);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x550));
 		Write(stream, targetId);
@@ -1234,8 +1261,7 @@ namespace RakNet {
 	void cLobParams::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x54);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x18));
 		lobUpDir.WriteTo(stream);
@@ -1276,8 +1302,7 @@ namespace RakNet {
 	void cProjectileParams::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x3C);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset);
 		Write(stream, mSpeed);
@@ -1328,8 +1353,7 @@ namespace RakNet {
 	void cLocomotionData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x290);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
 		Write(stream, reflectedLastUpdate);
@@ -1396,8 +1420,7 @@ namespace RakNet {
 	void cAttributeData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x634);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x26C));
 		for (size_t i = 0; i < 0x63; ++i) {
@@ -1431,8 +1454,7 @@ namespace RakNet {
 	void cCombatantData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x70);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x40));
 		Write(stream, mHitPoints);
@@ -1453,8 +1475,7 @@ namespace RakNet {
 	void cInteractableData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x34);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
 		Write(stream, mNumTimesUsed);
@@ -1479,8 +1500,7 @@ namespace RakNet {
 	void cLootData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x80);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
 		Write(stream, crystalLevel);
@@ -1521,8 +1541,7 @@ namespace RakNet {
 	void GravityForce::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x20);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
 		Write(stream, radius);
@@ -1545,8 +1564,7 @@ namespace RakNet {
 	void CombatEvent::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x28);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset);
 		Write(stream, flags);
@@ -1581,8 +1599,7 @@ namespace RakNet {
 	void ServerEvent::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x98);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x04));
 		Write(stream, simpleSwarmEffectID);
@@ -1657,8 +1674,7 @@ namespace RakNet {
 	void DifficultyTuning::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x48);
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x00));
 		Write<float>(stream, HealthPercentIncrease[0]);
@@ -1746,6 +1762,10 @@ namespace RakNet {
 		mLevelIndex = index;
 	}
 
+	void ChainVoteData::SetLevelInstance(uint32_t index) {
+		mLevelIndex = index;
+	}
+
 	uint32_t ChainVoteData::GetMarkerSet() const {
 		std::string markerSet = "levelshop";
 		// std::string markerSet = "default";
@@ -1779,6 +1799,12 @@ namespace RakNet {
 		mCompletedLevel = completed;
 	}
 
+	void ChainVoteData::SetEnemyNoun(std::string_view nounStr, uint32_t index) {
+		if (index < mEnemyNouns.size()) {
+			mEnemyNouns[index] = utils::hash_id(nounStr);
+		}
+	}
+
 	void ChainVoteData::WriteTo(RakNet::BitStream& stream) const {
 		// This data is set directly into the state machine?
 
@@ -1805,8 +1831,7 @@ namespace RakNet {
 			majorDifficulty = 0;
 		}
 
-		auto writeOffset = stream.GetWriteOffset();
-		stream.AddBitsAndReallocate(size);
+		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x00));
 		if (mCompletedLevel) {
@@ -1817,7 +1842,7 @@ namespace RakNet {
 			Write<float>(stream, 30 * 60 * 1000.f); // time remaining?
 		} else {
 			Write<uint32_t>(stream, mLevel);
-			Write<uint32_t>(stream, majorDifficulty);
+			Write<uint32_t>(stream, mLevelIndex);
 			Write<uint32_t>(stream, mStarLevel);
 			Write<float>(stream, 30 * 60 * 1000.f); // time remaining?
 		}
@@ -1841,17 +1866,19 @@ namespace RakNet {
 		Write<uint32_t>(stream, 1); // Unknown so far, arg0 of sub_4E4910 (hash lookup)
 		Write<uint32_t>(stream, 0); // tests against "mCompletedLevel" for something, but this is not a boolean.
 
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x4D));
-		Write<uint32_t>(stream, mPlayerAsset);
-		Write<uint32_t>(stream, 0x12345678);
+		if (mCompletedLevel) {
+			stream.SetWriteOffset(writeOffset + bytes_to_bits(0x4D));
+			Write<uint32_t>(stream, mPlayerAsset);
+			Write<uint32_t>(stream, 0x12345678);
 
 #if 1
-		for (size_t i = 0; i < 0x39; ++i) {
-			Write<uint8_t>(stream, 0xDD);
-		}
+			for (size_t i = 0; i < 0x39; ++i) {
+				Write<uint8_t>(stream, 0xDD);
+			}
 #else
-		WriteDebugData(stream, 0x39);
+			WriteDebugData(stream, 0x39);
 #endif
+		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0xD9));
 		Write<uint32_t>(stream, 0); // overrides party value
