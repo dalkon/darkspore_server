@@ -95,17 +95,19 @@ namespace Game {
 
 			uint32_t GetId() const;
 
-			const RakNet::ChainVoteData& GetChainData() const;
-			RakNet::ChainVoteData& GetChainData();
+			auto& GetChainData() { return mChainData; }
+			const auto& GetChainData() const { return mChainData; }
 
-			const RakNet::GameStateData& GetStateData() const;
-			RakNet::GameStateData& GetStateData();
+			auto& GetStateData() { return mStateData; }
+			const auto& GetStateData() const { return mStateData; }
 
-			const Blaze::ReplicatedGameData& GetInfo() const;
-			Blaze::ReplicatedGameData& GetInfo();
+			auto& GetInfo() { return mData; }
+			const auto& GetInfo() const { return mData; }
 
-			const ObjectManager& GetObjectManager() const;
-			ObjectManager& GetObjectManager();
+			auto& GetObjectManager() { return *mObjectManager; }
+			const auto& GetObjectManager() const { return *mObjectManager; }
+
+			const auto& GetObjectives() const { return mObjectives; }
 
 			uint64_t GetTime() const;
 			uint64_t GetTimeElapsed() const;
@@ -113,13 +115,32 @@ namespace Game {
 			void AddServerTask(std::function<void(void)> task);
 			void AddClientTask(uint8_t id, MessageID packet);
 
+			// Network safe functions
 			bool Update();
+
+			void MoveObject(const ObjectPtr& object, const RakNet::cSPVector3& position, RakNet::cLocomotionData& locomotionData);
+
+			// Abilities / Combat / Etc
+			void UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
+			void SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex);
+
+			// Loot
+			void PickupLoot(const PlayerPtr& player, uint32_t lootObjectId);
+			void DropLoot(const PlayerPtr& player, uint64_t lootInstanceId);
+			void DropLoot();
+
+			void PickupCatalyst(const PlayerPtr& player, uint32_t catalystObjectId);
+			void DropCatalyst(const PlayerPtr& player, uint32_t catalystSlot);
+			void DropCatalyst();
 
 		private:
 			std::unique_ptr<RakNet::Server> mServer;
 			std::unique_ptr<ObjectManager> mObjectManager;
 
 			std::map<int64_t, PlayerPtr> mPlayers;
+
+			std::vector<RakNet::Objective> mObjectives;
+			std::vector<ObjectPtr> mObjects;
 
 			RakNet::ChainVoteData mChainData;
 			RakNet::GameStateData mStateData;

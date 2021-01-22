@@ -14,6 +14,10 @@ namespace utils {
 		return std::chrono::milliseconds(std::time(nullptr)).count();
 	}
 
+	uint64_t get_milliseconds() {
+		return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+	}
+
 	std::string get_utc_date_string() {
 		thread_local std::array<char, 256> date;
 

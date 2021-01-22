@@ -1474,6 +1474,16 @@ namespace Game {
 	}
 
 	void API::game_account_getAccount(HTTP::Session& session, HTTP::Response& response) {
+		/*
+			Accept-Language
+			Cookie
+			User-Agent
+			Host
+			Set-Cookie
+			Set-Cookie2
+			If-Modified-Since
+		*/
+
 		const auto& user = session.get_user();
 		if (!user) {
 			std::cout << "No user in api.account.getAccount" << std::endl;
@@ -1535,7 +1545,7 @@ namespace Game {
 		utils::xml_add_text_node(docResponse, "grant_online_access", account.grantOnlineAccess);
 		utils::xml_add_text_node(docResponse, "cashout_bonus_time", account.cashoutBonusTime);
 
-		set_response_body(response, document, boost::beast::http::status::ok);
+		set_response_body(response, document, boost::beast::http::status::created);
 	}
 
 	void API::game_account_logout(HTTP::Session& session, HTTP::Response& response) {
@@ -2018,7 +2028,7 @@ version = 1
 	void API::add_common_keys(pugi::xml_node& node, bool success, uint32_t successStatus) {
 		if (success) {
 			utils::xml_add_text_node(node, "stat", "ok");
-			utils::xml_add_text_node(node, "code", boost::beast::http::status::ok);
+			utils::xml_add_text_node(node, "code", successStatus);
 			utils::xml_add_text_node(node, "result", 1);
 		} else {
 			utils::xml_add_text_node(node, "stat", "error");
@@ -2045,7 +2055,7 @@ version = 1
 		xmlDocument.save(writer, "\t", pugi::format_default | pugi::format_write_bom, pugi::encoding_latin1);
 
 		// response.set(boost::beast::http::field::host, "127.0.0.1");
-		response.set(boost::beast::http::field::user_agent, "Darkspore/5.3.0.127 (Pollinator; 6.2.9200)");
+		// response.set(boost::beast::http::field::user_agent, "Darkspore/5.3.0.127 (Pollinator; 6.2.9200)");
 		// response.set(boost::beast::http::field::date, utils::get_utc_date_string());
 		// response.set(boost::beast::http::field::user_agent, "EA/2.0 (compatible)");
 		response.set(boost::beast::http::field::content_language, "en-us");

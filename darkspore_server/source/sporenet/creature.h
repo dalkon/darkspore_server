@@ -145,6 +145,7 @@ namespace SporeNet {
 			const std::string& GetName() const;
 
 			uint32_t GetNoun() const;
+			uint32_t GetAbility(uint8_t index) const;
 
 			CreatureType GetType() const;
 			CreatureClass GetClass() const;
@@ -200,6 +201,7 @@ namespace SporeNet {
 			std::string GetName() const;
 
 			uint32_t GetNoun() const;
+			uint32_t GetAbility(uint8_t index) const;
 
 			CreatureType GetType() const;
 			CreatureClass GetClass() const;

@@ -393,7 +393,9 @@ class reflection_serializer {
 			}
 
 			for (const auto& value : value) {
-				if constexpr (std::is_class_v<T>) {
+				if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
+					Write(mStream, value);
+				} else if constexpr (std::is_class_v<T>) {
 					value.WriteTo(mStream);
 				} else {
 					Write<T>(mStream, value);
@@ -410,7 +412,9 @@ class reflection_serializer {
 				mWriteBits |= 1 << Field;
 			}
 
-			if constexpr (std::is_class_v<T>) {
+			if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
+				Write(mStream, value);
+			} else if constexpr (std::is_class_v<T>) {
 				value.WriteTo(mStream);
 			} else {
 				Write<T>(mStream, value);
@@ -426,7 +430,9 @@ class reflection_serializer {
 			}
 
 			for (const auto& value : value) {
-				if constexpr (std::is_class_v<T>) {
+				if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
+					Write(mStream, value);
+				} else if constexpr (std::is_class_v<T>) {
 					value.WriteTo(mStream);
 				} else {
 					Write<T>(mStream, value);
@@ -442,7 +448,9 @@ class reflection_serializer {
 				mWriteBits |= 1 << field;
 			}
 
-			if constexpr (std::is_class_v<T>) {
+			if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
+				Write(mStream, value);
+			} else if constexpr (std::is_class_v<T>) {
 				value.WriteTo(mStream);
 			} else {
 				Write<T>(mStream, value);
@@ -575,52 +583,6 @@ namespace Hash {
 }
 
 namespace RakNet {
-	// cSPVector2
-	cSPVector2::cSPVector2(float _x, float _y)
-		: x(_x), y(_y) {}
-
-	void cSPVector2::ReadFrom(BitStream& stream) {
-		Read<float>(stream, x);
-		Read<float>(stream, y);
-	}
-
-	void cSPVector2::WriteTo(BitStream& stream) const {
-		Write<float>(stream, x);
-		Write<float>(stream, y);
-	}
-
-	// cSPVector3
-	cSPVector3::cSPVector3(float _x, float _y, float _z)
-		: x(_x), y(_y), z(_z) {}
-
-	void cSPVector3::ReadFrom(BitStream& stream) {
-		Read<float>(stream, x);
-		Read<float>(stream, y);
-		Read<float>(stream, z);
-	}
-
-	void cSPVector3::WriteTo(BitStream& stream) const {
-		Write<float>(stream, x);
-		Write<float>(stream, y);
-		Write<float>(stream, z);
-	}
-
-	// cSPQuaternion
-	void cSPQuaternion::ReadFrom(BitStream& stream) {
-		Read<float>(stream, x);
-		Read<float>(stream, y);
-		Read<float>(stream, z);
-		Read<float>(stream, w);
-	}
-
-	void cSPQuaternion::WriteTo(BitStream& stream) const {
-		// do we read/write w, x, y, z?
-		Write<float>(stream, x);
-		Write<float>(stream, y);
-		Write<float>(stream, z);
-		Write<float>(stream, w);
-	}
-
 	// cAIDirector
 	void cAIDirector::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x4D0);
@@ -684,6 +646,120 @@ namespace RakNet {
 			400 : mGearScore
 			404 : mGearScoreFlattened
 	*/
+
+	labsCharacter::labsCharacter() {
+		partsAttributes[Ability::Strength] = 1.f;
+		partsAttributes[Ability::Dexterity] = 1.f;
+		partsAttributes[Ability::Mind] = 1.f;
+		partsAttributes[Ability::MaxHealthIncrease] = 0.f;
+		partsAttributes[Ability::MaxHealth] = 0.f;
+		partsAttributes[Ability::MaxMana] = 0.f;
+		partsAttributes[Ability::DamageReduction] = 0.f;
+		partsAttributes[Ability::PhysicalDefense] = 0.f;
+		partsAttributes[Ability::PhysicalDamageReduction] = 0.f;
+		partsAttributes[Ability::EnergyDefense] = 0.f;
+		partsAttributes[Ability::CriticalRating] = 0.f;
+		partsAttributes[Ability::NonCombatSpeed] = 10.f;
+		partsAttributes[Ability::CombatSpeed] = 10.f;
+		partsAttributes[Ability::DamageBuff] = 0.f;
+		partsAttributes[Ability::Silence] = 0.f;
+		partsAttributes[Ability::Immobilized] = 0.f;
+		partsAttributes[Ability::DefenseBoostBasicDamage] = 0.f;
+		partsAttributes[Ability::PhysicalDamageIncrease] = 0.f;
+		partsAttributes[Ability::PhysicalDamageIncreaseFlat] = 0.f;
+		partsAttributes[Ability::AutoCrit] = 0.f;
+		partsAttributes[Ability::BehindDirectDamageIncrease] = 0.f;
+		partsAttributes[Ability::BehindOrSideDirectDamageIncrease] = 0.f;
+		partsAttributes[Ability::CriticalDamageIncrease] = 0.f;
+		partsAttributes[Ability::AttackSpeedScale] = 1.f;
+		partsAttributes[Ability::CooldownScale] = 1.f;
+		partsAttributes[Ability::Frozen] = 0.f;
+		partsAttributes[Ability::ProjectileSpeedIncrease] = 0.f;
+		partsAttributes[Ability::AoEResistance] = 0.f;
+		partsAttributes[Ability::EnergyDamageBuff] = 0.f;
+		partsAttributes[Ability::Intangible] = 0.f;
+		partsAttributes[Ability::HealingReduction] = 0.f;
+		partsAttributes[Ability::EnergyDamageIncrease] = 0.f;
+		partsAttributes[Ability::EnergyDamageIncreaseFlat] = 0.f;
+		partsAttributes[Ability::Immune] = 0.f;
+		partsAttributes[Ability::StealthDetection] = 0.f;
+		partsAttributes[Ability::LifeSteal] = 0.f;
+		partsAttributes[Ability::RejectModifier] = 0.f;
+		partsAttributes[Ability::AoEDamage] = 0.f;
+		partsAttributes[Ability::TechnologyTypeDamage] = 0.f;
+		partsAttributes[Ability::SpacetimeTypeDamage] = 0.f;
+		partsAttributes[Ability::LifeTypeDamage] = 0.f;
+		partsAttributes[Ability::ElementsTypeDamage] = 0.f;
+		partsAttributes[Ability::SupernaturalTypeDamage] = 0.f;
+		partsAttributes[Ability::TechnologyTypeResistance] = 0.f;
+		partsAttributes[Ability::SpacetimeTypeResistance] = 0.f;
+		partsAttributes[Ability::LifeTypeResistance] = 0.f;
+		partsAttributes[Ability::ElementsTypeResistance] = 0.f;
+		partsAttributes[Ability::SupernaturalTypeResistance] = 0.f;
+		partsAttributes[Ability::MovementSpeedBuff] = 0.f;
+		partsAttributes[Ability::ImmuneToDebuffs] = 0.f;
+		partsAttributes[Ability::BuffDuration] = 0.f;
+		partsAttributes[Ability::DebuffDuration] = 0.f;
+		partsAttributes[Ability::ManaSteal] = 0.f;
+		partsAttributes[Ability::DebuffDurationIncrease] = 0.f;
+		partsAttributes[Ability::EnergyDamageReduction] = 0.f;
+		partsAttributes[Ability::Incorporeal] = 0.f;
+		partsAttributes[Ability::DoTDamageIncrease] = 0.f;
+		partsAttributes[Ability::MindControlled] = 0.f;
+		partsAttributes[Ability::SwapDisabled] = 0.f;
+		partsAttributes[Ability::ImmuneToRandomTeleport] = 0.f;
+		partsAttributes[Ability::ImmuneToBanish] = 0.f;
+		partsAttributes[Ability::ImmuneToKnockback] = 0.f;
+		partsAttributes[Ability::AoeRadius] = 0.f;
+		partsAttributes[Ability::PetDamage] = 0.f;
+		partsAttributes[Ability::PetHealth] = 0.f;
+		partsAttributes[Ability::CrystalFind] = 0.f;
+		partsAttributes[Ability::DNADropped] = 0.f;
+		partsAttributes[Ability::RangeIncrease] = 0.f;
+		partsAttributes[Ability::OrbEffectiveness] = 0.f;
+		partsAttributes[Ability::OverdriveBuildup] = 0.f;
+		partsAttributes[Ability::OverdriveDuration] = 0.f;
+		partsAttributes[Ability::LootFind] = 0.f;
+		partsAttributes[Ability::Surefooted] = 0.f;
+		partsAttributes[Ability::ImmuneToStunned] = 0.f;
+		partsAttributes[Ability::ImmuneToSleep] = 0.f;
+		partsAttributes[Ability::ImmuneToTerrified] = 0.f;
+		partsAttributes[Ability::ImmuneToSilence] = 0.f;
+		partsAttributes[Ability::ImmuneToCursed] = 0.f;
+		partsAttributes[Ability::ImmuneToPoisonOrDisease] = 0.f;
+		partsAttributes[Ability::ImmuneToBurning] = 0.f;
+		partsAttributes[Ability::ImmuneToRooted] = 0.f;
+		partsAttributes[Ability::ImmuneToSlow] = 0.f;
+		partsAttributes[Ability::ImmuneToPull] = 0.f;
+		partsAttributes[Ability::DoTDamageDoneIncrease] = 0.f;
+		partsAttributes[Ability::AggroIncrease] = 0.f;
+		partsAttributes[Ability::AggroDecrease] = 0.f;
+		partsAttributes[Ability::PhysicalDamageDoneIncrease] = 0.f;
+		partsAttributes[Ability::PhysicalDamageDoneByAbilityIncrease] = 0.f;
+		partsAttributes[Ability::EnergyDamageDoneIncrease] = 0.f;
+		partsAttributes[Ability::EnergyDamageDoneByAbilityIncrease] = 0.f;
+		partsAttributes[Ability::ChannelTimeDecrease] = 0.f;
+		partsAttributes[Ability::CrowdControlDurationDecrease] = 0.f;
+		partsAttributes[Ability::DoTDurationDecrease] = 0.f;
+		partsAttributes[Ability::AoEDurationIncrease] = 0.f;
+		partsAttributes[Ability::HealIncrease] = 0.f;
+		partsAttributes[Ability::OnLockdown] = 0.f;
+		partsAttributes[Ability::HoTDoneIncrease] = 0.f;
+		partsAttributes[Ability::ProjectileDamageIncrease] = 0.f;
+		partsAttributes[Ability::DeployBonusInvincibilityTime] = 0.f;
+		partsAttributes[Ability::PhysicalDamageDecreaseFlat] = 0.f;
+		partsAttributes[Ability::EnergyDamageDecreaseFlat] = 0.f;
+		partsAttributes[Ability::MinWeaponDamage] = 1.f;
+		partsAttributes[Ability::MaxWeaponDamage] = 1.f;
+		partsAttributes[Ability::MinWeaponDamagePercent] = 0.f;
+		partsAttributes[Ability::MaxWeaponDamagePercent] = 0.f;
+		partsAttributes[Ability::DirectAttackDamage] = 0.f;
+		partsAttributes[Ability::DirectAttackDamagePercent] = 0.f;
+		partsAttributes[Ability::GetHitAnimDisabled] = 0.f;
+		partsAttributes[Ability::XPBoost] = 0.f;
+		partsAttributes[Ability::InvisibleToSecurityTeleporters] = 1.f;
+		partsAttributes[Ability::BodyScale] = 1.f;
+	}
 
 	void labsCharacter::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x620);
@@ -1081,7 +1157,7 @@ namespace RakNet {
 
 		stream.SetWriteOffset(writeOffset);
 		Write(stream, noun);
-		position.WriteTo(stream);
+		Write(stream, position);
 		Write(stream, rotXDegrees);
 		Write(stream, rotYDegrees);
 		Write(stream, rotZDegrees);
@@ -1120,7 +1196,7 @@ namespace RakNet {
 
 			-- internal pointers --
 			0x2C4 = attribute data (edited via attribute update packet)
-			0x2C8 = locomotion data (edited via locomotion update packet(s))
+			0x298 = locomotion data (edited via locomotion update packet(s))
 			0x2CC = combatant data (edited via combatant update packet)
 			0x2F0 = interactable data
 			0x2B0 = agent blackboard data
@@ -1152,10 +1228,10 @@ namespace RakNet {
 		Write<float>(stream, mMarkerScale);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x018));
-		mPosition.WriteTo(stream);
-		mOrientation.WriteTo(stream);
-		mLinearVelocity.WriteTo(stream);
-		mAngularVelocity.WriteTo(stream);
+		Write(stream, mPosition);
+		Write(stream, mOrientation);
+		Write(stream, mLinearVelocity);
+		Write(stream, mAngularVelocity);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x050));
 		Write<tObjID>(stream, mOwnerID);
@@ -1169,7 +1245,18 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x05F));
 		Write<bool>(stream, mVisible);
 		Write<bool>(stream, mbHasCollision);
-		Write<uint8_t>(stream, mMovementType);
+
+		/*
+			Movement type
+				0 = nothing special?
+				1 = projectile? (uses locomotion projectile params)
+				2 = projectile again
+				3 = projectile again
+				4 = bouncing? (uses locomotion lob params)
+				5 = uses locomotion offset... somehow
+				6 = projectile again
+		*/
+		Write<uint8_t>(stream, mMovementType); // 0 to 6
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x088));
 		Write(stream, sourceMarkerKey_markerId);
@@ -1264,7 +1351,7 @@ namespace RakNet {
 		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x18));
-		lobUpDir.WriteTo(stream);
+		Write(stream, lobUpDir);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x30));
 		Write(stream, bounceNum);
@@ -1273,7 +1360,7 @@ namespace RakNet {
 		Write(stream, stopBounceOnCreatures);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x3C));
-		planeDir.WriteTo(stream);
+		Write(stream, planeDir);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x48));
 		Write(stream, planeDirLinearParam);
@@ -1310,7 +1397,7 @@ namespace RakNet {
 		Write(stream, mJinkInfo);
 		Write(stream, mRange);
 		Write(stream, mSpinRate);
-		mDirection.WriteTo(stream);
+		Write(stream, mDirection);
 		Write(stream, mProjectileFlags);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x24));
@@ -1362,11 +1449,11 @@ namespace RakNet {
 		mProjectileParams.WriteTo(stream);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x84));
-		mExpectedGeoCollision.WriteTo(stream);
+		Write(stream, mExpectedGeoCollision);
 		Write(stream, mTargetObjectId);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x9C));
-		mInitialDirection.WriteTo(stream);
+		Write(stream, mInitialDirection);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0xD8));
 		Write(stream, lobStartTime);
@@ -1374,20 +1461,20 @@ namespace RakNet {
 		lobParams.WriteTo(stream);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x138));
-		mOffset.WriteTo(stream);
+		Write(stream, mOffset);
 		Write(stream, mGoalFlags);
-		mGoalPosition.WriteTo(stream);
-		mPartialGoalPosition.WriteTo(stream);
+		Write(stream, mGoalPosition);
+		Write(stream, mPartialGoalPosition);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x178));
-		mFacing.WriteTo(stream);
-		mExternalLinearVelocity.WriteTo(stream);
-		mExternalForce.WriteTo(stream);
+		Write(stream, mFacing);
+		Write(stream, mExternalLinearVelocity);
+		Write(stream, mExternalForce);
 		Write(stream, mAllowedStopDistance);
 		Write(stream, mDesiredStopDistance);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1AC));
-		mTargetPosition.WriteTo(stream);
+		Write(stream, mTargetPosition);
 
 		stream.SetWriteOffset(writeOffset + size);
 	}
@@ -1416,20 +1503,173 @@ namespace RakNet {
 		reflector.end();
 	}
 
-	// cAttributeData
-	void cAttributeData::WriteTo(BitStream& stream) const {
+	// cAttributeData in Darkspore
+	AttributeData::AttributeData() {
+		SetValue(Ability::NonCombatSpeed, 10.f);
+		SetValue(Ability::CombatSpeed, 10.f);
+		/*
+		mData[Ability::Strength] = 1.f;
+		mData[Ability::Dexterity] = 1.f;
+		mData[Ability::Mind] = 1.f;
+		mData[Ability::MaxHealthIncrease] = 0.f;
+		mData[Ability::MaxHealth] = 0.f;
+		mData[Ability::MaxMana] = 0.f;
+		mData[Ability::DamageReduction] = 0.f;
+		mData[Ability::PhysicalDefense] = 0.f;
+		mData[Ability::PhysicalDamageReduction] = 0.f;
+		mData[Ability::EnergyDefense] = 0.f;
+		mData[Ability::CriticalRating] = 0.f;
+		mData[Ability::NonCombatSpeed] = 10.f;
+		mData[Ability::CombatSpeed] = 10.f;
+		mData[Ability::DamageBuff] = 0.f;
+		mData[Ability::Silence] = 0.f;
+		mData[Ability::Immobilized] = 0.f;
+		mData[Ability::DefenseBoostBasicDamage] = 0.f;
+		mData[Ability::PhysicalDamageIncrease] = 0.f;
+		mData[Ability::PhysicalDamageIncreaseFlat] = 0.f;
+		mData[Ability::AutoCrit] = 0.f;
+		mData[Ability::BehindDirectDamageIncrease] = 0.f;
+		mData[Ability::BehindOrSideDirectDamageIncrease] = 0.f;
+		mData[Ability::CriticalDamageIncrease] = 0.f;
+		mData[Ability::AttackSpeedScale] = 1.f;
+		mData[Ability::CooldownScale] = 1.f;
+		mData[Ability::Frozen] = 0.f;
+		mData[Ability::ProjectileSpeedIncrease] = 0.f;
+		mData[Ability::AoEResistance] = 0.f;
+		mData[Ability::EnergyDamageBuff] = 0.f;
+		mData[Ability::Intangible] = 0.f;
+		mData[Ability::HealingReduction] = 0.f;
+		mData[Ability::EnergyDamageIncrease] = 0.f;
+		mData[Ability::EnergyDamageIncreaseFlat] = 0.f;
+		mData[Ability::Immune] = 0.f;
+		mData[Ability::StealthDetection] = 0.f;
+		mData[Ability::LifeSteal] = 0.f;
+		mData[Ability::RejectModifier] = 0.f;
+		mData[Ability::AoEDamage] = 0.f;
+		mData[Ability::TechnologyTypeDamage] = 0.f;
+		mData[Ability::SpacetimeTypeDamage] = 0.f;
+		mData[Ability::LifeTypeDamage] = 0.f;
+		mData[Ability::ElementsTypeDamage] = 0.f;
+		mData[Ability::SupernaturalTypeDamage] = 0.f;
+		mData[Ability::TechnologyTypeResistance] = 0.f;
+		mData[Ability::SpacetimeTypeResistance] = 0.f;
+		mData[Ability::LifeTypeResistance] = 0.f;
+		mData[Ability::ElementsTypeResistance] = 0.f;
+		mData[Ability::SupernaturalTypeResistance] = 0.f;
+		mData[Ability::MovementSpeedBuff] = 0.f;
+		mData[Ability::ImmuneToDebuffs] = 0.f;
+		mData[Ability::BuffDuration] = 0.f;
+		mData[Ability::DebuffDuration] = 0.f;
+		mData[Ability::ManaSteal] = 0.f;
+		mData[Ability::DebuffDurationIncrease] = 0.f;
+		mData[Ability::EnergyDamageReduction] = 0.f;
+		mData[Ability::Incorporeal] = 0.f;
+		mData[Ability::DoTDamageIncrease] = 0.f;
+		mData[Ability::MindControlled] = 0.f;
+		mData[Ability::SwapDisabled] = 0.f;
+		mData[Ability::ImmuneToRandomTeleport] = 0.f;
+		mData[Ability::ImmuneToBanish] = 0.f;
+		mData[Ability::ImmuneToKnockback] = 0.f;
+		mData[Ability::AoeRadius] = 0.f;
+		mData[Ability::PetDamage] = 0.f;
+		mData[Ability::PetHealth] = 0.f;
+		mData[Ability::CrystalFind] = 0.f;
+		mData[Ability::DNADropped] = 0.f;
+		mData[Ability::RangeIncrease] = 0.f;
+		mData[Ability::OrbEffectiveness] = 0.f;
+		mData[Ability::OverdriveBuildup] = 0.f;
+		mData[Ability::OverdriveDuration] = 0.f;
+		mData[Ability::LootFind] = 0.f;
+		mData[Ability::Surefooted] = 0.f;
+		mData[Ability::ImmuneToStunned] = 0.f;
+		mData[Ability::ImmuneToSleep] = 0.f;
+		mData[Ability::ImmuneToTerrified] = 0.f;
+		mData[Ability::ImmuneToSilence] = 0.f;
+		mData[Ability::ImmuneToCursed] = 0.f;
+		mData[Ability::ImmuneToPoisonOrDisease] = 0.f;
+		mData[Ability::ImmuneToBurning] = 0.f;
+		mData[Ability::ImmuneToRooted] = 0.f;
+		mData[Ability::ImmuneToSlow] = 0.f;
+		mData[Ability::ImmuneToPull] = 0.f;
+		mData[Ability::DoTDamageDoneIncrease] = 0.f;
+		mData[Ability::AggroIncrease] = 0.f;
+		mData[Ability::AggroDecrease] = 0.f;
+		mData[Ability::PhysicalDamageDoneIncrease] = 0.f;
+		mData[Ability::PhysicalDamageDoneByAbilityIncrease] = 0.f;
+		mData[Ability::EnergyDamageDoneIncrease] = 0.f;
+		mData[Ability::EnergyDamageDoneByAbilityIncrease] = 0.f;
+		mData[Ability::ChannelTimeDecrease] = 0.f;
+		mData[Ability::CrowdControlDurationDecrease] = 0.f;
+		mData[Ability::DoTDurationDecrease] = 0.f;
+		mData[Ability::AoEDurationIncrease] = 0.f;
+		mData[Ability::HealIncrease] = 0.f;
+		mData[Ability::OnLockdown] = 0.f;
+		mData[Ability::HoTDoneIncrease] = 0.f;
+		mData[Ability::ProjectileDamageIncrease] = 0.f;
+		mData[Ability::DeployBonusInvincibilityTime] = 0.f;
+		mData[Ability::PhysicalDamageDecreaseFlat] = 0.f;
+		mData[Ability::EnergyDamageDecreaseFlat] = 0.f;
+		mData[Ability::MinWeaponDamage] = 1.f;
+		mData[Ability::MaxWeaponDamage] = 1.f;
+		mData[Ability::MinWeaponDamagePercent] = 0.f;
+		mData[Ability::MaxWeaponDamagePercent] = 0.f;
+		mData[Ability::DirectAttackDamage] = 0.f;
+		mData[Ability::DirectAttackDamagePercent] = 0.f;
+		mData[Ability::GetHitAnimDisabled] = 0.f;
+		mData[Ability::XPBoost] = 0.f;
+		mData[Ability::InvisibleToSecurityTeleporters] = 0.f;
+		mData[Ability::BodyScale] = 1.f;
+		*/
+		mMinWeaponDamage = 0;
+		mMaxWeaponDamage = 10;
+	}
+
+	float AttributeData::GetValue(uint8_t idx) const {
+		// test performance some time
+		auto end = mData.end();
+		auto it = std::find_if(mData.begin(), end, [idx](const auto& data) { return std::get<0>(data) == idx; });
+		if (it != end) {
+			return std::get<1>(*it);
+		}
+
+		return 0;
+	}
+
+	void AttributeData::SetValue(uint8_t idx, float value) {
+		auto end = mData.end();
+		auto it = std::find_if(mData.begin(), end, [idx](const auto& data) { return std::get<0>(data) == idx; });
+		if (it != end) {
+			if (value == 0) {
+				mData.erase(it);
+				mErasedData.push_back(idx);
+			} else {
+				std::get<1>(*it) = value;
+			}
+		} else if (value != 0) {
+			if (mDataBits.test(idx)) {
+				mErasedData.erase(std::find(mErasedData.begin(), mErasedData.end(), idx));
+			}
+
+			mData.push_back({ idx, value });
+			std::sort(mData.begin(), mData.end(), [](const auto& lhs, const auto& rhs) { return std::get<0>(lhs) < std::get<0>(rhs); });
+		}
+
+		mDataBits.set(idx);
+	}
+
+	void AttributeData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x634);
 
 		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x26C));
-		for (size_t i = 0; i < 0x63; ++i) {
-			Write(stream, mAttributes[i]);
+		for (uint8_t i = 0; i < 0x63; ++i) {
+			Write(stream, GetValue(i));
 		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x400));
-		for (size_t i = 0x63; i < mAttributes.size(); ++i) {
-			Write(stream, mAttributes[i]);
+		for (uint8_t i = 0x63; i < mData.size(); ++i) {
+			Write(stream, GetValue(i));
 		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x43C));
@@ -1439,15 +1679,26 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + size);
 	}
 
-	void cAttributeData::WriteReflection(BitStream& stream) const {
+	void AttributeData::WriteReflection(BitStream& stream) const {
 		reflection_serializer<113> reflector(stream);
 		reflector.begin();
-		for (uint32_t i = 0; i < mAttributes.size(); ++i) {
-			reflector.write(i, mAttributes[i]);
+		for (const auto& [idx, value] : mData) {
+			if (mDataBits.test(idx)) {
+				reflector.write(idx, value);
+			}
+		}
+
+		for (const auto& idx : mErasedData) {
+			reflector.write(idx, 0.f);
 		}
 		reflector.write<111>(mMinWeaponDamage);
 		reflector.write<112>(mMaxWeaponDamage);
 		reflector.end();
+	}
+
+	void AttributeData::ResetReflectionBits() {
+		mDataBits.reset();
+		mErasedData.clear();
 	}
 
 	// cCombatantData
@@ -1575,7 +1826,9 @@ namespace RakNet {
 		Write(stream, targetID);
 		Write(stream, sourceID);
 		Write(stream, abilityID);
-		damageDirection.WriteTo(stream);
+		Write(stream, damageDirection);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x24));
 		Write(stream, integerHpChange);
 
 		stream.SetWriteOffset(writeOffset + size);
@@ -1616,10 +1869,10 @@ namespace RakNet {
 		Write(stream, objectId);
 		Write(stream, secondaryObjectId);
 		Write(stream, attackerId);
-		position.WriteTo(stream);
-		facing.WriteTo(stream);
-		orientation.WriteTo(stream);
-		targetPoint.WriteTo(stream);
+		Write(stream, position);
+		Write(stream, facing);
+		Write(stream, orientation);
+		Write(stream, targetPoint);
 		Write(stream, textValue);
 		Write(stream, clientEventID);
 		Write(stream, clientIgnoreFlags);
@@ -1686,8 +1939,8 @@ namespace RakNet {
 		Write<float>(stream, ItemLevelRange[0]);
 		Write<float>(stream, ItemLevelRange[1]);
 
-		GearScoreRange.WriteTo(stream);
-		GearScoreMax.WriteTo(stream);
+		Write(stream, GearScoreRange);
+		Write(stream, GearScoreMax);
 
 		Write<int32_t>(stream, ExpectedAvatarLevel[0]);
 		Write<int32_t>(stream, ExpectedAvatarLevel[1]);
@@ -1768,6 +2021,7 @@ namespace RakNet {
 
 	uint32_t ChainVoteData::GetMarkerSet() const {
 		std::string markerSet = "levelshop";
+		// markerSet = "audio";
 		// std::string markerSet = "default";
 
 		std::string levelName = levelNames[mLevelIndex];
@@ -1893,5 +2147,24 @@ namespace RakNet {
 		}
 
 		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	// Objective
+	void Objective::WriteTo(RakNet::BitStream& stream) const {
+		constexpr size_t maxDescriptionLength = 0x30;
+
+		Write<uint32_t>(stream, id);
+		Write<uint32_t>(stream, value);
+		/*
+		Write<uint8_t>(stream, value0);
+		Write<uint8_t>(stream, value1);
+		Write<uint8_t>(stream, value2);
+		Write<uint8_t>(stream, value3);
+		*/
+		size_t length = std::min<size_t>(maxDescriptionLength, description.length());
+		size_t padding = maxDescriptionLength - length;
+
+		for (size_t i = 0; i < length; ++i) { Write<char>(stream, description[i]); }
+		for (size_t i = 0; i < padding; ++i) { Write<char>(stream, 0x00); }
 	}
 }

@@ -7,16 +7,22 @@
 #include <map>
 #include <vector>
 
+#ifdef GetObject
+#undef GetObject
+#endif
+
 // Game
 namespace Game {
 	// ObjectManager
 	class ObjectManager {
 		public:
-			ObjectPtr GetObject(uint32_t id) const;
-			ObjectPtr CreateObject(uint32_t noun);
+			ObjectPtr Get(uint32_t id) const;
+			ObjectPtr Create(uint32_t noun);
+
+			void Update();
 
 		private:
-			void RemoveObject(Object* object);
+			void Remove(Object* object);
 
 		private:
 			std::map<uint32_t, ObjectPtr::weak_type> mObjects;

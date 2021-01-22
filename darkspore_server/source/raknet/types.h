@@ -5,8 +5,13 @@
 // Include
 #include "blaze/types.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 #include <BitStream.h>
+#include <vector>
 #include <array>
+#include <tuple>
 #include <bitset>
 
 // TODO: find somewhere to place this
@@ -133,6 +138,10 @@ namespace RakNet {
 	using tObjID = uint32_t;
 	using asset = uint32_t;
 
+	using cSPVector2 = glm::vec2;
+	using cSPVector3 = glm::vec3;
+	using cSPQuaternion = glm::quat;
+
 	// labsPlayerBits
 	enum labsPlayerBits {
 		// Characters (creatures)
@@ -159,6 +168,63 @@ namespace RakNet {
 
 		// Player data
 		PlayerBits = 1 << 12
+	};
+
+	// ObjectiveMedal
+	enum class ObjectiveMedal {
+		InProgress = 0,
+		Failed,
+		Bronze,
+		Silver,
+		Gold,
+		Unknown
+	};
+
+	// NounType
+	enum class NounType : uint32_t {
+		Creature = 0x6C27D00,
+		Vehicle = 0x78BDDF27,
+		Obstacle = 0x2ADB47A,
+		SpawnPoint = 0xD9EAF104,
+		PathPoint = 0x9D99F2FA,
+		Trigger = 0x3CE46113,
+		PointLight = 0x93555DCB,
+		SpotLight = 0xBCD9673B,
+		LineLight = 0x3D58111D,
+		ParallelLight = 0x8B1018A4,
+		HemisphereLight = 0xE615AFDB,
+		Animator = 0xF90527D6,
+		Animated = 0xF3051E56,
+		GraphicsControl = 0xE9A24895,
+		Material = 0xE6640542,
+		Flora = 0x5BDCEC35,
+		LevelshopObject = 0xA12B2C18,
+		Terrain = 0x151DB008,
+		Weapon = 0xE810D505,
+		Building = 0xC710B6E9,
+		Handle = 0xADB0A86B,
+		HealthOrb = 0x75B43FF2,
+		ManaOrb = 0xF402465F,
+		ResurrectOrb = 0xC035AAAD,
+		Movie = 0x4927FA7F,
+		Loot = 0x292FEA33,
+		PlacableEffect = 0x383A0A75,
+		LuaJob = 0xA2908A12,
+		AbilityObject = 0x485FC991,
+		LevelExitPoint = 0x87E8047,
+		Decal = 0x4D7784B8,
+		Water = 0x9E3C3DFA,
+		Grass = 0xFD3D2ED9,
+		Door = 0x6FEDAE4D,
+		Crystal = 0xCD482419,
+		Interactable = 0x977AF61,
+		Projectile = 0x253F6F5C,
+		DestructibleOrnament = 0x13FBB4,
+		MapCamera = 0xFBFB36D0,
+		Occluder = 0x71FD3D4,
+		SplineCamera = 0x6CB99FFF,
+		SplineCameraNode = 0xFD487097,
+		BossPortal = 0xC1B461BC
 	};
 
 	//
@@ -212,25 +278,62 @@ namespace RakNet {
 	}
 
 	template<typename T>
-	std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, void> Write(BitStream& stream, T value) {
+	std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, void> Write(BitStream& stream, const T& value) {
 		if constexpr (std::is_same_v<T, bool>) {
 			stream.Write<uint8_t>(value);
+		} else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
+			using Tu = typename std::make_unsigned_t<T>;
+			stream.Write<Tu>(bswap<Tu>(static_cast<Tu>(value)));
 		} else {
 			stream.Write<T>(bswap<T>(value));
 		}
 	}
 
 	template<typename T>
-	std::enable_if_t<std::is_enum_v<T>, void> Write(BitStream& stream, T value) {
+	std::enable_if_t<std::is_enum_v<T>, void> Write(BitStream& stream, const T& value) {
 		Write(stream, static_cast<std::underlying_type_t<T>>(value));
 	}
 
 	template<typename T>
-	std::enable_if_t<std::is_same_v<std::remove_cvref_t<T>, uint24_t>, void> Write(BitStream& stream, T value) {
+	std::enable_if_t<std::is_same_v<std::remove_cvref_t<T>, uint24_t>, void> Write(BitStream& stream, const T& value) {
 		uint8_t* pVal = reinterpret_cast<uint8_t*>(&value.val);
 		stream.Write<uint8_t>(pVal[0]);
 		stream.Write<uint8_t>(pVal[1]);
 		stream.Write<uint8_t>(pVal[2]);
+	}
+
+	template<typename T>
+	std::enable_if_t<std::is_class_v<T>, void> Read(BitStream& stream, T& value) {
+		if constexpr (std::is_same_v<T, cSPVector2>) {
+			Read<float>(stream, value.x);
+			Read<float>(stream, value.y);
+		} else if constexpr (std::is_same_v<T, cSPVector3>) {
+			Read<float>(stream, value.x);
+			Read<float>(stream, value.y);
+			Read<float>(stream, value.z);
+		} else if constexpr (std::is_same_v<T, cSPQuaternion>) {
+			Read<float>(stream, value.x);
+			Read<float>(stream, value.y);
+			Read<float>(stream, value.z);
+			Read<float>(stream, value.w);
+		}
+	}
+
+	template<typename T>
+	std::enable_if_t<std::is_class_v<T>, void> Write(BitStream& stream, const T& value) {
+		if constexpr (std::is_same_v<T, cSPVector2>) {
+			Write<float>(stream, value.x);
+			Write<float>(stream, value.y);
+		} else if constexpr (std::is_same_v<T, cSPVector3>) {
+			Write<float>(stream, value.x);
+			Write<float>(stream, value.y);
+			Write<float>(stream, value.z);
+		} else if constexpr (std::is_same_v<T, cSPQuaternion>) {
+			Write<float>(stream, value.x);
+			Write<float>(stream, value.y);
+			Write<float>(stream, value.z);
+			Write<float>(stream, value.w);
+		}
 	}
 
 	template<typename T>
@@ -256,40 +359,17 @@ namespace RakNet {
 			The same goes for the variable names, they are stupid, they will change later on.
 	*/
 
-	// cSPVector2
-	struct cSPVector2 {
-		float x = 0.f;
-		float y = 0.f;
-
-		cSPVector2() = default;
-		cSPVector2(float _x, float _y);
-
-		void ReadFrom(BitStream& stream);
-		void WriteTo(BitStream& stream) const;
-	};
-
-	// cSPVector3
-	struct cSPVector3 {
-		float x = 0.f;
-		float y = 0.f;
-		float z = 0.f;
-
-		cSPVector3() = default;
-		cSPVector3(float _x, float _y, float _z);
-
-		void ReadFrom(BitStream& stream);
-		void WriteTo(BitStream& stream) const;
-	};
-
-	// cSPQuaternion
-	struct cSPQuaternion {
-		float x = 0.f;
-		float y = 0.f;
-		float z = 0.f;
-		float w = 0.f;
-
-		void ReadFrom(BitStream& stream);
-		void WriteTo(BitStream& stream) const;
+	// MovementType
+	enum class MovementType : uint8_t {
+		Default = 0,
+		Pathfinding = Default,
+		Projectile,
+		Ballistic,
+		HomingProjectile,
+		Lobbed,
+		OrbitOwner,
+		None,
+		GroundRoll
 	};
 
 	// cAIDirector
@@ -309,26 +389,30 @@ namespace RakNet {
 	};
 
 	// labsCharacter
-	struct labsCharacter {
-		int32_t version = 0;
-		asset nounDef = 0;
-		uint64_t assetID = 0;
-		uint32_t mCreatureType = 0;
-		uint64_t mDeployCooldownMs = 0;
-		uint32_t mAbilityPoints = 0;
-		std::array<uint32_t, 9> mAbilityRanks;
-		float mHealthPoints = 0;
-		float mMaxHealthPoints = 0;
-		float mManaPoints = 0;
-		float mMaxManaPoints = 0;
-		float mGearScore = 300.f;
-		float mGearScoreFlattened = 300.f;
+	class labsCharacter {
+		public:
+			labsCharacter();
 
-		// make some sort of map?
-		std::array<float, Ability::Count> partsAttributes { 0.f };
+			void WriteTo(BitStream& stream) const;
+			void WriteReflection(BitStream& stream) const;
+			
+		public:
+			int32_t version = 0;
+			asset nounDef = 0;
+			uint64_t assetID = 0;
+			uint32_t mCreatureType = 0;
+			uint64_t mDeployCooldownMs = 0;
+			uint32_t mAbilityPoints = 0;
+			std::array<uint32_t, 9> mAbilityRanks;
+			float mHealthPoints = 0;
+			float mMaxHealthPoints = 0;
+			float mManaPoints = 0;
+			float mMaxManaPoints = 0;
+			float mGearScore = 300.f;
+			float mGearScoreFlattened = 300.f;
 
-		void WriteTo(BitStream& stream) const;
-		void WriteReflection(BitStream& stream) const;
+			// make some sort of map?
+			std::array<float, Ability::Count> partsAttributes { 0.f };
 	};
 
 	// labsCrystal
@@ -528,21 +612,32 @@ namespace RakNet {
 		void WriteReflection(BitStream& stream) const;
 	};
 
-	// cAttributeData
-	struct cAttributeData {
-		std::array<float, Ability::Count> mAttributes;
+	// cAttributeData in Darkspore
+	class AttributeData {
+		public:
+			AttributeData();
 
-		float mMinWeaponDamage;
-		float mMaxWeaponDamage;
+			float GetValue(uint8_t idx) const;
+			void SetValue(uint8_t idx, float value);
 
-		void WriteTo(BitStream& stream) const;
-		void WriteReflection(BitStream& stream) const;
+			void WriteTo(BitStream& stream) const;
+			void WriteReflection(BitStream& stream) const;
+
+			void ResetReflectionBits();
+
+		private:
+			std::vector<std::tuple<uint8_t, float>> mData;
+			std::vector<uint8_t> mErasedData;
+			std::bitset<Ability::Count> mDataBits;
+
+			float mMinWeaponDamage;
+			float mMaxWeaponDamage;
 	};
 
 	// cCombatantData
 	struct cCombatantData {
-		float mHitPoints;
-		float mManaPoints;
+		float mHitPoints = 0;
+		float mManaPoints = 0;
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;
@@ -621,8 +716,27 @@ namespace RakNet {
 	};
 
 	// CombatEvent
+	enum class CombatEventFlags : uint32_t {
+		None		= 0x000000,
+		KillingBlow	= 0x000004,
+		Critical	= 0x000008,
+		Deflect		= 0x000010,
+		Dodge		= 0x000020,
+		Immune		= 0x000040,
+		Resist		= 0x000080,
+		Resurrected	= 0x000100,
+		Flag0200	= 0x000200,
+		Slowed		= 0x000800,
+		Stunned		= 0x001000,
+		Taunted		= 0x004000,
+		Supressed	= 0x008000,
+		Rooted		= 0x010000,
+		Terrified	= 0x020000,
+		Banished	= 0x040000,
+	};
+
 	struct CombatEvent {
-		uint16_t flags;
+		CombatEventFlags flags;
 		float deltaHealth;
 		float absorbedAmount;
 		tObjID targetID;
@@ -744,6 +858,35 @@ namespace RakNet {
 
 		uint32_t state;
 		Blaze::GameType type;
+	};
+
+	// Objective
+	struct Objective {
+		std::string description;
+
+		uint32_t id = 0;
+		uint32_t value = 0;
+
+		ObjectiveMedal medal = ObjectiveMedal::InProgress;
+
+		void WriteTo(RakNet::BitStream& stream) const;
+	};
+
+	// ActionCommand
+	struct ActionCommand {
+		// TODO: separate this into multiple structs to minimize data use
+		uint8_t type;
+	};
+
+	// CombatData
+	struct CombatData {
+		cSPVector3 targetPosition;
+		cSPVector3 cursorPosition;
+
+		uint32_t targetId;
+		uint32_t abilityId;
+		uint32_t valueFromActionResponse;
+		uint32_t unk[2];
 	};
 }
 

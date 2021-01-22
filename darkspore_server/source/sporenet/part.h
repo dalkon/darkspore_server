@@ -40,6 +40,16 @@ namespace SporeNet {
 
 			std::string_view GetName() const;
 
+			uint64_t GetTimestamp() const;
+
+			uint32_t GetRigblockAssetHash() const;
+			uint32_t GetPrefixAssetHash() const;
+			uint32_t GetPrefixSecondaryAssetHash() const;
+			uint32_t GetSuffixAssetHash() const;
+
+			uint16_t GetLevel() const;
+			PartRarity GetRarity() const;
+
 			void SetRigblock(uint16_t rigblock);
 			void SetPrefix(uint16_t prefix, bool secondary = false);
 			void SetSuffix(uint16_t suffix);

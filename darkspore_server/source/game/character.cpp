@@ -4,8 +4,10 @@
 
 // Game
 namespace Game {
-	Character::Character() {
-
+	// Character
+	Character::Character() : Creature() {
+		decltype(auto) data = mObject->GetData();
+		data.mbPlayerControlled = true;
 	}
 
 	Character::~Character() {

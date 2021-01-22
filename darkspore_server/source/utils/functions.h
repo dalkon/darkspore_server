@@ -40,6 +40,7 @@ namespace utils {
 
 	// Time & Date
 	uint64_t get_unix_time();
+	uint64_t get_milliseconds();
 	std::string get_utc_date_string();
 
 	// Files

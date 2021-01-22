@@ -81,6 +81,10 @@ namespace RakNet {
 	Client::Client(Server& server, const SystemAddress& systemAddress)
 		: mServer(server), mSystemAddress(systemAddress) {}
 
+	uint8_t Client::GetId() const {
+		return mId;
+	}
+
 	const Game::PlayerPtr& Client::GetPlayer() const {
 		return mPlayer;
 	}

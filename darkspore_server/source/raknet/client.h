@@ -44,6 +44,8 @@ namespace RakNet {
 		public:
 			Client(Server& server, const SystemAddress& systemAddress);
 
+			uint8_t GetId() const;
+
 			const Game::PlayerPtr& GetPlayer() const;
 
 			GameStateData& GetGameStateData();

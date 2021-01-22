@@ -3,19 +3,17 @@
 #define _GAME_CHARACTER_HEADER
 
 // Include
-#include "object.h"
+#include "creature.h"
 
 // Game
 namespace Game {
 	// Character
-	class Character {
+	class Character : public Creature {
 		public:
 			Character();
 			~Character();
 
 		protected:
-			ObjectPtr mObject;
-
 			RakNet::labsCharacter mData;
 	};
 

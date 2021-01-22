@@ -108,6 +108,34 @@ namespace SporeNet {
 		}
 	}
 
+	uint64_t Part::GetTimestamp() const {
+		return mTimestamp;
+	}
+
+	uint32_t Part::GetRigblockAssetHash() const {
+		return mRigblockAssetHash;
+	}
+
+	uint32_t Part::GetPrefixAssetHash() const {
+		return mPrefixAssetHash;
+	}
+
+	uint32_t Part::GetPrefixSecondaryAssetHash() const {
+		return mPrefixSecondaryAssetHash;
+	}
+
+	uint32_t Part::GetSuffixAssetHash() const {
+		return mSuffixAssetHash;
+	}
+
+	uint16_t Part::GetLevel() const {
+		return mLevel;
+	}
+
+	PartRarity Part::GetRarity() const {
+		return mRarity;
+	}
+
 	void Part::SetRigblock(uint16_t rigblock) {
 		if (!(rigblock >= 1 && rigblock <= 1573) && !(rigblock >= 10001 && rigblock <= 10835)) {
 			rigblock = 1;

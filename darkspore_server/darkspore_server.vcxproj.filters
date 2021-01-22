@@ -210,6 +210,9 @@
     <ClInclude Include="source\qos\server.h">
       <Filter>Header Files\qos</Filter>
     </ClInclude>
+    <ClInclude Include="source\game\creature.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -349,6 +352,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\C++ Libraries\lodepng\lodepng.cpp">
       <Filter>Source Files\external</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\creature.cpp">
+      <Filter>Source Files\game</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

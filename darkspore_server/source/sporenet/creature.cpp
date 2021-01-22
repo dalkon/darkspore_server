@@ -246,6 +246,10 @@ namespace SporeNet {
 		return mNoun;
 	}
 
+	uint32_t TemplateCreature::GetAbility(uint8_t index) const {
+		return index < mAbility.size() ? mAbility[index] : 0;
+	}
+
 	CreatureType TemplateCreature::GetType() const {
 		return mType;
 	}
@@ -400,6 +404,10 @@ stats_ability_keyvalues = 868969257!minDamage,4;868969257!maxDamage,12;402296303
 
 	uint32_t Creature::GetNoun() const {
 		return mTemplate != nullptr ? mTemplate->GetNoun() : 0;
+	}
+
+	uint32_t Creature::GetAbility(uint8_t index) const {
+		return mTemplate != nullptr ? mTemplate->GetAbility(index) : 0;
 	}
 
 	CreatureType Creature::GetType() const {

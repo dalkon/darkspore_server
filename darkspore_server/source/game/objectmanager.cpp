@@ -5,12 +5,12 @@
 // Game
 namespace Game {
 	// ObjectManager
-	ObjectPtr ObjectManager::GetObject(uint32_t id) const {
+	ObjectPtr ObjectManager::Get(uint32_t id) const {
 		auto it = mObjects.find(id);
 		return (it != mObjects.end()) ? it->second.lock() : nullptr;
 	}
 
-	ObjectPtr ObjectManager::CreateObject(uint32_t noun) {
+	ObjectPtr ObjectManager::Create(uint32_t noun) {
 		constexpr uint32_t START_ID = 0xF000;
 
 		uint32_t id;
@@ -20,10 +20,10 @@ namespace Game {
 		} else if (mObjects.empty()) {
 			id = START_ID;
 		} else {
-			id = mObjects.begin()->first + 1;
+			auto end = mObjects.end();
+			id = (--end)->first + 1;
 		}
 
-		// TODO: make this never fail
 		auto it = mObjects.try_emplace(id);
 		if (it.second) {
 			auto object = ObjectPtr(new Object(*this, id, noun));
@@ -31,11 +31,14 @@ namespace Game {
 			return std::move(object);
 		}
 
-		// Should we always return nullptr here?
-		return it.first->second.lock();
+		return nullptr;
 	}
 
-	void ObjectManager::RemoveObject(Object* object) {
+	void ObjectManager::Update() {
+		// 
+	}
+
+	void ObjectManager::Remove(Object* object) {
 		if (object) {
 			mObjects.erase(object->mId);
 			mOpenIndexes.push_back(object->mId);

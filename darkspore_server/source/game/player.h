@@ -4,7 +4,7 @@
 
 // Include
 #include "predefined.h"
-#include "object.h"
+#include "character.h"
 
 // Game
 namespace Game {
@@ -16,10 +16,13 @@ namespace Game {
 		public:
 			Player(Instance& instance, const SporeNet::UserPtr& user, uint8_t playerIndex);
 
+			const SporeNet::UserPtr& GetUser() const;
+
 			RakNet::labsPlayer& GetData();
 			const RakNet::labsPlayer& GetData() const;
 
 			uint8_t GetId() const;
+			uint32_t GetAbilityId(uint8_t creatureIndex, uint8_t abilityIndex) const;
 
 			void Setup();
 
@@ -31,9 +34,6 @@ namespace Game {
 			SporeNet::SquadPtr GetSquad() const;
 			void SetSquad(const SporeNet::SquadPtr& squad);
 
-			const RakNet::labsCharacter& GetCharacter(uint32_t index) const;
-			void SetCharacter(RakNet::labsCharacter&& character, uint32_t index);
-
 			const RakNet::labsCrystal& GetCrystal(uint32_t index) const;
 			void SetCrystal(RakNet::labsCrystal&& crystal, uint32_t index);
 
@@ -42,6 +42,8 @@ namespace Game {
 			void ResetUpdateBits();
 
 		private:
+			void SetCharacter(RakNet::labsCharacter&& character, uint32_t index);
+
 			void UpdateCrystalBonuses();
 
 		private:
