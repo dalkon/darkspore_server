@@ -213,6 +213,21 @@
     <ClInclude Include="source\game\creature.h">
       <Filter>Header Files\game</Filter>
     </ClInclude>
+    <ClInclude Include="source\game\lua.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="source\scheduler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\game\octree.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="source\game\noun.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="source\game\level.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -354,6 +369,21 @@
       <Filter>Source Files\external</Filter>
     </ClCompile>
     <ClCompile Include="source\game\creature.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\lua.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\scheduler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\octree.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\noun.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\level.cpp">
       <Filter>Source Files\game</Filter>
     </ClCompile>
   </ItemGroup>

@@ -7,7 +7,9 @@
 #include "sporenet/creature.h"
 
 #include "utils/functions.h"
+
 #include "game/instance.h"
+#include "game/objectmanager.h"
 
 #include <glm/gtx/euler_angles.hpp>
 
@@ -376,119 +378,6 @@ namespace RakNet {
 
 	*/
 
-	// Locomotion tests
-	namespace Locomotion {
-		// I don't do bitwise OR on goal flags because the game doesn't.
-		void SetGoalPosition(cLocomotionData& data, const cSPVector3& position) {
-			constexpr auto vec3_zero = glm::zero<glm::vec3>();
-
-			// reset data
-			data.mTargetObjectId = 0;
-			data.mFacing = vec3_zero;
-			data.mTargetPosition = vec3_zero;
-			data.mExternalLinearVelocity = vec3_zero;
-
-			// set data
-			data.mGoalFlags = 0x001;
-			data.mGoalPosition = position;
-			data.mAllowedStopDistance = 0;
-			data.mDesiredStopDistance = 0;
-		}
-
-		void SetGoalPositionWithDistance(cLocomotionData& data, const cSPVector3& position, float distance) {
-			SetGoalPosition(data, position);
-
-			data.mAllowedStopDistance = distance;
-			data.mDesiredStopDistance = distance;
-		}
-
-		void SetGoalObject(cLocomotionData& data, const Game::ObjectPtr& object, float distance) {
-			if (!object) {
-				return;
-			}
-
-			// distance = GetAllowedStoppingDistance(object) + distance;
-			SetGoalPosition(data, object->GetPosition());
-
-			// data.mGoalFlags |= (1 & 0x40);
-			// data.mGoalFlags |= (2 & 0x80);
-
-			data.mAllowedStopDistance = distance;
-			data.mDesiredStopDistance = distance;
-		}
-
-		void SetGoalObjectEx(cLocomotionData& data, const Game::ObjectPtr& object, float distance) {
-			constexpr auto vec3_zero = glm::zero<glm::vec3>();
-			if (!object) {
-				return;
-			}
-
-			// reset data
-			data.mTargetObjectId = 0;
-			data.mFacing = vec3_zero;
-			data.mTargetPosition = vec3_zero;
-			data.mExternalLinearVelocity = vec3_zero;
-
-			// set data
-			data.mGoalFlags = 0x400;
-			// data.mGoalFlags = 1 & 0x040;
-			data.mTargetObjectId = object->GetId();
-			data.mGoalPosition = object->GetPosition();
-			data.mAllowedStopDistance = distance;
-			data.mDesiredStopDistance = distance;
-		}
-
-		void Stop(cLocomotionData& data) {
-			constexpr auto vec3_zero = glm::zero<glm::vec3>();
-
-			// reset data
-			data.mTargetObjectId = 0;
-			data.mFacing = vec3_zero;
-
-			// set data
-			data.mGoalFlags = 0x020;
-		}
-
-		void MoveToPointWhileFacingTarget(cLocomotionData& data, const cSPVector3& position, const Game::ObjectPtr& object) {
-			constexpr auto vec3_zero = glm::zero<glm::vec3>();
-			if (!object) {
-				return;
-			}
-
-			// reset data
-			data.mFacing = vec3_zero;
-			data.mTargetPosition = vec3_zero;
-			data.mExternalLinearVelocity = vec3_zero;
-
-			// set data
-			data.mGoalFlags = 0x001 | 0x100;
-			data.mGoalPosition = position;
-			data.mTargetObjectId = object->GetId();
-			data.mAllowedStopDistance = 0;
-			data.mDesiredStopDistance = 0;
-
-			// extra_func(0x100);
-		}
-
-		void ApplyExternalVelocity(cLocomotionData& data, const cSPVector3& velocity) {
-			constexpr auto vec3_zero = glm::zero<glm::vec3>();
-
-			// reset data
-			data.mTargetObjectId = 0;
-			data.mFacing = vec3_zero;
-
-			// set data
-			data.mGoalFlags = 0x008;
-			data.mExternalLinearVelocity = velocity;
-		}
-
-		void ClearExternalVelocity(cLocomotionData& data, const cSPVector3& velocity) {
-			// set data
-			data.mGoalFlags = 0x020;
-			data.mExternalLinearVelocity = glm::zero<glm::vec3>();
-		}
-	}
-
 	// Debug
 	void WriteDebugData(RakNet::BitStream& stream, size_t length) {
 		constexpr std::array<uint8_t, 8> bytes { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
@@ -573,7 +462,7 @@ namespace RakNet {
 #endif
 
 			auto socketDescriptor = SocketDescriptor(port, nullptr);
-			if (!mSelf->Startup(4, 30, &socketDescriptor, 1)) {
+			if (!mSelf->Startup(4, 10, &socketDescriptor, 1)) {
 				return;
 			}
 
@@ -591,8 +480,23 @@ namespace RakNet {
 				}
 				taskUniqueLock.unlock();
 
-				run_one();
-				RakSleep(30);
+				if (mGame.ServerUpdate()) {
+					run_one();
+				}
+
+				if (mGame.Update()) {
+					// Loop clients instead of using broadcasting to get separate client data
+					const auto& gameStateData = mGame.GetStateData();
+					for (const auto& [_, client] : mClients) {
+						auto& clientGameStateData = client->GetGameStateData();
+						clientGameStateData.var = gameStateData.var;
+						clientGameStateData.type = gameStateData.type;
+
+						SendGameState(client, clientGameStateData);
+					}
+				}
+
+				RakSleep(1);
 			}
 
 			mSelf->Shutdown(300);
@@ -645,18 +549,6 @@ namespace RakNet {
 				ParseRakNetPackets(packet, packetType);
 			} else {
 				ParseSporeNetPackets(packet, packetType);
-			}
-		}
-
-		if (mGame.Update()) {
-			// Loop clients instead of using broadcasting to get separate client data
-			const auto& gameStateData = mGame.GetStateData();
-			for (const auto& [_, client] : mClients) {
-				auto& clientGameStateData = client->GetGameStateData();
-				clientGameStateData.var = gameStateData.var;
-				clientGameStateData.type = gameStateData.type;
-
-				SendGameState(client, clientGameStateData);
 			}
 		}
 
@@ -778,6 +670,7 @@ namespace RakNet {
 					);
 
 					SendLabsPlayerUpdate(client, player);
+					player->ResetUpdateBits();
 					break;
 				}
 
@@ -786,42 +679,6 @@ namespace RakNet {
 					if (playerObject) {
 						// mGame.DropLoot();
 						mGame.DropCatalyst();
-						/*
-						{
-							auto object_id = utils::hash_id("SecurityTeleporter.Noun");
-							// nct_minn_su_drainer.noun
-							// boss_obelisk.Noun
-							// TutorialBasicPoison.Noun
-							// Spoffit.Noun
-
-							auto object = mGame.GetObjectManager().Create(object_id);
-							object->SetPosition({
-								-141.341263,
-								83.731735,
-								0.034049
-							});
-							// object->SetAssetId(0x5A5BAA25ull);
-							object->SetAssetId(0);
-
-							decltype(auto) objectData = object->GetData();
-							objectData.mbPlayerControlled = false;
-							objectData.mbHasCollision = true;
-							objectData.mVisible = true;
-							objectData.mTeam = 0;
-							objectData.mScale = 1.f;
-							objectData.sourceMarkerKey_markerId = 1714532343;
-
-							cCombatantData combatantData;
-							combatantData.mHitPoints = 100;
-							combatantData.mManaPoints = 100;
-
-							SendObjectCreate(client, object);
-							// SendCombatantDataUpdate(client, object, combatantData);
-							// SendAnimationState(client, object, utils::hash_id("NPC_Generic_Biped_idle"));
-
-							objects_list.push_back(std::move(object));
-						}
-						*/
 					}
 
 					break;
@@ -830,10 +687,8 @@ namespace RakNet {
 				case PacketID::ObjectUpdate: {
 					auto playerObject = player->GetCharacterObject(0);
 					if (playerObject) {
-						decltype(auto) objectData = playerObject->GetData();
-						objectData.mScale = 2.f;
-						objectData.mLinearVelocity = cSPVector3(5.f, 5.f, 5.f);
-
+						playerObject->SetScale(2);
+						// objectData.mLinearVelocity = glm::vec3(5.f, 5.f, 5.f);
 						SendObjectUpdate(client, playerObject);
 					}
 
@@ -861,6 +716,16 @@ namespace RakNet {
 						auto object = player->GetCharacterObject(i);
 						SendAgentBlackboardUpdate(client, object, data);
 					}
+					break;
+				}
+
+				case PacketID::ModifierCreated: {
+					SendModifierCreated(client, player->GetDeployedCharacterObject());
+					break;
+				}
+
+				case PacketID::DebugPing: {
+					SendDebugPing(client);
 					break;
 				}
 
@@ -1180,6 +1045,7 @@ namespace RakNet {
 		}
 
 		SendLabsPlayerUpdate(client, player);
+		player->ResetUpdateBits();
 	}
 
 	void Server::OnActionCommandMsgs(const ClientPtr& client) {
@@ -1223,20 +1089,17 @@ namespace RakNet {
 		switch (type) {
 			// Movement
 			case 3: {
-				cSPVector3 position;
-				Read(mInStream, position);
+				LocomotionData data;
+				Read(mInStream, data.mPartialGoalPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 				
 				uint32_t unk;
 				Read<uint32_t>(mInStream, unk);
 
-				cSPVector3 goalPosition;
-				Read(mInStream, goalPosition);
-
-				uint32_t goalFlags;
-				Read<uint32_t>(mInStream, goalFlags);
+				Read(mInStream, data.mGoalPosition);
+				Read<uint32_t>(mInStream, data.mGoalFlags);
 
 				uint32_t a0;
 				Read<uint32_t>(mInStream, a0);
@@ -1254,48 +1117,21 @@ namespace RakNet {
 						0x800 = start rotating towards facing direction?
 				*/
 
-				cLocomotionData data;
-				// data.mGoalFlags = 0x001 | 0x400 | 0x800;
-				// data.mGoalFlags = 0x001 | 0x002;
-				// data.mGoalFlags = 0xFFF;
-				data.mGoalFlags = 0x001 | 0x800;
-				data.mGoalPosition = goalPosition;
+				// data.mGoalFlags = 0x001 | 0x800;
+				if (teleportMovement) {
+					data.mGoalFlags = 0x020;
+				}
+
 				data.mFacing = glm::eulerAngles(orientation);
-				// data.mFacing = glm::normalize(position - data.mGoalPosition);
 				data.mAllowedStopDistance = 0;
 				data.mDesiredStopDistance = 0;
 				data.mTargetObjectId = 0;
 				data.reflectedLastUpdate = 0xFFFF;
 
-				std::cout << "Trying to move" << std::endl;
-				std::cout << position.x << ", " << position.y << ", " << position.z << std::endl;
-				std::cout << data.mFacing.x << ", " << data.mFacing.y << ", " << data.mFacing.z << std::endl;
-				std::cout << goalPosition.x << ", " << goalPosition.y << ", " << goalPosition.z << std::endl;
+				mGame.MoveObject(object, data);
+				mGame.SendObjectUpdate(object);
 
-				// decltype(auto) objectData = playerObject->GetData();
-				// objectData.mOrientation;
-
-				if (teleportMovement) {
-					object->SetPosition(data.mGoalPosition);
-					SendObjectTeleport(client, object, data.mGoalPosition, data.mFacing);
-				} else {
-					mGame.MoveObject(object, position, data);
-					// SendActionCommandResponse(client);
-					// SendObjectJump(client, object, data.mGoalPosition, data.mGoalPosition, floatData);
-					// SendObjectJump(client, object, data.mGoalPosition, data.mFacing, position);
-				}
-
-				SendObjectUpdate(client, object);
-				
-				/*
-				ServerEvent testEvent;
-				testEvent.position = destinationPosition;
-				testEvent.objectId = playerObject->GetId();
-				testEvent.targetPoint = destinationPosition;
-				testEvent.ServerEventDef = utils::hash_id("level_up_effect.ServerEventDef");
-
-				SendServerEvent(client, testEvent);
-				*/
+				// SendObjectUpdate(client, object);
 				break;
 			}
 
@@ -1311,10 +1147,10 @@ OnActionCommandMsgs(4)
 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xf0, 0x0, 0x0, 0x9a, 0x19, 0x72, 0x42, 0xcb, 0x4c, 0x4, 0xc2, 0x3e, 0x8d, 0xa0, 0x41, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xbe, 0xbe, 0x42, 0xbf, 0xe4, 0x29, 0x26, 0x3f, 0x1, 0x0, 0x0, 0x0, 0x28, 0xd9, 0x87, 0x13, 0xa0, 0xd8, 0x87, 0x13, 0x53, 0x2b, 0x9c, 0x0, 0x6c, 0xfc, 0x19, 0x0, 0x7c, 0xfc, 0x19, 0x0
 				*/
 
-				cSPVector3 position;
+				glm::vec3 position;
 				Read(mInStream, position);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
 				// Is this garbage data?
@@ -1339,20 +1175,10 @@ OnActionCommandMsgs(4)
 				std::cout << std::dec;
 
 				if (!teleportMovement) {
-					cLocomotionData data;
-					Locomotion::Stop(data);
+					LocomotionData data;
+					data.Stop();
 
 					SendObjectPlayerMove(client, object, data);
-
-					/*
-					cSPQuaternion floatData;
-					floatData.x = 20; // speed seemingly
-					floatData.y = 0;
-					floatData.z = 0;
-					floatData.w = 5; // divided by the speed?
-
-					SendObjectJump(client, object, position, position, floatData);
-					*/
 				}
 
 				break;
@@ -1360,10 +1186,10 @@ OnActionCommandMsgs(4)
 
 			// Switch hero
 			case 5: {
-				cSPVector3 currentPosition;
+				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
 				uint32_t creatureIndex;
@@ -1375,10 +1201,10 @@ OnActionCommandMsgs(4)
 
 			// Ability
 			case 7: {
-				cSPVector3 currentPosition;
+				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
 				CombatData combatData;
@@ -1388,27 +1214,30 @@ OnActionCommandMsgs(4)
 
 				uint32_t abilityIndex;
 				Read<uint32_t>(mInStream, abilityIndex);
-				combatData.abilityId = player->GetAbilityId(0, abilityIndex);
+				combatData.abilityId = player->GetAbilityId(player->GetCurrentDeckIndex(), abilityIndex);
 
 				Read<uint32_t>(mInStream, combatData.unk[0]);
 				Read<uint32_t>(mInStream, combatData.unk[1]);
 				Read<uint32_t>(mInStream, combatData.valueFromActionResponse);
 
-				std::cout << "Using ability" << std::endl;
-				std::cout << currentPosition.x << ", " << currentPosition.y << ", " << currentPosition.z << std::endl;
-				std::cout << orientation.x << ", " << orientation.y << ", " << orientation.z << ", " << orientation.w << std::endl;
+				AbilityCommandResponse actionResponse;
+				actionResponse.abilityId = combatData.abilityId;
+				actionResponse.cooldown = 5000;
+				actionResponse.userData = 0x1234;
 
+				object->SetOrientation(orientation);
 				mGame.UseAbility(object, combatData);
-				// SendCooldownUpdate(client, object, abilityIndex, 1000);
+				SendCooldownUpdate(client, object, actionResponse.abilityId, actionResponse.cooldown);
+
 				break;
 			}
 
 			// Squad ability
 			case 8: {
-				cSPVector3 currentPosition;
+				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
 				CombatData combatData;
@@ -1424,22 +1253,23 @@ OnActionCommandMsgs(4)
 				Read<uint32_t>(mInStream, combatData.unk[1]);
 				Read<uint32_t>(mInStream, combatData.valueFromActionResponse);
 
-				std::cout << "Using squad ability" << std::endl;
-				std::cout << currentPosition.x << ", " << currentPosition.y << ", " << currentPosition.z << std::endl;
-				std::cout << orientation.x << ", " << orientation.y << ", " << orientation.z << ", " << orientation.w << std::endl;
+				AbilityCommandResponse actionResponse;
+				actionResponse.abilityId = combatData.abilityId;
+				actionResponse.cooldown = 2000;
+				actionResponse.userData = 0x4321;
 
 				mGame.UseAbility(object, combatData);
-				// SendCooldownUpdate(client, object, abilityIndex, 1000);
-				// SendActionCommandResponse(client, 1);
+				SendCooldownUpdate(client, object, actionResponse.abilityId, actionResponse.cooldown);
+
 				break;
 			}
 
 			// Cancel current action
 			case 10: {
-				cSPVector3 currentPosition;
+				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
 				uint32_t u0, u1, u2, u3;
@@ -1471,19 +1301,14 @@ OnActionCommandMsgs(4)
 
 			// Loot pickup
 			case 11: {
-				cSPVector3 currentPosition;
+				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
 				uint32_t lootObjectId;
 				Read<uint32_t>(mInStream, lootObjectId);
-
-				std::cout << "Trying to loot" << std::endl;
-				std::cout << currentPosition.x << ", " << currentPosition.y << ", " << currentPosition.z << std::endl;
-				std::cout << orientation.x << ", " << orientation.y << ", " << orientation.z << ", " << orientation.w << std::endl;
-				std::cout << std::hex << lootObjectId << std::dec << std::endl;
 
 				mGame.PickupLoot(player, lootObjectId);
 				break;
@@ -1491,33 +1316,27 @@ OnActionCommandMsgs(4)
 
 			// Dancing (/dance command)
 			case 12: {
-				cSPVector3 currentPosition;
+				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
-				std::cout << "Dance" << std::endl;
-				std::cout << currentPosition.x << ", " << currentPosition.y << ", " << currentPosition.z << std::endl;
-				std::cout << orientation.x << ", " << orientation.y << ", " << orientation.z << ", " << orientation.w << std::endl;
-
-				SendAnimationState(client, object, utils::hash_id("emote_dance_all"));
+				// TODO: proper function for dancing
+				mGame.SendAnimationState(object, utils::hash_id("emote_dance_all"), false);
 				break;
 			}
 
 			// Taunting (/taunt command)
 			case 13: {
-				cSPVector3 currentPosition;
+				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
 
-				cSPQuaternion orientation;
+				glm::quat orientation;
 				Read(mInStream, orientation);
 
-				std::cout << "Taunt" << std::endl;
-				std::cout << currentPosition.x << ", " << currentPosition.y << ", " << currentPosition.z << std::endl;
-				std::cout << orientation.x << ", " << orientation.y << ", " << orientation.z << ", " << orientation.w << std::endl;
-
-				SendAnimationState(client, object, utils::hash_id("emote_taunt_all"));
+				// TODO: proper function for taunting
+				mGame.SendAnimationState(object, utils::hash_id("emote_taunt_all"), false);
 				break;
 			}
 
@@ -1678,6 +1497,7 @@ OnActionCommandMsgs(4)
 		uint64_t time;
 		Read<uint64_t>(mInStream, time);
 
+		/*
 		std::string timeString(0x20, '\0');
 		if (const auto* timePtr = _gmtime64(reinterpret_cast<const __time64_t*>(&time))) {
 			strftime(&timeString[0], 0x20, "%H:%M:%S", timePtr);
@@ -1685,7 +1505,10 @@ OnActionCommandMsgs(4)
 			timeString = std::to_string(time);
 		}
 
-		std::cout << "Debug ping: " << timeString << std::endl;
+		std::cout << "-- DebugPing --" << std::endl;
+		std::cout << timeString << ", 0x" << std::hex << time << std::dec << std::endl;
+		std::cout << "---------------" << std::endl;
+		*/
 
 		// Schedule other packets?
 		switch (client->GetGameState()) {
@@ -1693,7 +1516,7 @@ OnActionCommandMsgs(4)
 				auto& gameStateData = client->GetGameStateData();
 				gameStateData.state = static_cast<uint32_t>(GameState::ChainVoting);
 
-				// SendReconnectPlayer(client, GameState::ChainVoting);
+				// SendReconnectPlayer(client, GameState::Spaceship);
 				SendChainGame(client, 0);
 				break;
 			}
@@ -1712,34 +1535,29 @@ OnActionCommandMsgs(4)
 			}
 
 			case GameState::Dungeon: {
+				mGame.OnPlayerStart(player);
+
+				// SendChainGame(client, 2);
+
 				// Create creatures
 				uint32_t creatureIndex = 1;
 				for (uint32_t i = 0; i < 3; ++i) {
 					const auto& characterObject = player->GetCharacterObject(i);
 					if (characterObject) {
-						cCombatantData combatantData;
-						combatantData.mHitPoints = 100;
-						combatantData.mManaPoints = 50;
+						characterObject->SetPosition(glm::vec3(20 + i * 2, 0, 0));
+						characterObject->SetVisible(true); // i == creatureIndex
 
-						characterObject->SetPosition(cSPVector3(20 + i * 2, 0, 0));
-						characterObject->SetValue(Ability::MaxHealth, combatantData.mHitPoints * 2);
-						characterObject->SetValue(Ability::MaxMana, combatantData.mManaPoints * 4);
-						characterObject->SetValue(Ability::InvisibleToSecurityTeleporters, 1);
-						characterObject->SetValue(Ability::AttackSpeedScale, 1);
-						characterObject->SetValue(Ability::CooldownScale, 1);
-
-						decltype(auto) characterData = characterObject->GetData();
-						characterData.mbPlayerControlled = true;
-						characterData.mVisible = true;
-						// characterData.mVisible = i == creatureIndex;
+						characterObject->SetAttributeValue(Attribute::InvisibleToSecurityTeleporters, 1);
+						characterObject->SetAttributeValue(Attribute::AttackSpeedScale, 1);
+						characterObject->SetAttributeValue(Attribute::CooldownScale, 1);
 
 						SendObjectCreate(client, characterObject);
-						SendCombatantDataUpdate(client, characterObject, combatantData);
+						SendCombatantDataUpdate(client, characterObject, characterObject->GetCombatantData());
 						SendAttributeDataUpdate(client, characterObject, characterObject->GetAttributeData());
 					}
 				}
 
-				SendPlayerCharacterDeploy(client, player, creatureIndex);
+				// SendPlayerCharacterDeploy(client, player, creatureIndex);
 
 				// Other stuff
 				ServerEvent deployEvent;
@@ -1751,6 +1569,9 @@ OnActionCommandMsgs(4)
 
 				SendObjectivesInitForLevel(client);
 				SendDirectorState(client, director);
+
+				mGame.SwapCharacter(player, creatureIndex);
+
 				// SendServerEvent(client, deployEvent);
 				// SendQuickGame(client);
 				// SendTutorial(client);
@@ -1933,8 +1754,6 @@ OnActionCommandMsgs(4)
 			return;
 		}
 
-		player->ResetUpdateBits();
-
 		BitStream outStream(8);
 		outStream.Write(PacketID::LabsPlayerUpdate);
 
@@ -1942,36 +1761,27 @@ OnActionCommandMsgs(4)
 		Write<uint16_t>(outStream, updateBits);
 
 		// write player
-		auto& playerData = player->GetData();
 		if (updateBits & labsPlayerBits::PlayerBits) {
-			playerData.WriteReflection(outStream);
+			player->WriteReflection(outStream);
 		}
 
 		// write characters
 		if (updateBits & labsPlayerBits::CharacterMask) {
-			// possibly send objectCreate or objectUpdate aswell
-
-			const auto& characters = playerData.mCharacters;
-			for (size_t i = 0; i < characters.size(); ++i) {
+			for (uint32_t i = 0; i < 3; ++i) {
 				if (updateBits & (labsPlayerBits::CharacterBits << i)) {
-					characters[i].WriteReflection(outStream);
+					player->GetCharacter(i).WriteReflection(outStream);
 				}
 			}
 		}
 
 		// write crystals
 		if (updateBits & labsPlayerBits::CrystalMask) {
-			// same as for characters
-
-			const auto& crystals = playerData.mCrystals;
-			for (size_t i = 0; i < crystals.size(); ++i) {
+			for (uint32_t i = 0; i < 9; ++i) {
 				if (updateBits & (labsPlayerBits::CrystalBits << i)) {
-					crystals[i].WriteReflection(outStream);
+					player->GetCrystal(i).WriteReflection(outStream);
 				}
 			}
 		}
-
-		playerData.ResetUpdateBits();
 
 		Send(outStream, client);
 	}
@@ -2011,9 +1821,6 @@ OnActionCommandMsgs(4)
 			return;
 		}
 
-		auto id = object->GetId();
-
-		const auto& data = object->GetData();
 		const auto& euler = glm::eulerAngles(object->GetOrientation());
 
 		// Packet data
@@ -2021,28 +1828,29 @@ OnActionCommandMsgs(4)
 		outStream.Write(PacketID::ObjectCreate);
 
 		// set object id to 1?
-		Write<uint32_t>(outStream, id);
+		Write<uint32_t>(outStream, object->GetId());
 
 		// object creation data
 		cGameObjectCreateData createData;
 		createData.noun = object->GetNoun();
-		createData.position = data.mPosition;
+		createData.position = object->GetPosition();
 		createData.rotXDegrees = euler.x;
 		createData.rotYDegrees = euler.y;
 		createData.rotZDegrees = euler.z;
-		createData.assetId = object->GetAssetId(); // id
-		createData.scale = data.mScale;
-		createData.team = data.mTeam;
-		createData.hasCollision = data.mbHasCollision;
-		createData.playerControlled = data.mbPlayerControlled;
+		createData.assetId = object->GetAssetId();
+		createData.scale = object->GetScale();
+		createData.team = object->GetTeam();
+		createData.hasCollision = object->HasCollision();
+		createData.playerControlled = object->IsPlayerControlled();
 
 		// write reflection of creation and the object
 		createData.WriteReflection(outStream);
-		data.WriteReflection(outStream);
+		object->WriteReflection(outStream);
 
 		// write update data (same as in ObjectUpdate
 		// is the u8 value here "team"?
 #if 1
+		/*
 		Write<uint8_t>(outStream, 0x00);
 		Write<uint32_t>(outStream, createData.noun);
 
@@ -2051,6 +1859,7 @@ OnActionCommandMsgs(4)
 
 		// position?
 		Write(outStream, createData.position);
+		*/
 #else
 		for (uint8_t id = 0; id <= 0; ++id) {
 			Write<uint8_t>(outStream, id);
@@ -2069,15 +1878,12 @@ OnActionCommandMsgs(4)
 			return;
 		}
 
-		auto id = object->GetId();
-		const auto& data = object->GetData();
-
 		// Packet data
 		BitStream outStream(8);
 		outStream.Write(PacketID::ObjectUpdate);
 
-		Write<uint32_t>(outStream, id);
-		data.WriteReflection(outStream);
+		Write<uint32_t>(outStream, object->GetId());
+		object->WriteReflection(outStream);
 
 		// 0x15 data in loop
 
@@ -2146,13 +1952,9 @@ OnActionCommandMsgs(4)
 						SupportHealerPassiveModifier
 				*/
 
-				std::cout << mGame.GetTime() << std::endl;
-				std::cout << mGame.GetTimeElapsed() << std::endl;
-
 				Write<uint32_t>(outStream, utils::hash_id("TreeOfLife")); // arg_0 -> sub_9DFB40 (must be a valid object)
 				Write<uint32_t>(outStream, 1); // compared to 0
-
-				Write<uint32_t>(outStream, 1000); // unused?
+				Write<uint32_t>(outStream, 0);
 
 				auto time = mGame.GetTimeElapsed();
 				Write<uint64_t>(outStream, time + 1000); // arg_0 -> sub_9D7A00 (packed as 64 bit)
@@ -2160,8 +1962,7 @@ OnActionCommandMsgs(4)
 				Write<uint64_t>(outStream, time + 3000); // arg_0 -> sub_9D7A00_3 (packed as 64 bit)
 				Write<uint64_t>(outStream, time + 4000); // arg_0 -> sub_9D7A00_4 (packed as 64 bit)
 
-				Write<uint32_t>(outStream, 500); // unused?
-
+				Write<uint32_t>(outStream, 0);
 				Write<uint32_t>(outStream, 0x123456); // arg_4 -> sub_4E21D0 (sets dword_143FE3C)
 				break;
 			}
@@ -2199,7 +2000,32 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendObjectJump(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position, const cSPVector3& destination, const cSPQuaternion& rotation) {
+	void Server::SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data) {
+		BitStream outStream(8);
+		outStream.Write(PacketID::ActionCommandResponse);
+
+		Write<uint8_t>(outStream, 0x00); // arg_0 -> sub_4E21D0 | esi+1Ch | compared with byte_143FD6E
+		Write<uint8_t>(outStream, 0x01);
+		Write<uint8_t>(outStream, 0x00); // unused
+		Write<uint8_t>(outStream, 0x00); // unused
+
+		Write<uint32_t>(outStream, data.abilityId);
+		Write<uint32_t>(outStream, 1);
+		Write<uint32_t>(outStream, 0); // unused
+
+		auto time = mGame.GetTime();
+		Write<uint64_t>(outStream, 0); // ([esi+20h], [esi+24h]) sub_4E1FE0
+		Write<uint64_t>(outStream, time + data.timeImmobilized); // ([esi+28h], [esi+2Ch])
+		Write<uint64_t>(outStream, time + data.cooldown); // arg_0 -> sub_9D7A00_3 (packed as 64 bit)
+		Write<uint64_t>(outStream, time); // arg_0 -> sub_9D7A00_4 (packed as 64 bit)
+
+		Write<uint32_t>(outStream, 0); // unused
+		Write<uint32_t>(outStream, data.userData);
+
+		Send(outStream, client);
+	}
+
+	void Server::SendObjectJump(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position, const glm::vec3& destination, const glm::quat& rotation) {
 		BitStream outStream(8);
 		outStream.Write(PacketID::ObjectJump);
 
@@ -2211,7 +2037,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendObjectTeleport(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position, const cSPVector3& direction) {
+	void Server::SendObjectTeleport(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position, const glm::vec3& direction) {
 		BitStream outStream(8);
 		outStream.Write(PacketID::ObjectTeleport);
 
@@ -2222,7 +2048,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendObjectPlayerMove(const ClientPtr& client, const Game::ObjectPtr& object, const cLocomotionData& locomotionData) {
+	void Server::SendObjectPlayerMove(const ClientPtr& client, const Game::ObjectPtr& object, const LocomotionData& locomotionData) {
 		// 100%
 		BitStream outStream(8);
 		outStream.Write(PacketID::ObjectPlayerMove);
@@ -2257,7 +2083,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cLocomotionData& locomotionData) {
+	void Server::SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const LocomotionData& locomotionData) {
 		// 100%
 		if (!object) {
 			return;
@@ -2272,7 +2098,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position) {
+	void Server::SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position) {
 		// 100%
 		if (!object) {
 			return;
@@ -2372,11 +2198,11 @@ OnActionCommandMsgs(4)
 		outStream.Write(PacketID::CooldownUpdate);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, id); // arg0 -> sub_422320 (cooldown ability id?)
-		Write<uint32_t>(outStream, 0); // add cooldown = 0 
-		Write<uint64_t>(outStream, milliseconds); // cooldown time?
-		Write<uint64_t>(outStream, 0); // 0 on add and remove (used when scaling?)
-		Write<uint64_t>(outStream, 0); // 0 on add and remove
+		Write<uint32_t>(outStream, id);
+		Write<uint32_t>(outStream, 0); // unused
+		Write<uint64_t>(outStream, milliseconds);
+		Write<uint64_t>(outStream, mGame.GetTime());
+		Write<uint64_t>(outStream, 0); // not quite sure how this one works yet
 		
 		Send(outStream, client);
 	}
@@ -2411,12 +2237,20 @@ OnActionCommandMsgs(4)
 		outStream.Write(PacketID::ModifierCreated);
 
 		Write<uint32_t>(outStream, object->GetId());
+		Write<uint32_t>(outStream, utils::hash_id("SecurityTeleporterPassive"));
+		Write<uint32_t>(outStream, utils::hash_id("SecurityTeleporterPassive"));
+		Write<uint32_t>(outStream, 0x89ABCDEF);
+		Write<uint32_t>(outStream, utils::hash_id("BossSecurityTeleporterPassive"));
+		Write<uint32_t>(outStream, 0x87651234);
+		Write<uint64_t>(outStream, mGame.GetTime()); // some timestamp
+		Write<uint32_t>(outStream, 0x1234); // some noun? because TestLevelData
+		Write<uint8_t>(outStream, 0xFF);
 
 		Send(outStream, client);
 	}
 
 	void Server::SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object) {
-		// Packet size: 0x08
+		// 100%
 		if (!object) {
 			return;
 		}
@@ -2426,12 +2260,15 @@ OnActionCommandMsgs(4)
 
 		Write<uint32_t>(outStream, object->GetId());
 		Write<uint32_t>(outStream, 0); // modifier id
+		Write<uint64_t>(outStream, mGame.GetTime()); // some timestamp
+		Write<uint32_t>(outStream, 0x1234); // esi+24h
+		Write<uint8_t>(outStream, 0xFF); // esi+2Ch
 
 		Send(outStream, client);
 	}
 
-	void Server::SendModifierDeleted(const ClientPtr& client, const Game::ObjectPtr& object) {
-		// Packet size: 0x19
+	void Server::SendModifierDeleted(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId) {
+		// 100%
 		if (!object) {
 			return;
 		}
@@ -2440,32 +2277,32 @@ OnActionCommandMsgs(4)
 		outStream.Write(PacketID::ModifierDeleted);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, 0); // modifier id
+		Write<uint32_t>(outStream, modifierId); // modifier id
 
 		Send(outStream, client);
 	}
 
-	void Server::SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state) {
+	void Server::SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp, bool overlay) {
 		BitStream outStream(8);
 		outStream.Write(PacketID::SetAnimationState);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, state); // object+0ACh (mLastAnimationState?)
-		Write<uint64_t>(outStream, utils::get_unix_time()); // arg0+arg4 -> sub_9D7A00
-		Write<bool>(outStream, true);
+		Write<uint32_t>(outStream, state);
+		Write<uint64_t>(outStream, timestamp);
+		Write<bool>(outStream, overlay);
 		Write<float>(outStream, 1.f);
 		Write<uint32_t>(outStream, state); // some client data?
 
 		Send(outStream, client);
 	}
 
-	void Server::SendObjectGfxState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state) {
+	void Server::SendObjectGfxState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp) {
 		BitStream outStream(8);
 		outStream.Write(PacketID::SetObjectGfxState);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, state); // arg4 -> sub_50EB50 (mGraphicsState?)
-		Write<uint64_t>(outStream, utils::get_unix_time()); // arg0+arg4 -> sub_9D7A00
+		Write<uint32_t>(outStream, state);
+		Write<uint64_t>(outStream, timestamp);
 
 		Send(outStream, client);
 	}

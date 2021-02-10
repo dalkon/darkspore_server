@@ -73,7 +73,14 @@ namespace utils {
 	std::enable_if_t<std::is_integral_v<T>, T> to_number(std::string_view str, int base = 10) {
 		T value;
 		try {
-			if constexpr (std::is_signed_v<T>) {
+			if constexpr (std::is_same_v<T, bool>) {
+				using namespace std::string_view_literals;
+				if (string_iequals(str, "true"sv)) {
+					value = true;
+				} else {
+					value = std::strtoul(str.data(), nullptr, base) > 0;
+				}
+			} else if constexpr (std::is_signed_v<T>) {
 				if constexpr (sizeof(T) >= sizeof(int64_t)) {
 					value = std::strtoll(str.data(), nullptr, base);
 				} else {
@@ -92,23 +99,8 @@ namespace utils {
 
 	template<typename T>
 	std::enable_if_t<std::is_integral_v<T>, T> to_number(const std::string& str, int base = 10) {
-		T value;
-		try {
-			if constexpr (std::is_signed_v<T>) {
-				if constexpr (sizeof(T) >= sizeof(int64_t)) {
-					value = std::stoll(str, nullptr, base);
-				} else {
-					value = static_cast<T>(std::stoi(str, nullptr, base));
-				}
-			} else if constexpr (sizeof(T) >= sizeof(uint64_t)) {
-				value = std::stoull(str, nullptr, base);
-			} else {
-				value = static_cast<T>(std::stoul(str, nullptr, base));
-			}
-		} catch (...) {
-			value = static_cast<T>(0);
-		}
-		return value;
+		std::string_view strView = str;
+		return to_number<T>(strView, base);
 	}
 
 	template<typename T>
@@ -116,9 +108,9 @@ namespace utils {
 		T value;
 		try {
 			if constexpr (std::is_same_v<T, double>) {
-				value = std::strtod(str.data());
+				value = std::strtod(str.data(), nullptr);
 			} else if constexpr (std::is_same_v<T, float>) {
-				value = std::strtof(str.data());
+				value = std::strtof(str.data(), nullptr);
 			} else {
 				value = static_cast<T>(0);
 			}
@@ -130,19 +122,8 @@ namespace utils {
 
 	template<typename T>
 	std::enable_if_t<std::is_floating_point_v<T>, T> to_number(const std::string& str) {
-		T value;
-		try {
-			if constexpr (std::is_same_v<T, double>) {
-				value = std::stod(str);
-			} else if constexpr (std::is_same_v<T, float>) {
-				value = std::stof(str);
-			} else {
-				value = static_cast<T>(0);
-			}
-		} catch (...) {
-			value = static_cast<T>(0);
-		}
-		return value;
+		std::string_view strView = str;
+		return to_number<T>(strView);
 	}
 
 	// TODO: move xml & js stuff

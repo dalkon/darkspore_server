@@ -111,7 +111,7 @@ namespace RakNet {
 	struct CrystalData {
 		uint32_t unk32[4];
 
-		cSPVector3 position;
+		glm::vec3 position;
 
 		uint8_t unk8;
 	};
@@ -179,13 +179,14 @@ namespace RakNet {
 			void SendObjectDelete(const ClientPtr& client, const std::vector<Game::ObjectPtr>& objects);
 
 			void SendActionCommandResponse(const ClientPtr& client, uint8_t type);
-			void SendObjectJump(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position, const cSPVector3& destination, const cSPQuaternion& rotation);
-			void SendObjectTeleport(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position, const cSPVector3& direction);
-			void SendObjectPlayerMove(const ClientPtr& client, const Game::ObjectPtr& object, const cLocomotionData& locomotionData);
+			void SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data);
+			void SendObjectJump(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position, const glm::vec3& destination, const glm::quat& rotation);
+			void SendObjectTeleport(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position, const glm::vec3& direction);
+			void SendObjectPlayerMove(const ClientPtr& client, const Game::ObjectPtr& object, const LocomotionData& locomotionData);
 			void SendForcePhysicsUpdate(const ClientPtr& client);
 			void SendPhysicsChanged(const ClientPtr& client);
-			void SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cLocomotionData& locomotionData);
-			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cSPVector3& position);
+			void SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const LocomotionData& locomotionData);
+			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position);
 			void SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const AttributeData& attributeData);
 			void SendCombatantDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cCombatantData& combatantData);
 			void SendInteractableDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cInteractableData& interactableData);
@@ -196,9 +197,9 @@ namespace RakNet {
 			void SendCombatEvent(const ClientPtr& client, const CombatEvent& combatEvent);
 			void SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object);
 			void SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object);
-			void SendModifierDeleted(const ClientPtr& client, const Game::ObjectPtr& object);
-			void SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state);
-			void SendObjectGfxState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state);
+			void SendModifierDeleted(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId);
+			void SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp, bool overlay);
+			void SendObjectGfxState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp);
 			void SendGamePrepareForStart(const ClientPtr& client);
 			void SendGameStart(const ClientPtr& client);
 			void SendArenaGameMessages(const ClientPtr& client);

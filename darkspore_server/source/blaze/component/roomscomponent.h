@@ -21,7 +21,6 @@ namespace Blaze {
 
 			bool ParsePacket(Request& request) override;
 
-
 		public:
 			// Notifications
 			static void NotifyRoomViewUpdated(Request& request, uint32_t viewId);

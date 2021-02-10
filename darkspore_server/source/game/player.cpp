@@ -1,7 +1,9 @@
 
 // Include
 #include "player.h"
+
 #include "instance.h"
+#include "objectmanager.h"
 
 #include "sporenet/user.h"
 
@@ -11,7 +13,10 @@
 namespace Game {
 	// Player
 	uint32_t Player::GetXPForLevel(uint32_t level) {
-		constexpr std::array<uint32_t, 100> xpTable {
+		constexpr std::array<uint32_t, 101> xpTable {
+			// 0
+			0,
+
 			// 1-20
 			100, 200, 3000, 6000, 9000,
 			12000, 15000, 18000, 21000, 24500,
@@ -43,7 +48,7 @@ namespace Game {
 			2149500, 2225500, 2310500, 2410500, 2510500
 		};
 
-		if (level == 0 || level > xpTable.size()) {
+		if (level > xpTable.size()) {
 			return 0;
 		}
 
@@ -51,8 +56,9 @@ namespace Game {
 	}
 
 	Player::Player(Instance& instance, const SporeNet::UserPtr& user, uint8_t playerIndex) : mInstance(instance), mUser(user) {
-		mData.mPlayerIndex = playerIndex;
-		mData.SetUpdateBits(4);
+		mPlayerIndex = playerIndex;
+		mDataBits.set(PlayerDataBits::PlayerIndex);
+
 		Setup();
 	}
 
@@ -60,17 +66,16 @@ namespace Game {
 		return mUser;
 	}
 
-	RakNet::labsPlayer& Player::GetData() {
-		SetUpdateBits(RakNet::labsPlayerBits::PlayerBits);
-		return mData;
-	}
-
-	const RakNet::labsPlayer& Player::GetData() const {
-		return mData;
+	uint64_t Player::GetOnlineId() const {
+		return mPlayerOnlineId;
 	}
 
 	uint8_t Player::GetId() const {
-		return mData.mPlayerIndex;
+		return mPlayerIndex;
+	}
+
+	uint32_t Player::GetCurrentDeckIndex() const {
+		return mCurrentDeckIndex;
 	}
 
 	uint32_t Player::GetAbilityId(uint8_t creatureIndex, uint8_t abilityIndex) const {
@@ -112,38 +117,46 @@ namespace Game {
 	void Player::Setup() {
 		SetStatus(0, 0.f);
 
-		mData.mbDataSetup = false;
-		mData.mTeam = 1;
-		mData.mPlayerOnlineId = mUser->get_id();
-		mData.mLockCamera = false;
-		mData.mLockedAbilityMin = 0xFF; // num abilities shown in hud (including squad abilities)
-		mData.mLockedDeckIndexMin = 0xFF; // num creatures shown in squad
-		// mData.mbIsCharged = true;
+		mbDataSetup = false;
+		mTeam = 1;
+		mPlayerOnlineId = mUser->get_id();
+		mLockCamera = false;
+		mLockedAbilityMin = 0xFF; // num abilities shown in hud (including squad abilities)
+		mLockedDeckIndexMin = 0xFF; // num creatures shown in squad
+		// mbIsCharged = true;
 
 		const auto& accountData = mUser->get_account();
-		mData.mAvatarLevel = accountData.level;
-		mData.mDNA = accountData.dna;
+		mAvatarLevel = accountData.level;
+		mDNA = accountData.dna;
 
 		auto prevXP = GetXPForLevel(accountData.level);
 		auto nextXP = GetXPForLevel(accountData.level + 1);
-		mData.mAvatarXP = (accountData.xp - prevXP) / static_cast<float>(std::max<uint32_t>(1, nextXP - prevXP));
+		mAvatarXP = (accountData.xp - prevXP) / static_cast<float>(std::max<uint32_t>(1, nextXP - prevXP));
 
-		mData.SetUpdateBits({
-			0, 5, 6, 12,
-			15, 16, 18, 21, 22
-		});
+		mDataBits.set(PlayerDataBits::DataSetup);
+		mDataBits.set(PlayerDataBits::Team);
+		mDataBits.set(PlayerDataBits::PlayerOnlineId);
+		mDataBits.set(PlayerDataBits::LockCamera);
+		mDataBits.set(PlayerDataBits::LockAbilityMin);
+		mDataBits.set(PlayerDataBits::LockDeckIndexMin);
+		mDataBits.set(PlayerDataBits::Level);
+		mDataBits.set(PlayerDataBits::DNA);
+		mDataBits.set(PlayerDataBits::Experience);
 	}
 
 	void Player::GetStatus(uint32_t& status, float& progress) const {
-		status = mData.mStatus;
-		progress = mData.mStatusProgress;
+		status = mStatus;
+		progress = mStatusProgress;
 	}
 
 	void Player::SetStatus(uint32_t status, float progress) {
-		mData.mStatus = status;
-		mData.mStatusProgress = progress;
-		mData.SetUpdateBits({ RakNet::labsPlayer::Status, RakNet::labsPlayer::StatusProgress });
-		SetUpdateBits(RakNet::labsPlayerBits::PlayerBits);
+		mStatus = status;
+		mStatusProgress = progress;
+
+		mDataBits.set(PlayerDataBits::Status);
+		mDataBits.set(PlayerDataBits::StatusProgress);
+
+		SetUpdateBits(PlayerUpdateBits::PlayerBits);
 	}
 
 	ObjectPtr Player::GetCharacterObject(uint32_t index) const {
@@ -153,6 +166,39 @@ namespace Game {
 		return mCharacterObjects[index];
 	}
 
+	ObjectPtr Player::GetDeployedCharacterObject() const {
+		return GetCharacterObject(GetCurrentDeckIndex());
+	}
+
+	bool Player::SwapCharacter(uint32_t index) {
+		// TODO: cooldown checks, etc etc
+		mCurrentDeckIndex = index;
+		mDataBits.set(PlayerDataBits::CurrentDeckIndex);
+
+		SetUpdateBits(PlayerUpdateBits::PlayerBits);
+		return true;
+	}
+
+	bool Player::SyncCharacterData() {
+		const auto& characterObject = GetDeployedCharacterObject();
+		if (!characterObject) {
+			return false;
+		}
+
+		auto characterIndex = GetCurrentDeckIndex();
+		auto& characterData = mCharacterData[characterIndex];
+		characterData.SetHealth(characterObject->GetHealth());
+		characterData.SetMaxHealth(characterObject->GetMaxHealth());
+		characterData.SetMana(characterObject->GetMana());
+		characterData.SetMaxMana(characterObject->GetMaxMana());
+
+		// TODO: update attributes
+		// characterData.mPartAttributes
+
+		SetUpdateBits(PlayerUpdateBits::CharacterBits << characterIndex);
+		return true;
+	}
+
 	SporeNet::SquadPtr Player::GetSquad() const {
 		return mSquad;
 	}
@@ -160,103 +206,106 @@ namespace Game {
 	void Player::SetSquad(const SporeNet::SquadPtr& squad) {
 		mSquad = squad;
 
-		mData.mCurrentDeckIndex = 0;
-		mData.mQueuedDeckIndex = 0;
+		mCurrentDeckIndex = 0;
+		mQueuedDeckIndex = 0;
 
 		if (mSquad) {
-			// mData.mDeckScore = mSquad->GetScore();
+			// mDeckScore = mSquad->GetScore();
 
 			uint32_t creatureIndex = 0;
 			for (uint32_t creatureId : squad->GetCreatureIds()) {
-				RakNet::labsCharacter character;
+				Character character;
 
 				// TODO: save/calculate health and "power"
-				character.mHealthPoints = 50.f * (creatureIndex + 1);
-				character.mMaxHealthPoints = 200.0f;
-				character.mManaPoints = 25.f * (creatureIndex + 1);
-				character.mMaxManaPoints = 200.0f;
+				character.SetMaxHealth(200.0f);
+				character.SetHealth(character.GetMaxHealth());
+				character.SetMaxMana(200.0f);
+				character.SetMana(character.GetMaxMana());
 
 				const auto& creature = mUser->GetCreatureById(creatureId);
 				if (creature) {
-					character.nounDef = creature->GetNoun();
-					character.version = creature->GetVersion();
-					character.mCreatureType = static_cast<uint32_t>(creature->GetType());
-					character.mGearScore = creature->GetGearScore();
-					character.mGearScoreFlattened = creature->GetGearScoreFlattened();
+					character.SetNoun(creature->GetNoun());
+					character.SetVersion(creature->GetVersion());
+					character.SetCreatureType(static_cast<uint32_t>(creature->GetType()));
+					character.SetGearScore(creature->GetGearScore());
+					character.SetGearScoreFlattened(creature->GetGearScoreFlattened());
 				} else {
-					character.nounDef = 0;
-					character.version = 0;
-					character.mCreatureType = static_cast<uint32_t>(SporeNet::CreatureType::Unknown);
-					character.mGearScore = 0.f;
-					character.mGearScoreFlattened = 0.f;
+					character.SetNoun(0);
+					character.SetVersion(0);
+					character.SetCreatureType(static_cast<uint32_t>(SporeNet::CreatureType::Unknown));
+					character.SetGearScore(0.f);
+					character.SetGearScoreFlattened(0.f);
 				}
 
 				SetCharacter(std::move(character), creatureIndex);
 				creatureIndex++;
 			}
 		} else {
-			mData.mDeckScore = 0;
+			mDeckScore = 0;
 		}
 
-		mData.SetUpdateBits({ 1, 2, 23 });
-		SetUpdateBits(RakNet::labsPlayerBits::PlayerBits);
+		mDataBits.set(PlayerDataBits::CurrentDeckIndex);
+		mDataBits.set(PlayerDataBits::QueuedDeckIndex);
+		mDataBits.set(PlayerDataBits::DeckScore);
+
+		SetUpdateBits(PlayerUpdateBits::PlayerBits);
 	}
 
-	void Player::SetCharacter(RakNet::labsCharacter&& character, uint32_t index) {
-		auto& characters = mData.mCharacters;
-		if (index >= characters.size()) {
+	const Character& Player::GetCharacter(uint32_t index) const {
+		return mCharacterData[index];
+	}
+
+	void Player::SetCharacter(Character&& character, uint32_t index) {
+		if (index >= mCharacterData.size()) {
 			return;
 		}
 
-		auto& characterRef = characters[index];
+		auto& characterRef = mCharacterData[index];
 		characterRef = std::move(character);
 
 		auto& characterObject = mCharacterObjects[index];
-		if (characterRef.nounDef != 0) {
-			characterObject = mInstance.GetObjectManager().Create(characterRef.nounDef);
+		if (characterRef.mNounId != 0) {
+			characterObject = mInstance.GetObjectManager().Create(characterRef.mNounId);
 		} else {
 			characterObject = nullptr;
 		}
 
 		if (characterObject) {
-			characterRef.assetID = characterObject->GetId();
+			characterRef.mAssetId = characterObject->GetId();
+			// characterRef.mAssetId = characterObject->GetAssetId();
 			characterRef.mAbilityPoints = 10;
 			characterRef.mAbilityRanks.fill(1);
 
-			auto& characterObjectData = characterObject->GetData();
-			characterObjectData.mOwnerID = 0;
-			characterObjectData.mPlayerIdx = mData.mPlayerIndex;
-			characterObjectData.mTeam = mData.mTeam;
-			characterObjectData.mbHasCollision = true;
-			characterObjectData.mbPlayerControlled = true;
+			characterObject->SetAttributeValue(Attribute::MaxHealth, characterRef.GetMaxHealth());
+			characterObject->SetAttributeValue(Attribute::MaxMana, characterRef.GetMaxMana());
+			characterObject->SetHealth(characterRef.GetHealth());
+			characterObject->SetMana(characterRef.GetMana());
 
-			if (mData.mCurrentCreatureId == 0) {
-				mData.mCurrentCreatureId = 0;
-			}
+			characterObject->SetTeam(mTeam);
+			characterObject->SetHasCollision(true);
+			characterObject->SetPlayerIndex(mPlayerIndex);
 		} else {
-			characterRef.assetID = 0;
+			characterRef.mAssetId = 0;
 		}
 
-		mData.SetUpdateBits(RakNet::labsPlayer::Characters);
-		SetUpdateBits(RakNet::labsPlayerBits::CharacterBits << index);
+		mDataBits.set(PlayerDataBits::CharacterData);
+		SetUpdateBits(PlayerUpdateBits::CharacterBits << index);
 	}
 
 	const RakNet::labsCrystal& Player::GetCrystal(uint32_t index) const {
-		const auto& crystals = mData.mCrystals;
-		if (crystals.size() < index) {
+		if (mCrystals.size() < index) {
 			static RakNet::labsCrystal defaultCrystal;
 			return defaultCrystal;
 		}
-		return crystals[index];
+		return mCrystals[index];
 	}
 
 	void Player::SetCrystal(RakNet::labsCrystal&& crystal, uint32_t index) {
-		auto& crystals = mData.mCrystals;
-		if (index < crystals.size()) {
-			crystals[index] = std::move(crystal);
+		if (index < mCrystals.size()) {
+			mCrystals[index] = std::move(crystal);
 
-			mData.SetUpdateBits(13);
-			SetUpdateBits(RakNet::labsPlayerBits::CrystalBits << index);
+			mDataBits.set(PlayerDataBits::CrystalData);
+			SetUpdateBits(PlayerUpdateBits::CrystalBits << index);
 
 			UpdateCrystalBonuses();
 		}
@@ -272,45 +321,157 @@ namespace Game {
 
 	void Player::ResetUpdateBits() {
 		mUpdateBits = 0;
+		mDataBits.reset();
+		for (auto& character : mCharacterData) {
+			character.ResetUpdateBits();
+		}
+	}
+
+	void Player::WriteTo(RakNet::BitStream& stream) const {
+		using RakNet::bytes_to_bits;
+		using RakNet::ReallocateStream;
+
+		constexpr auto size = bytes_to_bits(0x14B8);
+
+		auto writeOffset = ReallocateStream(stream, size);
+
+		stream.SetWriteOffset(writeOffset);
+		Write(stream, mbDataSetup);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x0004));
+		Write(stream, mStatus);
+		Write(stream, mStatusProgress);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x000C));
+		Write(stream, mCurrentDeckIndex);
+		Write(stream, mQueuedDeckIndex);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x0018));
+		for (const auto& character : mCharacterData) {
+			character.WriteTo(stream);
+		}
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1278));
+		Write(stream, mPlayerIndex);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1280));
+		Write(stream, mPlayerOnlineId);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12DC));
+		Write(stream, mTeam);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12E0));
+		Write(stream, mCurrentCreatureId);
+		Write(stream, mEnergyPoints);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12EC));
+		Write(stream, mbIsCharged);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12F0));
+		Write(stream, mDNA);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x12F8));
+		Write(stream, mAvatarXP);
+		Write(stream, mAvatarLevel);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1304));
+		Write(stream, mChainProgression);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x133C));
+		for (const auto& crystal : mCrystals) {
+			crystal.WriteTo(stream);
+		}
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x13CC));
+		for (auto crystalBonus : mCrystalBonuses) {
+			Write(stream, crystalBonus);
+		}
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1408));
+		Write(stream, mLockCamera);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x140C));
+		Write(stream, mDeckScore);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1414));
+		Write(stream, mbLockedOverdrive);
+		Write(stream, mbLockedCrystals);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1418));
+		Write(stream, mLockedAbilityMin);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1420));
+		Write(stream, mLockedDeckIndexMin);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void Player::WriteReflection(RakNet::BitStream& stream) const {
+		RakNet::reflection_serializer<24> reflector(stream);
+		reflector.begin();
+		if (mDataBits.any()) {
+			if (mDataBits.test(0)) { reflector.write<0>(mbDataSetup); }
+			if (mDataBits.test(1)) { reflector.write<1>(mCurrentDeckIndex); }
+			if (mDataBits.test(2)) { reflector.write<2>(mQueuedDeckIndex); }
+			if (mDataBits.test(3)) { reflector.write<3>(mCharacterData); }
+			if (mDataBits.test(4)) { reflector.write<4>(mPlayerIndex); }
+			if (mDataBits.test(5)) { reflector.write<5>(mTeam); }
+			if (mDataBits.test(6)) { reflector.write<6>(mPlayerOnlineId); }
+			if (mDataBits.test(7)) { reflector.write<7>(mStatus); }
+			if (mDataBits.test(8)) { reflector.write<8>(mStatusProgress); }
+			if (mDataBits.test(9)) { reflector.write<9>(mCurrentCreatureId); }
+			if (mDataBits.test(10)) { reflector.write<10>(mEnergyPoints); }
+			if (mDataBits.test(11)) { reflector.write<11>(mbIsCharged); }
+			if (mDataBits.test(12)) { reflector.write<12>(mDNA); }
+			if (mDataBits.test(13)) { reflector.write<13>(mCrystals); }
+			if (mDataBits.test(14)) { reflector.write<14>(mCrystalBonuses); }
+			if (mDataBits.test(15)) { reflector.write<15>(mAvatarLevel); }
+			if (mDataBits.test(16)) { reflector.write<16>(mAvatarXP); }
+			if (mDataBits.test(17)) { reflector.write<17>(mChainProgression); }
+			if (mDataBits.test(18)) { reflector.write<18>(mLockCamera); }
+			if (mDataBits.test(19)) { reflector.write<19>(mbLockedOverdrive); }
+			if (mDataBits.test(20)) { reflector.write<20>(mbLockedCrystals); }
+			if (mDataBits.test(21)) { reflector.write<21>(mLockedAbilityMin); }
+			if (mDataBits.test(22)) { reflector.write<22>(mLockedDeckIndexMin); }
+			if (mDataBits.test(23)) { reflector.write<23>(mDeckScore); }
+		}
+		reflector.end();
 	}
 
 	void Player::UpdateCrystalBonuses() {
 		// TODO: match catalyst colors
-
-		const auto& crystals = mData.mCrystals;
-		auto& crystalBonuses = mData.mCrystalBonuses;
 
 		constexpr size_t gridSize = 3;
 		for (size_t i = 0; i < gridSize; ++i) {
 			size_t index = i * gridSize;
 			
 			auto horizontalCrystals =
-				(crystals[index + 0].crystalNoun != 0) +
-				(crystals[index + 1].crystalNoun != 0) +
-				(crystals[index + 2].crystalNoun != 0);
+				(mCrystals[index + 0].crystalNoun != 0) +
+				(mCrystals[index + 1].crystalNoun != 0) +
+				(mCrystals[index + 2].crystalNoun != 0);
 
 			auto verticalCrystals =
-				(crystals[i + (gridSize * 0)].crystalNoun != 0) +
-				(crystals[i + (gridSize * 1)].crystalNoun != 0) +
-				(crystals[i + (gridSize * 2)].crystalNoun != 0);
+				(mCrystals[i + (gridSize * 0)].crystalNoun != 0) +
+				(mCrystals[i + (gridSize * 1)].crystalNoun != 0) +
+				(mCrystals[i + (gridSize * 2)].crystalNoun != 0);
 
-			crystalBonuses[i] = horizontalCrystals == 3;
-			crystalBonuses[i + gridSize] = verticalCrystals == 3;
+			mCrystalBonuses[i] = horizontalCrystals == 3;
+			mCrystalBonuses[i + gridSize] = verticalCrystals == 3;
 		}
 
 		// Diagonals
-		crystalBonuses[6] = (
-			(crystals[0].crystalNoun != 0) +
-			(crystals[4].crystalNoun != 0) +
-			(crystals[8].crystalNoun != 0)
+		mCrystalBonuses[6] = (
+			(mCrystals[0].crystalNoun != 0) +
+			(mCrystals[4].crystalNoun != 0) +
+			(mCrystals[8].crystalNoun != 0)
 		) == 3;
 
-		crystalBonuses[7] = (
-			(crystals[2].crystalNoun != 0) +
-			(crystals[4].crystalNoun != 0) +
-			(crystals[6].crystalNoun != 0)
+		mCrystalBonuses[7] = (
+			(mCrystals[2].crystalNoun != 0) +
+			(mCrystals[4].crystalNoun != 0) +
+			(mCrystals[6].crystalNoun != 0)
 		) == 3;
 
-		mData.SetUpdateBits(14);
+		mDataBits.set(PlayerDataBits::CrystalBonuses);
 	}
 }

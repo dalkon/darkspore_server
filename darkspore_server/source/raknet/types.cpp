@@ -318,264 +318,6 @@ namespace Hash {
 }
 #undef DEFINE_TYPE_HASH
 
-// helpers
-auto ReallocateStream(RakNet::BitStream& stream, BitSize_t sizeInBits) {
-	const auto writeOffset = stream.GetWriteOffset();
-	const auto writeOffsetMod8 = writeOffset & 7;
-
-	if (writeOffsetMod8 > 0) {
-		printf("ReallocateStream: not full bytes");
-	}
-
-	stream.AddBitsAndReallocate(sizeInBits);
-	/*
-	BitSize_t zeroLength = RakNet::bits_to_bytes(sizeInBits);
-	if (writeOffsetMod8 != 0) {
-		constexpr std::array<uint8_t, 7> zeroArray { 0 };
-		stream.WriteBits(zeroArray.data(), 8 - writeOffsetMod8);
-
-		zeroLength -= 1;
-	}
-
-	std::memset(stream.GetData() + RakNet::bits_to_bytes(writeOffset - writeOffsetMod8), 0, zeroLength);
-	*/
-	return writeOffset;
-}
-
-// reflection_serializer | Fields = max amount of fields
-template<uint8_t FieldCount>
-class reflection_serializer {
-	static_assert(FieldCount > 0x00 && FieldCount <= 0xFF, "Fields must be above 0");
-
-	public:
-		reflection_serializer(RakNet::BitStream& stream)
-			: mStream(stream), mStartOffset(std::numeric_limits<BitSize_t>::max()), mWriteBits(0) {};
-
-		void begin() {
-			if (mStartOffset != std::numeric_limits<BitSize_t>::max()) {
-				return;
-			}
-
-			mStartOffset = mStream.GetWriteOffset();
-			mWriteBits = 0;
-
-			if constexpr (FieldCount <= 8) {
-				mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits<BitSize_t>(sizeof(uint8_t)));
-			} else if constexpr (FieldCount <= 16) {
-				mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits<BitSize_t>(sizeof(uint16_t)));
-			}
-		}
-
-		void end() {
-			if constexpr (FieldCount > 16) {
-				Write<uint8_t>(mStream, 0xFF);
-			} else {
-				auto offset = mStream.GetWriteOffset();
-				mStream.SetWriteOffset(mStartOffset);
-				if constexpr (FieldCount <= 8) {
-					Write<uint8_t>(mStream, static_cast<uint8_t>(mWriteBits));
-				} else {
-					Write<uint16_t>(mStream, mWriteBits);
-				}
-				mStream.SetWriteOffset(offset);
-			}
-
-			mStartOffset = std::numeric_limits<BitSize_t>::max();
-		}
-
-		template<uint8_t Field, typename T, size_t S>
-		void write(const std::array<T, S>& value) {
-			static_assert(Field >= 0 && Field < FieldCount, "Field must be within range of FieldCount.");
-			if constexpr (FieldCount > 16) {
-				Write<uint8_t>(mStream, Field);
-			} else {
-				mWriteBits |= 1 << Field;
-			}
-
-			for (const auto& value : value) {
-				if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
-					Write(mStream, value);
-				} else if constexpr (std::is_class_v<T>) {
-					value.WriteTo(mStream);
-				} else {
-					Write<T>(mStream, value);
-				}
-			}
-		}
-
-		template<uint8_t Field, typename T>
-		void write(const T& value) {
-			static_assert(Field >= 0 && Field < FieldCount, "Field must be within range of FieldCount.");
-			if constexpr (FieldCount > 16) {
-				Write<uint8_t>(mStream, Field);
-			} else {
-				mWriteBits |= 1 << Field;
-			}
-
-			if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
-				Write(mStream, value);
-			} else if constexpr (std::is_class_v<T>) {
-				value.WriteTo(mStream);
-			} else {
-				Write<T>(mStream, value);
-			}
-		}
-
-		template<typename T, size_t S>
-		void write(uint8_t field, const std::array<T, S>& value) {
-			if constexpr (FieldCount > 16) {
-				Write<uint8_t>(mStream, field);
-			} else {
-				mWriteBits |= 1 << field;
-			}
-
-			for (const auto& value : value) {
-				if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
-					Write(mStream, value);
-				} else if constexpr (std::is_class_v<T>) {
-					value.WriteTo(mStream);
-				} else {
-					Write<T>(mStream, value);
-				}
-			}
-		}
-
-		template<typename T>
-		void write(uint8_t field, const T& value) {
-			if constexpr (FieldCount > 16) {
-				Write<uint8_t>(mStream, field);
-			} else {
-				mWriteBits |= 1 << field;
-			}
-
-			if constexpr (std::is_same_v<T, RakNet::cSPVector2> || std::is_same_v<T, RakNet::cSPVector3> || std::is_same_v<T, RakNet::cSPQuaternion>) {
-				Write(mStream, value);
-			} else if constexpr (std::is_class_v<T>) {
-				value.WriteTo(mStream);
-			} else {
-				Write<T>(mStream, value);
-			}
-		}
-
-	private:
-		RakNet::BitStream& mStream;
-
-		BitSize_t mStartOffset;
-
-		uint16_t mWriteBits;
-};
-
-class reflection {
-	public:
-		template<size_t FieldsInClass, typename Tuple>
-		static void write(RakNet::BitStream& stream, const Tuple& tuple) {
-			constexpr auto Size = std::tuple_size<Tuple>::value;
-			if constexpr (FieldsInClass > 16) {
-				write_field_by_field<Tuple, Size>(stream, tuple);
-			} else {
-				write_fields<FieldsInClass, Tuple, Size>(stream, tuple);
-			}
-		}
-		
-		template<size_t FieldsInClass, typename T, typename... Args>
-		static void write_some(RakNet::BitStream& stream, Args&&... args) {
-			if constexpr (FieldsInClass > 16) {
-				write_some_field_by_field(stream, args...);
-			} else {
-				write_some_fields<FieldsInClass>(stream, args...);
-			}
-		}
-		
-	private:
-		template<typename T, size_t S>
-		static void write_type(RakNet::BitStream& stream, const std::array<T, S>& value) {
-			for (const T& arrValue : value) {
-				write_type(stream, arrValue);
-			}
-		}
-
-		template<typename T>
-		static void write_type(RakNet::BitStream& stream, T value) {
-			if constexpr (std::is_class_v<T>) {
-				value.WriteTo(stream);
-			} else {
-				Write<T>(stream, value);
-			}
-		}
-
-		template<typename Tuple, size_t Size, size_t Idx = 0>
-		static void write_field_by_field(RakNet::BitStream& stream, const Tuple& tuple) {
-			if constexpr (Idx >= Size) {
-				Write<uint8_t>(stream, 0xFF);
-			} else {
-				Write<uint8_t>(stream, Idx);
-				write_type(stream, std::get<Idx>(tuple));
-				write_field_by_field<Tuple, Size, Idx + 1>(stream, tuple);
-			}
-		}
-
-		template<size_t FieldsInClass, typename Tuple, size_t Size, size_t Idx = 0>
-		static void write_fields(RakNet::BitStream& stream, const Tuple& tuple) {
-			if constexpr (Idx == 0) {
-				if (FieldsInClass > 8) {
-					Write<uint16_t>(stream, RakNet::get_bits<uint16_t, Size>());
-				} else {
-					Write<uint8_t>(stream, RakNet::get_bits<uint8_t, Size>());
-				}
-			}
-
-			if constexpr (Idx < Size) {
-				write_type(stream, std::get<Idx>(tuple));
-				write_fields<FieldsInClass, Tuple, Size, Idx + 1>(stream, tuple);
-			}
-		}
-
-		// write_some_field_by_field
-		static void write_some_field_by_field(RakNet::BitStream& stream) {
-			Write<uint8_t>(stream, 0xFF);
-		}
-
-		template<typename T, typename... Args>
-		static void write_some_field_by_field(RakNet::BitStream& stream, uint8_t idx, const T& value, Args&&... args) {
-			Write<uint8_t>(stream, idx);
-			write_type(stream, value);
-			write_some_field_by_field(stream, args...);
-		}
-
-		// write_some_fields
-		static void internal_write_some_fields(RakNet::BitStream& stream, uint16_t& bits) {}
-
-		template<typename T, typename... Args>
-		static void internal_write_some_fields(RakNet::BitStream& stream, uint16_t& bits, uint8_t idx, const T& value, Args&& ... args) {
-			bits |= (1 << idx);
-			write_type(stream, value);
-			internal_write_some_fields(stream, bits, args...);
-		}
-
-		template<size_t FieldsInClass, typename... Args>
-		static void write_some_fields(RakNet::BitStream& stream, Args&& ... args) {
-			size_t streamPosition = stream.GetWriteOffset();
-			if constexpr (FieldsInClass > 8) {
-				Write<uint16_t>(stream, 0);
-			} else {
-				Write<uint8_t>(stream, 0);
-			}
-
-			uint16_t bits = 0;
-			internal_write_some_fields(stream, bits, args...);
-
-			size_t currentPosition = stream.GetWriteOffset();
-			stream.SetWriteOffset(streamPosition);
-			if constexpr (FieldsInClass > 8) {
-				Write<uint16_t>(stream, bits);
-			} else {
-				Write<uint8_t>(stream, bits);
-			}
-
-			stream.SetWriteOffset(currentPosition);
-		}
-};
-
 // Test classes
 namespace Hash {
 	constexpr auto Zero = utils::hash_id("0");
@@ -583,6 +325,16 @@ namespace Hash {
 }
 
 namespace RakNet {
+	// helpers
+	BitSize_t ReallocateStream(RakNet::BitStream& stream, BitSize_t sizeInBits) {
+		const auto writeOffset = stream.GetWriteOffset();
+		if ((writeOffset & 7) > 0) {
+			printf("ReallocateStream: not full bytes");
+		}
+		stream.AddBitsAndReallocate(sizeInBits);
+		return writeOffset;
+	}
+
 	// cAIDirector
 	void cAIDirector::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x4D0);
@@ -648,117 +400,117 @@ namespace RakNet {
 	*/
 
 	labsCharacter::labsCharacter() {
-		partsAttributes[Ability::Strength] = 1.f;
-		partsAttributes[Ability::Dexterity] = 1.f;
-		partsAttributes[Ability::Mind] = 1.f;
-		partsAttributes[Ability::MaxHealthIncrease] = 0.f;
-		partsAttributes[Ability::MaxHealth] = 0.f;
-		partsAttributes[Ability::MaxMana] = 0.f;
-		partsAttributes[Ability::DamageReduction] = 0.f;
-		partsAttributes[Ability::PhysicalDefense] = 0.f;
-		partsAttributes[Ability::PhysicalDamageReduction] = 0.f;
-		partsAttributes[Ability::EnergyDefense] = 0.f;
-		partsAttributes[Ability::CriticalRating] = 0.f;
-		partsAttributes[Ability::NonCombatSpeed] = 10.f;
-		partsAttributes[Ability::CombatSpeed] = 10.f;
-		partsAttributes[Ability::DamageBuff] = 0.f;
-		partsAttributes[Ability::Silence] = 0.f;
-		partsAttributes[Ability::Immobilized] = 0.f;
-		partsAttributes[Ability::DefenseBoostBasicDamage] = 0.f;
-		partsAttributes[Ability::PhysicalDamageIncrease] = 0.f;
-		partsAttributes[Ability::PhysicalDamageIncreaseFlat] = 0.f;
-		partsAttributes[Ability::AutoCrit] = 0.f;
-		partsAttributes[Ability::BehindDirectDamageIncrease] = 0.f;
-		partsAttributes[Ability::BehindOrSideDirectDamageIncrease] = 0.f;
-		partsAttributes[Ability::CriticalDamageIncrease] = 0.f;
-		partsAttributes[Ability::AttackSpeedScale] = 1.f;
-		partsAttributes[Ability::CooldownScale] = 1.f;
-		partsAttributes[Ability::Frozen] = 0.f;
-		partsAttributes[Ability::ProjectileSpeedIncrease] = 0.f;
-		partsAttributes[Ability::AoEResistance] = 0.f;
-		partsAttributes[Ability::EnergyDamageBuff] = 0.f;
-		partsAttributes[Ability::Intangible] = 0.f;
-		partsAttributes[Ability::HealingReduction] = 0.f;
-		partsAttributes[Ability::EnergyDamageIncrease] = 0.f;
-		partsAttributes[Ability::EnergyDamageIncreaseFlat] = 0.f;
-		partsAttributes[Ability::Immune] = 0.f;
-		partsAttributes[Ability::StealthDetection] = 0.f;
-		partsAttributes[Ability::LifeSteal] = 0.f;
-		partsAttributes[Ability::RejectModifier] = 0.f;
-		partsAttributes[Ability::AoEDamage] = 0.f;
-		partsAttributes[Ability::TechnologyTypeDamage] = 0.f;
-		partsAttributes[Ability::SpacetimeTypeDamage] = 0.f;
-		partsAttributes[Ability::LifeTypeDamage] = 0.f;
-		partsAttributes[Ability::ElementsTypeDamage] = 0.f;
-		partsAttributes[Ability::SupernaturalTypeDamage] = 0.f;
-		partsAttributes[Ability::TechnologyTypeResistance] = 0.f;
-		partsAttributes[Ability::SpacetimeTypeResistance] = 0.f;
-		partsAttributes[Ability::LifeTypeResistance] = 0.f;
-		partsAttributes[Ability::ElementsTypeResistance] = 0.f;
-		partsAttributes[Ability::SupernaturalTypeResistance] = 0.f;
-		partsAttributes[Ability::MovementSpeedBuff] = 0.f;
-		partsAttributes[Ability::ImmuneToDebuffs] = 0.f;
-		partsAttributes[Ability::BuffDuration] = 0.f;
-		partsAttributes[Ability::DebuffDuration] = 0.f;
-		partsAttributes[Ability::ManaSteal] = 0.f;
-		partsAttributes[Ability::DebuffDurationIncrease] = 0.f;
-		partsAttributes[Ability::EnergyDamageReduction] = 0.f;
-		partsAttributes[Ability::Incorporeal] = 0.f;
-		partsAttributes[Ability::DoTDamageIncrease] = 0.f;
-		partsAttributes[Ability::MindControlled] = 0.f;
-		partsAttributes[Ability::SwapDisabled] = 0.f;
-		partsAttributes[Ability::ImmuneToRandomTeleport] = 0.f;
-		partsAttributes[Ability::ImmuneToBanish] = 0.f;
-		partsAttributes[Ability::ImmuneToKnockback] = 0.f;
-		partsAttributes[Ability::AoeRadius] = 0.f;
-		partsAttributes[Ability::PetDamage] = 0.f;
-		partsAttributes[Ability::PetHealth] = 0.f;
-		partsAttributes[Ability::CrystalFind] = 0.f;
-		partsAttributes[Ability::DNADropped] = 0.f;
-		partsAttributes[Ability::RangeIncrease] = 0.f;
-		partsAttributes[Ability::OrbEffectiveness] = 0.f;
-		partsAttributes[Ability::OverdriveBuildup] = 0.f;
-		partsAttributes[Ability::OverdriveDuration] = 0.f;
-		partsAttributes[Ability::LootFind] = 0.f;
-		partsAttributes[Ability::Surefooted] = 0.f;
-		partsAttributes[Ability::ImmuneToStunned] = 0.f;
-		partsAttributes[Ability::ImmuneToSleep] = 0.f;
-		partsAttributes[Ability::ImmuneToTerrified] = 0.f;
-		partsAttributes[Ability::ImmuneToSilence] = 0.f;
-		partsAttributes[Ability::ImmuneToCursed] = 0.f;
-		partsAttributes[Ability::ImmuneToPoisonOrDisease] = 0.f;
-		partsAttributes[Ability::ImmuneToBurning] = 0.f;
-		partsAttributes[Ability::ImmuneToRooted] = 0.f;
-		partsAttributes[Ability::ImmuneToSlow] = 0.f;
-		partsAttributes[Ability::ImmuneToPull] = 0.f;
-		partsAttributes[Ability::DoTDamageDoneIncrease] = 0.f;
-		partsAttributes[Ability::AggroIncrease] = 0.f;
-		partsAttributes[Ability::AggroDecrease] = 0.f;
-		partsAttributes[Ability::PhysicalDamageDoneIncrease] = 0.f;
-		partsAttributes[Ability::PhysicalDamageDoneByAbilityIncrease] = 0.f;
-		partsAttributes[Ability::EnergyDamageDoneIncrease] = 0.f;
-		partsAttributes[Ability::EnergyDamageDoneByAbilityIncrease] = 0.f;
-		partsAttributes[Ability::ChannelTimeDecrease] = 0.f;
-		partsAttributes[Ability::CrowdControlDurationDecrease] = 0.f;
-		partsAttributes[Ability::DoTDurationDecrease] = 0.f;
-		partsAttributes[Ability::AoEDurationIncrease] = 0.f;
-		partsAttributes[Ability::HealIncrease] = 0.f;
-		partsAttributes[Ability::OnLockdown] = 0.f;
-		partsAttributes[Ability::HoTDoneIncrease] = 0.f;
-		partsAttributes[Ability::ProjectileDamageIncrease] = 0.f;
-		partsAttributes[Ability::DeployBonusInvincibilityTime] = 0.f;
-		partsAttributes[Ability::PhysicalDamageDecreaseFlat] = 0.f;
-		partsAttributes[Ability::EnergyDamageDecreaseFlat] = 0.f;
-		partsAttributes[Ability::MinWeaponDamage] = 1.f;
-		partsAttributes[Ability::MaxWeaponDamage] = 1.f;
-		partsAttributes[Ability::MinWeaponDamagePercent] = 0.f;
-		partsAttributes[Ability::MaxWeaponDamagePercent] = 0.f;
-		partsAttributes[Ability::DirectAttackDamage] = 0.f;
-		partsAttributes[Ability::DirectAttackDamagePercent] = 0.f;
-		partsAttributes[Ability::GetHitAnimDisabled] = 0.f;
-		partsAttributes[Ability::XPBoost] = 0.f;
-		partsAttributes[Ability::InvisibleToSecurityTeleporters] = 1.f;
-		partsAttributes[Ability::BodyScale] = 1.f;
+		partsAttributes[Attribute::Strength] = 1.f;
+		partsAttributes[Attribute::Dexterity] = 1.f;
+		partsAttributes[Attribute::Mind] = 1.f;
+		partsAttributes[Attribute::MaxHealthIncrease] = 0.f;
+		partsAttributes[Attribute::MaxHealth] = 0.f;
+		partsAttributes[Attribute::MaxMana] = 0.f;
+		partsAttributes[Attribute::DamageReduction] = 0.f;
+		partsAttributes[Attribute::PhysicalDefense] = 0.f;
+		partsAttributes[Attribute::PhysicalDamageReduction] = 0.f;
+		partsAttributes[Attribute::EnergyDefense] = 0.f;
+		partsAttributes[Attribute::CriticalRating] = 0.f;
+		partsAttributes[Attribute::NonCombatSpeed] = 10.f;
+		partsAttributes[Attribute::CombatSpeed] = 10.f;
+		partsAttributes[Attribute::DamageBuff] = 0.f;
+		partsAttributes[Attribute::Silence] = 0.f;
+		partsAttributes[Attribute::Immobilized] = 0.f;
+		partsAttributes[Attribute::DefenseBoostBasicDamage] = 0.f;
+		partsAttributes[Attribute::PhysicalDamageIncrease] = 0.f;
+		partsAttributes[Attribute::PhysicalDamageIncreaseFlat] = 0.f;
+		partsAttributes[Attribute::AutoCrit] = 0.f;
+		partsAttributes[Attribute::BehindDirectDamageIncrease] = 0.f;
+		partsAttributes[Attribute::BehindOrSideDirectDamageIncrease] = 0.f;
+		partsAttributes[Attribute::CriticalDamageIncrease] = 0.f;
+		partsAttributes[Attribute::AttackSpeedScale] = 1.f;
+		partsAttributes[Attribute::CooldownScale] = 1.f;
+		partsAttributes[Attribute::Frozen] = 0.f;
+		partsAttributes[Attribute::ProjectileSpeedIncrease] = 0.f;
+		partsAttributes[Attribute::AoEResistance] = 0.f;
+		partsAttributes[Attribute::EnergyDamageBuff] = 0.f;
+		partsAttributes[Attribute::Intangible] = 0.f;
+		partsAttributes[Attribute::HealingReduction] = 0.f;
+		partsAttributes[Attribute::EnergyDamageIncrease] = 0.f;
+		partsAttributes[Attribute::EnergyDamageIncreaseFlat] = 0.f;
+		partsAttributes[Attribute::Immune] = 0.f;
+		partsAttributes[Attribute::StealthDetection] = 0.f;
+		partsAttributes[Attribute::LifeSteal] = 0.f;
+		partsAttributes[Attribute::RejectModifier] = 0.f;
+		partsAttributes[Attribute::AoEDamage] = 0.f;
+		partsAttributes[Attribute::TechnologyTypeDamage] = 0.f;
+		partsAttributes[Attribute::SpacetimeTypeDamage] = 0.f;
+		partsAttributes[Attribute::LifeTypeDamage] = 0.f;
+		partsAttributes[Attribute::ElementsTypeDamage] = 0.f;
+		partsAttributes[Attribute::SupernaturalTypeDamage] = 0.f;
+		partsAttributes[Attribute::TechnologyTypeResistance] = 0.f;
+		partsAttributes[Attribute::SpacetimeTypeResistance] = 0.f;
+		partsAttributes[Attribute::LifeTypeResistance] = 0.f;
+		partsAttributes[Attribute::ElementsTypeResistance] = 0.f;
+		partsAttributes[Attribute::SupernaturalTypeResistance] = 0.f;
+		partsAttributes[Attribute::MovementSpeedBuff] = 0.f;
+		partsAttributes[Attribute::ImmuneToDebuffs] = 0.f;
+		partsAttributes[Attribute::BuffDuration] = 0.f;
+		partsAttributes[Attribute::DebuffDuration] = 0.f;
+		partsAttributes[Attribute::ManaSteal] = 0.f;
+		partsAttributes[Attribute::DebuffDurationIncrease] = 0.f;
+		partsAttributes[Attribute::EnergyDamageReduction] = 0.f;
+		partsAttributes[Attribute::Incorporeal] = 0.f;
+		partsAttributes[Attribute::DoTDamageIncrease] = 0.f;
+		partsAttributes[Attribute::MindControlled] = 0.f;
+		partsAttributes[Attribute::SwapDisabled] = 0.f;
+		partsAttributes[Attribute::ImmuneToRandomTeleport] = 0.f;
+		partsAttributes[Attribute::ImmuneToBanish] = 0.f;
+		partsAttributes[Attribute::ImmuneToKnockback] = 0.f;
+		partsAttributes[Attribute::AoeRadius] = 0.f;
+		partsAttributes[Attribute::PetDamage] = 0.f;
+		partsAttributes[Attribute::PetHealth] = 0.f;
+		partsAttributes[Attribute::CrystalFind] = 0.f;
+		partsAttributes[Attribute::DNADropped] = 0.f;
+		partsAttributes[Attribute::RangeIncrease] = 0.f;
+		partsAttributes[Attribute::OrbEffectiveness] = 0.f;
+		partsAttributes[Attribute::OverdriveBuildup] = 0.f;
+		partsAttributes[Attribute::OverdriveDuration] = 0.f;
+		partsAttributes[Attribute::LootFind] = 0.f;
+		partsAttributes[Attribute::Surefooted] = 0.f;
+		partsAttributes[Attribute::ImmuneToStunned] = 0.f;
+		partsAttributes[Attribute::ImmuneToSleep] = 0.f;
+		partsAttributes[Attribute::ImmuneToTerrified] = 0.f;
+		partsAttributes[Attribute::ImmuneToSilence] = 0.f;
+		partsAttributes[Attribute::ImmuneToCursed] = 0.f;
+		partsAttributes[Attribute::ImmuneToPoisonOrDisease] = 0.f;
+		partsAttributes[Attribute::ImmuneToBurning] = 0.f;
+		partsAttributes[Attribute::ImmuneToRooted] = 0.f;
+		partsAttributes[Attribute::ImmuneToSlow] = 0.f;
+		partsAttributes[Attribute::ImmuneToPull] = 0.f;
+		partsAttributes[Attribute::DoTDamageDoneIncrease] = 0.f;
+		partsAttributes[Attribute::AggroIncrease] = 0.f;
+		partsAttributes[Attribute::AggroDecrease] = 0.f;
+		partsAttributes[Attribute::PhysicalDamageDoneIncrease] = 0.f;
+		partsAttributes[Attribute::PhysicalDamageDoneByAbilityIncrease] = 0.f;
+		partsAttributes[Attribute::EnergyDamageDoneIncrease] = 0.f;
+		partsAttributes[Attribute::EnergyDamageDoneByAbilityIncrease] = 0.f;
+		partsAttributes[Attribute::ChannelTimeDecrease] = 0.f;
+		partsAttributes[Attribute::CrowdControlDurationDecrease] = 0.f;
+		partsAttributes[Attribute::DoTDurationDecrease] = 0.f;
+		partsAttributes[Attribute::AoEDurationIncrease] = 0.f;
+		partsAttributes[Attribute::HealIncrease] = 0.f;
+		partsAttributes[Attribute::OnLockdown] = 0.f;
+		partsAttributes[Attribute::HoTDoneIncrease] = 0.f;
+		partsAttributes[Attribute::ProjectileDamageIncrease] = 0.f;
+		partsAttributes[Attribute::DeployBonusInvincibilityTime] = 0.f;
+		partsAttributes[Attribute::PhysicalDamageDecreaseFlat] = 0.f;
+		partsAttributes[Attribute::EnergyDamageDecreaseFlat] = 0.f;
+		partsAttributes[Attribute::MinWeaponDamage] = 1.f;
+		partsAttributes[Attribute::MaxWeaponDamage] = 1.f;
+		partsAttributes[Attribute::MinWeaponDamagePercent] = 0.f;
+		partsAttributes[Attribute::MaxWeaponDamagePercent] = 0.f;
+		partsAttributes[Attribute::DirectAttackDamage] = 0.f;
+		partsAttributes[Attribute::DirectAttackDamagePercent] = 0.f;
+		partsAttributes[Attribute::GetHitAnimDisabled] = 0.f;
+		partsAttributes[Attribute::XPBoost] = 0.f;
+		partsAttributes[Attribute::InvisibleToSecurityTeleporters] = 1.f;
+		partsAttributes[Attribute::BodyScale] = 1.f;
 	}
 
 	void labsCharacter::WriteTo(BitStream& stream) const {
@@ -1041,9 +793,6 @@ namespace RakNet {
 	void labsPlayer::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x14B8);
 
-		// auto writeOffset = stream.GetWriteOffset();
-		// stream.AddBitsAndReallocate(size);
-
 		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset);
@@ -1270,6 +1019,8 @@ namespace RakNet {
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x258));
 		Write(stream, mGraphicsState);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x260));
 		Write(stream, mGraphicsStateStartTimeMs);
 		Write(stream, mNewGraphicsStateStartTimeMs);
 
@@ -1436,8 +1187,117 @@ namespace RakNet {
 		reflector.end();
 	}
 
-	// cLocomotionData
-	void cLocomotionData::WriteTo(BitStream& stream) const {
+	// LocomotionData
+	void LocomotionData::SetGoalPosition(const glm::vec3& position) {
+		constexpr auto vec3_zero = glm::zero<glm::vec3>();
+
+		// reset data
+		mTargetObjectId = 0;
+		mFacing = vec3_zero;
+		mTargetPosition = vec3_zero;
+		mExternalLinearVelocity = vec3_zero;
+
+		// set data
+		mGoalFlags = 0x001;
+		mGoalPosition = position;
+		mAllowedStopDistance = 0;
+		mDesiredStopDistance = 0;
+	}
+
+	void LocomotionData::SetGoalPositionWithDistance(const glm::vec3& position, float distance) {
+		SetGoalPosition(position);
+
+		mAllowedStopDistance = distance;
+		mDesiredStopDistance = distance;
+	}
+	/*
+	void LocomotionData::SetGoalObject(const Game::ObjectPtr& object, float distance) {
+		if (!object) {
+			return;
+		}
+
+		// distance = GetAllowedStoppingDistance(object) + distance;
+		SetGoalPosition(data, object->GetPosition());
+
+		// mGoalFlags |= (1 & 0x40);
+		// mGoalFlags |= (2 & 0x80);
+
+		mAllowedStopDistance = distance;
+		mDesiredStopDistance = distance;
+	}
+	
+	void LocomotionData::SetGoalObjectEx(const Game::ObjectPtr& object, float distance) {
+		constexpr auto vec3_zero = glm::zero<glm::vec3>();
+		if (!object) {
+			return;
+		}
+
+		// reset data
+		mTargetObjectId = 0;
+		mFacing = vec3_zero;
+		mTargetPosition = vec3_zero;
+		mExternalLinearVelocity = vec3_zero;
+
+		// set data
+		mGoalFlags = 0x400;
+		// mGoalFlags = 1 & 0x040;
+		mTargetObjectId = object->GetId();
+		mGoalPosition = object->GetPosition();
+		mAllowedStopDistance = distance;
+		mDesiredStopDistance = distance;
+	}
+	*/
+	void LocomotionData::Stop() {
+		constexpr auto vec3_zero = glm::zero<glm::vec3>();
+
+		// reset data
+		mTargetObjectId = 0;
+		mFacing = vec3_zero;
+
+		// set data
+		mGoalFlags = 0x020;
+	}
+	/*
+	void LocomotionData::MoveToPointWhileFacingTarget(const glm::vec3& position, const Game::ObjectPtr& object) {
+		constexpr auto vec3_zero = glm::zero<glm::vec3>();
+		if (!object) {
+			return;
+		}
+
+		// reset data
+		mFacing = vec3_zero;
+		mTargetPosition = vec3_zero;
+		mExternalLinearVelocity = vec3_zero;
+
+		// set data
+		mGoalFlags = 0x001 | 0x100;
+		mGoalPosition = position;
+		mTargetObjectId = object->GetId();
+		mAllowedStopDistance = 0;
+		mDesiredStopDistance = 0;
+
+		// extra_func(0x100);
+	}
+	*/
+	void LocomotionData::ApplyExternalVelocity(const glm::vec3& velocity) {
+		constexpr auto vec3_zero = glm::zero<glm::vec3>();
+
+		// reset data
+		mTargetObjectId = 0;
+		mFacing = vec3_zero;
+
+		// set data
+		mGoalFlags = 0x008;
+		mExternalLinearVelocity = velocity;
+	}
+
+	void LocomotionData::ClearExternalVelocity(const glm::vec3& velocity) {
+		// set data
+		mGoalFlags = 0x020;
+		mExternalLinearVelocity = glm::zero<glm::vec3>();
+	}
+
+	void LocomotionData::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x290);
 
 		auto writeOffset = ReallocateStream(stream, size);
@@ -1479,7 +1339,7 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + size);
 	}
 
-	void cLocomotionData::WriteReflection(BitStream& stream) const {
+	void LocomotionData::WriteReflection(BitStream& stream) const {
 		reflection_serializer<18> reflector(stream);
 		reflector.begin();
 		reflector.write<0>(lobStartTime);
@@ -1503,122 +1363,125 @@ namespace RakNet {
 		reflector.end();
 	}
 
+	// TODO: fix all attribute reflection properly
 	// cAttributeData in Darkspore
 	AttributeData::AttributeData() {
-		SetValue(Ability::NonCombatSpeed, 10.f);
-		SetValue(Ability::CombatSpeed, 10.f);
+		SetValue(Attribute::NonCombatSpeed, 10.f);
+		SetValue(Attribute::CombatSpeed, 10.f);
+		SetValue(Attribute::AttackSpeedScale, 1.f);
+		SetValue(Attribute::CooldownScale, 1.f);
 		/*
-		mData[Ability::Strength] = 1.f;
-		mData[Ability::Dexterity] = 1.f;
-		mData[Ability::Mind] = 1.f;
-		mData[Ability::MaxHealthIncrease] = 0.f;
-		mData[Ability::MaxHealth] = 0.f;
-		mData[Ability::MaxMana] = 0.f;
-		mData[Ability::DamageReduction] = 0.f;
-		mData[Ability::PhysicalDefense] = 0.f;
-		mData[Ability::PhysicalDamageReduction] = 0.f;
-		mData[Ability::EnergyDefense] = 0.f;
-		mData[Ability::CriticalRating] = 0.f;
-		mData[Ability::NonCombatSpeed] = 10.f;
-		mData[Ability::CombatSpeed] = 10.f;
-		mData[Ability::DamageBuff] = 0.f;
-		mData[Ability::Silence] = 0.f;
-		mData[Ability::Immobilized] = 0.f;
-		mData[Ability::DefenseBoostBasicDamage] = 0.f;
-		mData[Ability::PhysicalDamageIncrease] = 0.f;
-		mData[Ability::PhysicalDamageIncreaseFlat] = 0.f;
-		mData[Ability::AutoCrit] = 0.f;
-		mData[Ability::BehindDirectDamageIncrease] = 0.f;
-		mData[Ability::BehindOrSideDirectDamageIncrease] = 0.f;
-		mData[Ability::CriticalDamageIncrease] = 0.f;
-		mData[Ability::AttackSpeedScale] = 1.f;
-		mData[Ability::CooldownScale] = 1.f;
-		mData[Ability::Frozen] = 0.f;
-		mData[Ability::ProjectileSpeedIncrease] = 0.f;
-		mData[Ability::AoEResistance] = 0.f;
-		mData[Ability::EnergyDamageBuff] = 0.f;
-		mData[Ability::Intangible] = 0.f;
-		mData[Ability::HealingReduction] = 0.f;
-		mData[Ability::EnergyDamageIncrease] = 0.f;
-		mData[Ability::EnergyDamageIncreaseFlat] = 0.f;
-		mData[Ability::Immune] = 0.f;
-		mData[Ability::StealthDetection] = 0.f;
-		mData[Ability::LifeSteal] = 0.f;
-		mData[Ability::RejectModifier] = 0.f;
-		mData[Ability::AoEDamage] = 0.f;
-		mData[Ability::TechnologyTypeDamage] = 0.f;
-		mData[Ability::SpacetimeTypeDamage] = 0.f;
-		mData[Ability::LifeTypeDamage] = 0.f;
-		mData[Ability::ElementsTypeDamage] = 0.f;
-		mData[Ability::SupernaturalTypeDamage] = 0.f;
-		mData[Ability::TechnologyTypeResistance] = 0.f;
-		mData[Ability::SpacetimeTypeResistance] = 0.f;
-		mData[Ability::LifeTypeResistance] = 0.f;
-		mData[Ability::ElementsTypeResistance] = 0.f;
-		mData[Ability::SupernaturalTypeResistance] = 0.f;
-		mData[Ability::MovementSpeedBuff] = 0.f;
-		mData[Ability::ImmuneToDebuffs] = 0.f;
-		mData[Ability::BuffDuration] = 0.f;
-		mData[Ability::DebuffDuration] = 0.f;
-		mData[Ability::ManaSteal] = 0.f;
-		mData[Ability::DebuffDurationIncrease] = 0.f;
-		mData[Ability::EnergyDamageReduction] = 0.f;
-		mData[Ability::Incorporeal] = 0.f;
-		mData[Ability::DoTDamageIncrease] = 0.f;
-		mData[Ability::MindControlled] = 0.f;
-		mData[Ability::SwapDisabled] = 0.f;
-		mData[Ability::ImmuneToRandomTeleport] = 0.f;
-		mData[Ability::ImmuneToBanish] = 0.f;
-		mData[Ability::ImmuneToKnockback] = 0.f;
-		mData[Ability::AoeRadius] = 0.f;
-		mData[Ability::PetDamage] = 0.f;
-		mData[Ability::PetHealth] = 0.f;
-		mData[Ability::CrystalFind] = 0.f;
-		mData[Ability::DNADropped] = 0.f;
-		mData[Ability::RangeIncrease] = 0.f;
-		mData[Ability::OrbEffectiveness] = 0.f;
-		mData[Ability::OverdriveBuildup] = 0.f;
-		mData[Ability::OverdriveDuration] = 0.f;
-		mData[Ability::LootFind] = 0.f;
-		mData[Ability::Surefooted] = 0.f;
-		mData[Ability::ImmuneToStunned] = 0.f;
-		mData[Ability::ImmuneToSleep] = 0.f;
-		mData[Ability::ImmuneToTerrified] = 0.f;
-		mData[Ability::ImmuneToSilence] = 0.f;
-		mData[Ability::ImmuneToCursed] = 0.f;
-		mData[Ability::ImmuneToPoisonOrDisease] = 0.f;
-		mData[Ability::ImmuneToBurning] = 0.f;
-		mData[Ability::ImmuneToRooted] = 0.f;
-		mData[Ability::ImmuneToSlow] = 0.f;
-		mData[Ability::ImmuneToPull] = 0.f;
-		mData[Ability::DoTDamageDoneIncrease] = 0.f;
-		mData[Ability::AggroIncrease] = 0.f;
-		mData[Ability::AggroDecrease] = 0.f;
-		mData[Ability::PhysicalDamageDoneIncrease] = 0.f;
-		mData[Ability::PhysicalDamageDoneByAbilityIncrease] = 0.f;
-		mData[Ability::EnergyDamageDoneIncrease] = 0.f;
-		mData[Ability::EnergyDamageDoneByAbilityIncrease] = 0.f;
-		mData[Ability::ChannelTimeDecrease] = 0.f;
-		mData[Ability::CrowdControlDurationDecrease] = 0.f;
-		mData[Ability::DoTDurationDecrease] = 0.f;
-		mData[Ability::AoEDurationIncrease] = 0.f;
-		mData[Ability::HealIncrease] = 0.f;
-		mData[Ability::OnLockdown] = 0.f;
-		mData[Ability::HoTDoneIncrease] = 0.f;
-		mData[Ability::ProjectileDamageIncrease] = 0.f;
-		mData[Ability::DeployBonusInvincibilityTime] = 0.f;
-		mData[Ability::PhysicalDamageDecreaseFlat] = 0.f;
-		mData[Ability::EnergyDamageDecreaseFlat] = 0.f;
-		mData[Ability::MinWeaponDamage] = 1.f;
-		mData[Ability::MaxWeaponDamage] = 1.f;
-		mData[Ability::MinWeaponDamagePercent] = 0.f;
-		mData[Ability::MaxWeaponDamagePercent] = 0.f;
-		mData[Ability::DirectAttackDamage] = 0.f;
-		mData[Ability::DirectAttackDamagePercent] = 0.f;
-		mData[Ability::GetHitAnimDisabled] = 0.f;
-		mData[Ability::XPBoost] = 0.f;
-		mData[Ability::InvisibleToSecurityTeleporters] = 0.f;
-		mData[Ability::BodyScale] = 1.f;
+		mData[Attribute::Strength] = 1.f;
+		mData[Attribute::Dexterity] = 1.f;
+		mData[Attribute::Mind] = 1.f;
+		mData[Attribute::MaxHealthIncrease] = 0.f;
+		mData[Attribute::MaxHealth] = 0.f;
+		mData[Attribute::MaxMana] = 0.f;
+		mData[Attribute::DamageReduction] = 0.f;
+		mData[Attribute::PhysicalDefense] = 0.f;
+		mData[Attribute::PhysicalDamageReduction] = 0.f;
+		mData[Attribute::EnergyDefense] = 0.f;
+		mData[Attribute::CriticalRating] = 0.f;
+		mData[Attribute::NonCombatSpeed] = 10.f;
+		mData[Attribute::CombatSpeed] = 10.f;
+		mData[Attribute::DamageBuff] = 0.f;
+		mData[Attribute::Silence] = 0.f;
+		mData[Attribute::Immobilized] = 0.f;
+		mData[Attribute::DefenseBoostBasicDamage] = 0.f;
+		mData[Attribute::PhysicalDamageIncrease] = 0.f;
+		mData[Attribute::PhysicalDamageIncreaseFlat] = 0.f;
+		mData[Attribute::AutoCrit] = 0.f;
+		mData[Attribute::BehindDirectDamageIncrease] = 0.f;
+		mData[Attribute::BehindOrSideDirectDamageIncrease] = 0.f;
+		mData[Attribute::CriticalDamageIncrease] = 0.f;
+		mData[Attribute::AttackSpeedScale] = 1.f;
+		mData[Attribute::CooldownScale] = 1.f;
+		mData[Attribute::Frozen] = 0.f;
+		mData[Attribute::ProjectileSpeedIncrease] = 0.f;
+		mData[Attribute::AoEResistance] = 0.f;
+		mData[Attribute::EnergyDamageBuff] = 0.f;
+		mData[Attribute::Intangible] = 0.f;
+		mData[Attribute::HealingReduction] = 0.f;
+		mData[Attribute::EnergyDamageIncrease] = 0.f;
+		mData[Attribute::EnergyDamageIncreaseFlat] = 0.f;
+		mData[Attribute::Immune] = 0.f;
+		mData[Attribute::StealthDetection] = 0.f;
+		mData[Attribute::LifeSteal] = 0.f;
+		mData[Attribute::RejectModifier] = 0.f;
+		mData[Attribute::AoEDamage] = 0.f;
+		mData[Attribute::TechnologyTypeDamage] = 0.f;
+		mData[Attribute::SpacetimeTypeDamage] = 0.f;
+		mData[Attribute::LifeTypeDamage] = 0.f;
+		mData[Attribute::ElementsTypeDamage] = 0.f;
+		mData[Attribute::SupernaturalTypeDamage] = 0.f;
+		mData[Attribute::TechnologyTypeResistance] = 0.f;
+		mData[Attribute::SpacetimeTypeResistance] = 0.f;
+		mData[Attribute::LifeTypeResistance] = 0.f;
+		mData[Attribute::ElementsTypeResistance] = 0.f;
+		mData[Attribute::SupernaturalTypeResistance] = 0.f;
+		mData[Attribute::MovementSpeedBuff] = 0.f;
+		mData[Attribute::ImmuneToDebuffs] = 0.f;
+		mData[Attribute::BuffDuration] = 0.f;
+		mData[Attribute::DebuffDuration] = 0.f;
+		mData[Attribute::ManaSteal] = 0.f;
+		mData[Attribute::DebuffDurationIncrease] = 0.f;
+		mData[Attribute::EnergyDamageReduction] = 0.f;
+		mData[Attribute::Incorporeal] = 0.f;
+		mData[Attribute::DoTDamageIncrease] = 0.f;
+		mData[Attribute::MindControlled] = 0.f;
+		mData[Attribute::SwapDisabled] = 0.f;
+		mData[Attribute::ImmuneToRandomTeleport] = 0.f;
+		mData[Attribute::ImmuneToBanish] = 0.f;
+		mData[Attribute::ImmuneToKnockback] = 0.f;
+		mData[Attribute::AoeRadius] = 0.f;
+		mData[Attribute::PetDamage] = 0.f;
+		mData[Attribute::PetHealth] = 0.f;
+		mData[Attribute::CrystalFind] = 0.f;
+		mData[Attribute::DNADropped] = 0.f;
+		mData[Attribute::RangeIncrease] = 0.f;
+		mData[Attribute::OrbEffectiveness] = 0.f;
+		mData[Attribute::OverdriveBuildup] = 0.f;
+		mData[Attribute::OverdriveDuration] = 0.f;
+		mData[Attribute::LootFind] = 0.f;
+		mData[Attribute::Surefooted] = 0.f;
+		mData[Attribute::ImmuneToStunned] = 0.f;
+		mData[Attribute::ImmuneToSleep] = 0.f;
+		mData[Attribute::ImmuneToTerrified] = 0.f;
+		mData[Attribute::ImmuneToSilence] = 0.f;
+		mData[Attribute::ImmuneToCursed] = 0.f;
+		mData[Attribute::ImmuneToPoisonOrDisease] = 0.f;
+		mData[Attribute::ImmuneToBurning] = 0.f;
+		mData[Attribute::ImmuneToRooted] = 0.f;
+		mData[Attribute::ImmuneToSlow] = 0.f;
+		mData[Attribute::ImmuneToPull] = 0.f;
+		mData[Attribute::DoTDamageDoneIncrease] = 0.f;
+		mData[Attribute::AggroIncrease] = 0.f;
+		mData[Attribute::AggroDecrease] = 0.f;
+		mData[Attribute::PhysicalDamageDoneIncrease] = 0.f;
+		mData[Attribute::PhysicalDamageDoneByAbilityIncrease] = 0.f;
+		mData[Attribute::EnergyDamageDoneIncrease] = 0.f;
+		mData[Attribute::EnergyDamageDoneByAbilityIncrease] = 0.f;
+		mData[Attribute::ChannelTimeDecrease] = 0.f;
+		mData[Attribute::CrowdControlDurationDecrease] = 0.f;
+		mData[Attribute::DoTDurationDecrease] = 0.f;
+		mData[Attribute::AoEDurationIncrease] = 0.f;
+		mData[Attribute::HealIncrease] = 0.f;
+		mData[Attribute::OnLockdown] = 0.f;
+		mData[Attribute::HoTDoneIncrease] = 0.f;
+		mData[Attribute::ProjectileDamageIncrease] = 0.f;
+		mData[Attribute::DeployBonusInvincibilityTime] = 0.f;
+		mData[Attribute::PhysicalDamageDecreaseFlat] = 0.f;
+		mData[Attribute::EnergyDamageDecreaseFlat] = 0.f;
+		mData[Attribute::MinWeaponDamage] = 1.f;
+		mData[Attribute::MaxWeaponDamage] = 1.f;
+		mData[Attribute::MinWeaponDamagePercent] = 0.f;
+		mData[Attribute::MaxWeaponDamagePercent] = 0.f;
+		mData[Attribute::DirectAttackDamage] = 0.f;
+		mData[Attribute::DirectAttackDamagePercent] = 0.f;
+		mData[Attribute::GetHitAnimDisabled] = 0.f;
+		mData[Attribute::XPBoost] = 0.f;
+		mData[Attribute::InvisibleToSecurityTeleporters] = 0.f;
+		mData[Attribute::BodyScale] = 1.f;
 		*/
 		mMinWeaponDamage = 0;
 		mMaxWeaponDamage = 10;
@@ -1977,9 +1840,18 @@ namespace RakNet {
 	ChainVoteData::ChainVoteData() {
 		// mEnemyNouns.fill(0);
 		// mLevelNouns.fill(0);
-		mEnemyNouns.fill(utils::hash_id("nct_minn_su_drainer.noun"));
-		mLevelNouns[0] = 0x12345678;
-		mLevelNouns[1] = 0xFEDCBA09;
+		// mEnemyNouns.fill(utils::hash_id("nct_minn_su_drainer.noun"));
+
+		// 1-1
+		mEnemyNouns[0] = utils::hash_id("VerdanthBasicMelee.Noun");
+		mEnemyNouns[1] = utils::hash_id("ZelemBasicHybrid.Noun");
+		mEnemyNouns[2] = utils::hash_id("ZelemBasicPackMelee.Noun");
+		mEnemyNouns[3] = utils::hash_id("ZelemBasicRangedHoming.Noun");
+		mEnemyNouns[4] = utils::hash_id("ZelemBasicFlyingMelee.Noun");
+		mEnemyNouns[5] = utils::hash_id("NomadSnipe.Noun");
+
+		mLevelNouns[0] = utils::hash_id("ZelemBoss.Noun");
+		mLevelNouns[1] = utils::hash_id("NomadSpacetimeAgent.Noun");
 	}
 
 	float ChainVoteData::GetTimeRemaining() const {
@@ -2021,6 +1893,7 @@ namespace RakNet {
 
 	uint32_t ChainVoteData::GetMarkerSet() const {
 		std::string markerSet = "levelshop";
+		markerSet = "ai_1";
 		// markerSet = "audio";
 		// std::string markerSet = "default";
 

@@ -8,6 +8,7 @@
 #include "sporenet/user.h"
 
 #include "game/gamemanager.h"
+#include "game/lua.h"
 
 #include "raknet/server.h"
 
@@ -142,9 +143,7 @@ namespace Blaze {
 		auto localId = std::get<2>(clientMessage.target);
 		switch (componentId) {
 			case GameManagerComponent::Id: {
-				uint32_t gameId = static_cast<uint32_t>(localId);
-
-				const auto& game = Game::GameManager::GetGame(gameId);
+				const auto& game = Game::GameManager::GetGame(static_cast<uint32_t>(localId));
 				if (!game) {
 					break;
 				}
@@ -154,9 +153,7 @@ namespace Blaze {
 					break;
 				}
 
-				auto userId = player->GetData().mPlayerOnlineId;
-
-				const auto& user = SporeNet::Get().GetUserManager().GetUserByAuthToken(std::to_string(userId));
+				const auto& user = player->GetUser();
 				if (user) {
 					serverMessage.name = user->get_name();
 				}
@@ -185,6 +182,18 @@ namespace Blaze {
 							std::string valueStr(messageTextView);
 							messageText = "<sent packet " + valueStr + ">";
 						}
+					} else if (messageTextView.starts_with("lua ")) {
+						// !lua script
+						if (messageTextView.length() < 5) {
+							break;
+						}
+
+						messageTextView = &messageText[5];
+						game->AddServerTask([game, buffer = std::string(messageTextView)] {
+							game->GetLua().LoadBuffer(buffer);
+						});
+
+						messageText = "<load lua buffer>";
 					}
 				}
 

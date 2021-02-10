@@ -1,6 +1,10 @@
 
 // Include
 #include "instance.h"
+
+#include "objectmanager.h"
+#include "lua.h"
+
 #include "raknet/server.h"
 #include "sporenet/instance.h"
 #include "sporenet/user.h"
@@ -40,12 +44,16 @@ namespace Game {
 	bool Instance::Start() {
 		Stop();
 
-		mObjectManager = std::make_unique<ObjectManager>();
+		mObjectManager = std::make_unique<ObjectManager>(*this);
+		mLua = std::make_unique<Lua>(*this);
 		mServer = std::make_unique<RakNet::Server>(*this);
 
 		mServer->start(mData.hostNetwork.exip.port);
 		mGameStartTime = utils::get_milliseconds();
 
+		mServer->add_task([this] {
+			mLua->Initialize();
+		});
 		return true;
 	}
 
@@ -56,6 +64,7 @@ namespace Game {
 		}
 
 		mServer.reset();
+		mLua.reset();
 		mObjectManager.reset();
 	}
 
@@ -101,6 +110,22 @@ namespace Game {
 	uint64_t Instance::GetTimeElapsed() const {
 		return utils::get_milliseconds() - mGameStartTime;
 	}
+
+	ObjectManager& Instance::GetObjectManager() {
+		return *mObjectManager;
+	}
+
+	const ObjectManager& Instance::GetObjectManager() const {
+		return *mObjectManager;
+	}
+
+	Lua& Instance::GetLua() {
+		return *mLua;
+	}
+
+	const Lua& Instance::GetLua() const {
+		return *mLua;
+	}
 	
 	void Instance::AddServerTask(std::function<void(void)> task) {
 		mServer->add_task(std::move(task));
@@ -110,13 +135,22 @@ namespace Game {
 		mServer->add_client_task(id, packet);
 	}
 
+	void Instance::OnPlayerStart(const PlayerPtr& player) {
+		mLua->LoadFile("data/lua/player_start.lua");
+	}
+
+	bool Instance::ServerUpdate() const {
+		return (utils::get_milliseconds() - mGameTime) >= 10;
+	}
+
 	bool Instance::Update() {
 		// It is safe to send packets in this function.
 		auto newGameTime = utils::get_milliseconds();
 		auto diff = newGameTime - mGameTime;
 
-		if (diff >= 100) {
+		if (diff >= 50) {
 			mGameTime = newGameTime;
+			mObjectManager->Update();
 
 			const auto& client = mServer->GetClient(static_cast<uint8_t>(0));
 			if (client) {
@@ -133,29 +167,21 @@ namespace Game {
 		return false;
 	}
 
-	void Instance::MoveObject(const ObjectPtr& object, const RakNet::cSPVector3& position, RakNet::cLocomotionData& locomotionData) {
+	void Instance::MoveObject(const ObjectPtr& object, RakNet::LocomotionData& locomotionData) {
 		if (!object) {
 			return;
 		}
 
-		// check objects for collision events (1-1 test)
-		bool teleport = false;
-		if (glm::distance(glm::vec3(-141.341263, 83.731735, 0.034049), position) < 5) {
-			teleport = true;
-			object->SetPosition({
-				555.591919,
-				-31.406910,
-				-0.477445
-			});
-		} else {
-			object->SetPosition(position);
-		}
+		// TODO: do we check triggers here instead of at update... or both?
 
+		bool teleport = locomotionData.mGoalFlags & 0x020;
 		if (teleport) {
+			object->SetPosition(locomotionData.mGoalPosition);
 			for (const auto& [_, client] : mServer->GetClients()) {
-				mServer->SendObjectTeleport(client, object, object->GetPosition(), glm::zero<glm::vec3>());
+				mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotionData.mFacing);
 			}
 		} else {
+			object->SetPosition(locomotionData.mPartialGoalPosition);
 			for (const auto& [_, client] : mServer->GetClients()) {
 				mServer->SendObjectPlayerMove(client, object, locomotionData);
 			}
@@ -167,6 +193,9 @@ namespace Game {
 			return;
 		}
 
+		// mLua->LoadFile("ability_test.lua");
+
+		/*
 		RakNet::CombatEvent combatEvent;
 		combatEvent.flags = RakNet::CombatEventFlags::None;
 		combatEvent.deltaHealth = -500;
@@ -176,13 +205,10 @@ namespace Game {
 		combatEvent.abilityID = combatData.abilityId;
 		combatEvent.damageDirection = glm::zero<glm::vec3>();
 		combatEvent.integerHpChange = -500;
-
+		
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendCombatEvent(client, combatEvent);
 		}
-
-		/*
-		SendActionCommandResponse(client, 1);
 		*/
 	}
 
@@ -191,10 +217,17 @@ namespace Game {
 			return;
 		}
 
+		// TODO: proper functions for these things
+		if (!player->SwapCharacter(creatureIndex)) {
+			return;
+		}
+
 		// set player current creature
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendPlayerCharacterDeploy(client, player, creatureIndex);
 		}
+
+		SendLabsPlayerUpdate(player);
 	}
 
 	void Instance::PickupLoot(const PlayerPtr& player, uint32_t lootObjectId) {
@@ -207,7 +240,7 @@ namespace Game {
 			return;
 		}
 
-		// lootObject->MarkForDeletion();
+		object->MarkForDeletion();
 		if (!object->HasLootData()) {
 			return;
 		}
@@ -291,12 +324,10 @@ namespace Game {
 
 			auto object = mObjectManager->Create(utils::hash_id(dropRarityNouns[containerType]));
 			object->SetPosition(position);
+			object->SetTeam(0);
+			object->SetMovementType(6);
+			object->SetInteractableState(0);
 			object->SetLootData(std::move(lootData));
-
-			auto& objectData = object->GetData();
-			objectData.mTeam = 0;
-			objectData.mMovementType = 6;
-			objectData.mInteractableState = 0;
 
 			RakNet::cInteractableData interactableData;
 			interactableData.mNumUsesAllowed = 1;
@@ -324,7 +355,7 @@ namespace Game {
 			return;
 		}
 
-		// object->MarkForDeletion();
+		object->MarkForDeletion();
 		if (!object->HasLootData()) {
 			return;
 		}
@@ -377,12 +408,10 @@ namespace Game {
 
 			auto object = mObjectManager->Create(catalyst.crystalNoun);
 			object->SetPosition(position);
+			object->SetTeam(0);
+			object->SetMovementType(6);
+			object->SetInteractableState(0);
 			object->SetLootData(std::move(lootData));
-
-			auto& objectData = object->GetData();
-			objectData.mTeam = 0;
-			objectData.mMovementType = 6;
-			objectData.mInteractableState = 0;
 
 			RakNet::cInteractableData interactableData;
 			interactableData.mNumUsesAllowed = 1;
@@ -411,4 +440,115 @@ namespace Game {
 		ResurrectOrb.noun - PickupResurrectOrb
 		DNA.noun - DNA_Pickup
 	*/
+
+	void Instance::SendObjectCreate(const ObjectPtr& object) {
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendObjectCreate(client, object);
+		}
+	}
+
+	void Instance::SendObjectDelete(const ObjectPtr& object) {
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendObjectDelete(client, object);
+		}
+	}
+
+	void Instance::SendObjectDelete(const std::vector<ObjectPtr>& objects) {
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendObjectDelete(client, objects);
+		}
+	}
+
+	void Instance::SendObjectUpdate(const ObjectPtr& object) {
+		if (!object) {
+			return;
+		}
+
+		auto flags = object->GetFlags();
+		auto newFlags = flags;
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			const auto& player = client->GetPlayer();
+			if (object == player->GetDeployedCharacterObject()) {
+				if (player->SyncCharacterData()) {
+					SendLabsPlayerUpdate(player);
+				}
+			}
+
+			if (flags & Object::UpdateCombatant) {
+				mServer->SendCombatantDataUpdate(client, object, object->GetCombatantData());
+				newFlags &= ~Object::UpdateCombatant;
+			}
+
+			if (flags & Object::UpdateAttributes) {
+				mServer->SendAttributeDataUpdate(client, object, object->GetAttributeData());
+				newFlags &= ~Object::UpdateAttributes;
+			}
+
+			if (flags & Object::UpdateLootData) {
+				mServer->SendLootDataUpdate(client, object, object->GetLootData());
+				newFlags &= ~Object::UpdateLootData;
+			}
+
+			if (flags & Object::UpdateAgentBlackboardData) {
+				mServer->SendAgentBlackboardUpdate(client, object, object->GetAgentBlackboardData());
+				newFlags &= ~Object::UpdateAgentBlackboardData;
+			}
+			
+			if (object->mDataBits.any()) {
+				mServer->SendObjectUpdate(client, object);
+			}
+		}
+
+		object->SetFlags(newFlags);
+		object->ResetUpdateBits();
+	}
+
+	void Instance::SendAnimationState(const ObjectPtr& object, uint32_t state, bool overlay) {
+		if (!object) {
+			return;
+		}
+
+		const auto timestamp = GetTime();
+		if (!overlay) {
+			object->mLastAnimationState = state;
+			object->mLastAnimationPlayTime = timestamp;
+		}
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendAnimationState(client, object, state, timestamp, overlay);
+		}
+	}
+
+	void Instance::SendObjectGfxState(const ObjectPtr& object, uint32_t state) {
+		if (!object) {
+			return;
+		}
+
+		const auto timestamp = GetTime();
+		object->mGraphicsState = state;
+		object->mGraphicsStateStartTime = timestamp;
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendObjectGfxState(client, object, state, timestamp);
+		}
+	}
+
+	void Instance::SendServerEvent(const RakNet::ServerEvent& serverEvent) {
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendServerEvent(client, serverEvent);
+		}
+	}
+
+	void Instance::SendLabsPlayerUpdate(const PlayerPtr& player) {
+		if (!player) {
+			return;
+		}
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendLabsPlayerUpdate(client, player);
+		}
+
+		player->ResetUpdateBits();
+	}
 }

@@ -15,8 +15,8 @@
 #include <bitset>
 
 // TODO: find somewhere to place this
-namespace Ability {
-	enum : uint32_t {
+namespace Attribute {
+	enum Type : uint8_t {
 		Strength = 0,
 		Dexterity,
 		Mind,
@@ -91,7 +91,9 @@ namespace Ability {
 		LootFind,
 		Surefooted,
 		ImmuneToStunned,
+		// ImmuneToShocked,
 		ImmuneToSleep,
+		// ImmuneToTaunted,
 		ImmuneToTerrified,
 		ImmuneToSilence,
 		ImmuneToCursed,
@@ -115,6 +117,7 @@ namespace Ability {
 		OnLockdown,
 		HoTDoneIncrease,
 		ProjectileDamageIncrease,
+		// DistributeDamageAmongSquad,
 		DeployBonusInvincibilityTime,
 		PhysicalDamageDecreaseFlat,
 		EnergyDamageDecreaseFlat,
@@ -128,6 +131,7 @@ namespace Ability {
 		XPBoost,
 		InvisibleToSecurityTeleporters,
 		BodyScale,
+		// DefenseBoostPhysicalDamage,
 		Count
 	};
 }
@@ -137,10 +141,6 @@ namespace RakNet {
 	// types
 	using tObjID = uint32_t;
 	using asset = uint32_t;
-
-	using cSPVector2 = glm::vec2;
-	using cSPVector3 = glm::vec3;
-	using cSPQuaternion = glm::quat;
 
 	// labsPlayerBits
 	enum labsPlayerBits {
@@ -178,53 +178,6 @@ namespace RakNet {
 		Silver,
 		Gold,
 		Unknown
-	};
-
-	// NounType
-	enum class NounType : uint32_t {
-		Creature = 0x6C27D00,
-		Vehicle = 0x78BDDF27,
-		Obstacle = 0x2ADB47A,
-		SpawnPoint = 0xD9EAF104,
-		PathPoint = 0x9D99F2FA,
-		Trigger = 0x3CE46113,
-		PointLight = 0x93555DCB,
-		SpotLight = 0xBCD9673B,
-		LineLight = 0x3D58111D,
-		ParallelLight = 0x8B1018A4,
-		HemisphereLight = 0xE615AFDB,
-		Animator = 0xF90527D6,
-		Animated = 0xF3051E56,
-		GraphicsControl = 0xE9A24895,
-		Material = 0xE6640542,
-		Flora = 0x5BDCEC35,
-		LevelshopObject = 0xA12B2C18,
-		Terrain = 0x151DB008,
-		Weapon = 0xE810D505,
-		Building = 0xC710B6E9,
-		Handle = 0xADB0A86B,
-		HealthOrb = 0x75B43FF2,
-		ManaOrb = 0xF402465F,
-		ResurrectOrb = 0xC035AAAD,
-		Movie = 0x4927FA7F,
-		Loot = 0x292FEA33,
-		PlacableEffect = 0x383A0A75,
-		LuaJob = 0xA2908A12,
-		AbilityObject = 0x485FC991,
-		LevelExitPoint = 0x87E8047,
-		Decal = 0x4D7784B8,
-		Water = 0x9E3C3DFA,
-		Grass = 0xFD3D2ED9,
-		Door = 0x6FEDAE4D,
-		Crystal = 0xCD482419,
-		Interactable = 0x977AF61,
-		Projectile = 0x253F6F5C,
-		DestructibleOrnament = 0x13FBB4,
-		MapCamera = 0xFBFB36D0,
-		Occluder = 0x71FD3D4,
-		SplineCamera = 0x6CB99FFF,
-		SplineCameraNode = 0xFD487097,
-		BossPortal = 0xC1B461BC
 	};
 
 	//
@@ -304,14 +257,14 @@ namespace RakNet {
 
 	template<typename T>
 	std::enable_if_t<std::is_class_v<T>, void> Read(BitStream& stream, T& value) {
-		if constexpr (std::is_same_v<T, cSPVector2>) {
+		if constexpr (std::is_same_v<T, glm::vec2>) {
 			Read<float>(stream, value.x);
 			Read<float>(stream, value.y);
-		} else if constexpr (std::is_same_v<T, cSPVector3>) {
+		} else if constexpr (std::is_same_v<T, glm::vec3>) {
 			Read<float>(stream, value.x);
 			Read<float>(stream, value.y);
 			Read<float>(stream, value.z);
-		} else if constexpr (std::is_same_v<T, cSPQuaternion>) {
+		} else if constexpr (std::is_same_v<T, glm::quat>) {
 			Read<float>(stream, value.x);
 			Read<float>(stream, value.y);
 			Read<float>(stream, value.z);
@@ -321,14 +274,14 @@ namespace RakNet {
 
 	template<typename T>
 	std::enable_if_t<std::is_class_v<T>, void> Write(BitStream& stream, const T& value) {
-		if constexpr (std::is_same_v<T, cSPVector2>) {
+		if constexpr (std::is_same_v<T, glm::vec2>) {
 			Write<float>(stream, value.x);
 			Write<float>(stream, value.y);
-		} else if constexpr (std::is_same_v<T, cSPVector3>) {
+		} else if constexpr (std::is_same_v<T, glm::vec3>) {
 			Write<float>(stream, value.x);
 			Write<float>(stream, value.y);
 			Write<float>(stream, value.z);
-		} else if constexpr (std::is_same_v<T, cSPQuaternion>) {
+		} else if constexpr (std::is_same_v<T, glm::quat>) {
 			Write<float>(stream, value.x);
 			Write<float>(stream, value.y);
 			Write<float>(stream, value.z);
@@ -353,6 +306,132 @@ namespace RakNet {
 		return static_cast<T>((1 << Bits) - 1);
 	}
 #pragma warning(pop)
+
+	// Reflection stuff
+	BitSize_t ReallocateStream(RakNet::BitStream& stream, BitSize_t sizeInBits);
+
+	// reflection_serializer | Fields = max amount of fields
+	template<uint8_t FieldCount>
+	class reflection_serializer {
+		static_assert(FieldCount > 0x00 && FieldCount <= 0xFF, "Fields must be above 0");
+
+		public:
+			reflection_serializer(RakNet::BitStream& stream)
+				: mStream(stream), mStartOffset(std::numeric_limits<BitSize_t>::max()), mWriteBits(0) {};
+
+			void begin() {
+				if (mStartOffset != std::numeric_limits<BitSize_t>::max()) {
+					return;
+				}
+
+				mStartOffset = mStream.GetWriteOffset();
+				mWriteBits = 0;
+
+				if constexpr (FieldCount <= 8) {
+					mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits<BitSize_t>(sizeof(uint8_t)));
+				} else if constexpr (FieldCount <= 16) {
+					mStream.SetWriteOffset(mStartOffset + RakNet::bytes_to_bits<BitSize_t>(sizeof(uint16_t)));
+				}
+			}
+
+			void end() {
+				if constexpr (FieldCount > 16) {
+					Write<uint8_t>(mStream, 0xFF);
+				} else {
+					auto offset = mStream.GetWriteOffset();
+					mStream.SetWriteOffset(mStartOffset);
+					if constexpr (FieldCount <= 8) {
+						Write<uint8_t>(mStream, static_cast<uint8_t>(mWriteBits));
+					} else {
+						Write<uint16_t>(mStream, mWriteBits);
+					}
+					mStream.SetWriteOffset(offset);
+				}
+
+				mStartOffset = std::numeric_limits<BitSize_t>::max();
+			}
+
+			template<uint8_t Field, typename T, size_t S>
+			void write(const std::array<T, S>& value) {
+				static_assert(Field >= 0 && Field < FieldCount, "Field must be within range of FieldCount.");
+				if constexpr (FieldCount > 16) {
+					Write<uint8_t>(mStream, Field);
+				} else {
+					mWriteBits |= 1 << Field;
+				}
+
+				for (const auto& value : value) {
+					if constexpr (std::is_same_v<T, glm::vec2> || std::is_same_v<T, glm::vec3> || std::is_same_v<T, glm::quat>) {
+						Write(mStream, value);
+					} else if constexpr (std::is_class_v<T>) {
+						value.WriteTo(mStream);
+					} else {
+						Write<T>(mStream, value);
+					}
+				}
+			}
+
+			template<uint8_t Field, typename T>
+			void write(const T& value) {
+				static_assert(Field >= 0 && Field < FieldCount, "Field must be within range of FieldCount.");
+				if constexpr (FieldCount > 16) {
+					Write<uint8_t>(mStream, Field);
+				} else {
+					mWriteBits |= 1 << Field;
+				}
+
+				if constexpr (std::is_same_v<T, glm::vec2> || std::is_same_v<T, glm::vec3> || std::is_same_v<T, glm::quat>) {
+					Write(mStream, value);
+				} else if constexpr (std::is_class_v<T>) {
+					value.WriteTo(mStream);
+				} else {
+					Write<T>(mStream, value);
+				}
+			}
+
+			template<typename T, size_t S>
+			void write(uint8_t field, const std::array<T, S>& value) {
+				if constexpr (FieldCount > 16) {
+					Write<uint8_t>(mStream, field);
+				} else {
+					mWriteBits |= 1 << field;
+				}
+
+				for (const auto& value : value) {
+					if constexpr (std::is_same_v<T, glm::vec2> || std::is_same_v<T, glm::vec3> || std::is_same_v<T, glm::quat>) {
+						Write(mStream, value);
+					} else if constexpr (std::is_class_v<T>) {
+						value.WriteTo(mStream);
+					} else {
+						Write<T>(mStream, value);
+					}
+				}
+			}
+
+			template<typename T>
+			void write(uint8_t field, const T& value) {
+				if constexpr (FieldCount > 16) {
+					Write<uint8_t>(mStream, field);
+				} else {
+					mWriteBits |= 1 << field;
+				}
+
+				if constexpr (std::is_same_v<T, glm::vec2> || std::is_same_v<T, glm::vec3> || std::is_same_v<T, glm::quat>) {
+					Write(mStream, value);
+				} else if constexpr (std::is_class_v<T>) {
+					value.WriteTo(mStream);
+				} else {
+					Write<T>(mStream, value);
+				}
+			}
+
+		private:
+			RakNet::BitStream& mStream;
+
+			BitSize_t mStartOffset;
+
+			uint16_t mWriteBits;
+	};
 
 	/*
 		FYI: All class names are what darkspore calls them, not me.
@@ -412,7 +491,7 @@ namespace RakNet {
 			float mGearScoreFlattened = 300.f;
 
 			// make some sort of map?
-			std::array<float, Ability::Count> partsAttributes { 0.f };
+			std::array<float, Attribute::Count> partsAttributes { 0.f };
 	};
 
 	// labsCrystal
@@ -523,7 +602,7 @@ namespace RakNet {
 	// cGameObjectCreateData
 	struct cGameObjectCreateData {
 		uint32_t noun;
-		cSPVector3 position;
+		glm::vec3 position;
 		float rotXDegrees;
 		float rotYDegrees;
 		float rotZDegrees;
@@ -554,8 +633,8 @@ namespace RakNet {
 		float planeDirLinearParam;
 		float upLinearParam;
 		float upQuadraticParam;
-		cSPVector3 lobUpDir;
-		cSPVector3 planeDir;
+		glm::vec3 lobUpDir;
+		glm::vec3 planeDir;
 		int32_t bounceNum;
 		float bounceRestitution;
 		bool groundCollisionOnly;
@@ -572,7 +651,7 @@ namespace RakNet {
 		uint32_t mJinkInfo;
 		float mRange;
 		float mSpinRate;
-		cSPVector3 mDirection;
+		glm::vec3 mDirection;
 		uint8_t mProjectileFlags;
 		float mHomingDelay;
 		float mTurnRate;
@@ -587,35 +666,50 @@ namespace RakNet {
 		void WriteReflection(BitStream& stream) const;
 	};
 
-	// cLocomotionData
-	struct cLocomotionData {
-		uint64_t lobStartTime;
-		float lobPrevSpeedModifier;
-		cLobParams lobParams;
-		cProjectileParams mProjectileParams;
-		uint32_t mGoalFlags;
-		cSPVector3 mGoalPosition;
-		cSPVector3 mPartialGoalPosition;
-		cSPVector3 mFacing;
-		cSPVector3 mExternalLinearVelocity;
-		cSPVector3 mExternalForce;
-		float mAllowedStopDistance;
-		float mDesiredStopDistance;
-		tObjID mTargetObjectId;
-		cSPVector3 mTargetPosition;
-		cSPVector3 mExpectedGeoCollision;
-		cSPVector3 mInitialDirection;
-		cSPVector3 mOffset;
-		int32_t reflectedLastUpdate;
+	// cLocomotionData in Darkspore
+	class LocomotionData {
+		public:
+			void SetGoalPosition(const glm::vec3& position);
+			void SetGoalPositionWithDistance(const glm::vec3& position, float distance);
+			// void SetGoalObject(const Game::ObjectPtr& object, float distance);
+			// void SetGoalObjectEx(const Game::ObjectPtr& object, float distance);
+			void Stop();
+			// void MoveToPointWhileFacingTarget(const glm::vec3& position, const Game::ObjectPtr& object);
+			void ApplyExternalVelocity(const glm::vec3& velocity);
+			void ClearExternalVelocity(const glm::vec3& velocity);
 
-		void WriteTo(BitStream& stream) const;
-		void WriteReflection(BitStream& stream) const;
+			void WriteTo(BitStream& stream) const;
+			void WriteReflection(BitStream& stream) const;
+
+		public:
+			uint64_t lobStartTime;
+			float lobPrevSpeedModifier;
+			cLobParams lobParams;
+			cProjectileParams mProjectileParams;
+			uint32_t mGoalFlags;
+			glm::vec3 mGoalPosition;
+			glm::vec3 mPartialGoalPosition;
+			glm::vec3 mFacing;
+			glm::vec3 mExternalLinearVelocity;
+			glm::vec3 mExternalForce;
+			float mAllowedStopDistance;
+			float mDesiredStopDistance;
+			tObjID mTargetObjectId;
+			glm::vec3 mTargetPosition;
+			glm::vec3 mExpectedGeoCollision;
+			glm::vec3 mInitialDirection;
+			glm::vec3 mOffset;
+			int32_t reflectedLastUpdate;
 	};
 
 	// cAttributeData in Darkspore
 	class AttributeData {
 		public:
 			AttributeData();
+
+			const auto& GetData() const { return mData; }
+			const auto& GetErasedData() const { return mErasedData; }
+			const auto& GetDataBits() const { return mDataBits; }
 
 			float GetValue(uint8_t idx) const;
 			void SetValue(uint8_t idx, float value);
@@ -628,7 +722,7 @@ namespace RakNet {
 		private:
 			std::vector<std::tuple<uint8_t, float>> mData;
 			std::vector<uint8_t> mErasedData;
-			std::bitset<Ability::Count> mDataBits;
+			std::bitset<Attribute::Count> mDataBits;
 
 			float mMinWeaponDamage;
 			float mMaxWeaponDamage;
@@ -679,10 +773,10 @@ namespace RakNet {
 		bool mbPlayerControlled;
 		uint32_t mInputSyncStamp;
 		uint8_t mPlayerIdx;
-		cSPVector3 mLinearVelocity;
-		cSPVector3 mAngularVelocity;
-		cSPVector3 mPosition;
-		cSPQuaternion mOrientation;
+		glm::vec3 mLinearVelocity;
+		glm::vec3 mAngularVelocity;
+		glm::vec3 mPosition;
+		glm::quat mOrientation;
 		float mScale;
 		float mMarkerScale;
 		uint32_t mLastAnimationState;
@@ -742,7 +836,7 @@ namespace RakNet {
 		tObjID targetID;
 		tObjID sourceID;
 		tObjID abilityID;
-		cSPVector3 damageDirection;
+		glm::vec3 damageDirection;
 		int32_t integerHpChange;
 
 		void WriteTo(BitStream& stream) const;
@@ -765,10 +859,10 @@ namespace RakNet {
 		tObjID objectId = 0;
 		tObjID secondaryObjectId = 0;
 		tObjID attackerId = 0;
-		cSPVector3 position {};
-		cSPVector3 facing {};
-		cSPQuaternion orientation {};
-		cSPVector3 targetPoint {};
+		glm::vec3 position {};
+		glm::vec3 facing {};
+		glm::quat orientation {};
+		glm::vec3 targetPoint {};
 		int32_t textValue = 0;
 		uint32_t clientEventID = 0;
 		uint8_t clientIgnoreFlags = 0;
@@ -795,8 +889,8 @@ namespace RakNet {
 
 		std::array<int32_t, 2> ExpectedAvatarLevel;
 
-		cSPVector2 GearScoreRange;
-		cSPVector2 GearScoreMax;
+		glm::vec2 GearScoreRange;
+		glm::vec2 GearScoreMax;
 
 		float StarModeHealthMult;
 		float StarModeDamageMult;
@@ -876,12 +970,23 @@ namespace RakNet {
 	struct ActionCommand {
 		// TODO: separate this into multiple structs to minimize data use
 		uint8_t type;
+		uint8_t unk[3];
+
+
+	};
+
+	// AbilityCommandResponse
+	struct AbilityCommandResponse {
+		uint64_t cooldown;
+		uint64_t timeImmobilized;
+		uint32_t abilityId;
+		uint32_t userData;
 	};
 
 	// CombatData
 	struct CombatData {
-		cSPVector3 targetPosition;
-		cSPVector3 cursorPosition;
+		glm::vec3 targetPosition;
+		glm::vec3 cursorPosition;
 
 		uint32_t targetId;
 		uint32_t abilityId;

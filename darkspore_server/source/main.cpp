@@ -1,10 +1,14 @@
 
 // Include
 #include "main.h"
+#include "scheduler.h"
 
 #include "sporenet/instance.h"
+
 #include "http/uri.h"
+
 #include "game/config.h"
+#include "game/noun.h"
 
 #include <iostream>
 
@@ -25,6 +29,14 @@ Application::Application() : mIoService(), mSignals(mIoService, SIGINT, SIGTERM)
 Application& Application::InitApp(int argc, char* argv[]) {
 	if (!sApplication) {
 		sApplication = new Application;
+#ifdef _WIN32
+		/*
+		SetConsoleCtrlHandler([](DWORD) -> BOOL {
+			// TODO: proper shutdown when closing
+			ExitThread(0);
+		}, 1);
+		*/
+#endif
 	}
 	return *sApplication;
 }
@@ -73,6 +85,9 @@ bool Application::OnInit() {
 	//
 	mGameAPI->setup();
 
+	// Load noun files
+	(void)Game::NounDatabase::Instance();
+
 	return true;
 }
 
@@ -82,8 +97,9 @@ int Application::OnExit() {
 	mBlazeServer.reset();
 	mHttpServer.reset();
 	mQosServer.reset();
-
 	mSporeNet.reset();
+
+	Scheduler::Shutdown();
 	return 0;
 }
 

@@ -8,7 +8,6 @@
 #include "blaze/types.h"
 #include "blaze/functions.h"
 
-#include "objectmanager.h"
 #include "player.h"
 
 #include <cstdint>
@@ -76,6 +75,11 @@ namespace Game {
 		std::string id;
 	};
 
+	// Predefined
+	class ObjectManager;
+	class Lua;
+
+	// Instance
 	class Instance {
 		private:
 			static InstancePtr Create(uint32_t id);
@@ -94,6 +98,17 @@ namespace Game {
 			void RemovePlayer(int64_t id);
 
 			uint32_t GetId() const;
+			uint64_t GetTime() const;
+			uint64_t GetTimeElapsed() const;
+
+			ObjectManager& GetObjectManager();
+			const ObjectManager& GetObjectManager() const;
+
+			Lua& GetLua();
+			const Lua& GetLua() const;
+
+			auto& GetServer() { return *mServer; }
+			const auto& GetServer() const { return *mServer; }
 
 			auto& GetChainData() { return mChainData; }
 			const auto& GetChainData() const { return mChainData; }
@@ -104,21 +119,19 @@ namespace Game {
 			auto& GetInfo() { return mData; }
 			const auto& GetInfo() const { return mData; }
 
-			auto& GetObjectManager() { return *mObjectManager; }
-			const auto& GetObjectManager() const { return *mObjectManager; }
-
 			const auto& GetObjectives() const { return mObjectives; }
-
-			uint64_t GetTime() const;
-			uint64_t GetTimeElapsed() const;
 
 			void AddServerTask(std::function<void(void)> task);
 			void AddClientTask(uint8_t id, MessageID packet);
 
+			// Events
+			void OnPlayerStart(const PlayerPtr& player);
+
 			// Network safe functions
+			bool ServerUpdate() const;
 			bool Update();
 
-			void MoveObject(const ObjectPtr& object, const RakNet::cSPVector3& position, RakNet::cLocomotionData& locomotionData);
+			void MoveObject(const ObjectPtr& object, RakNet::LocomotionData& locomotionData);
 
 			// Abilities / Combat / Etc
 			void UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
@@ -133,9 +146,22 @@ namespace Game {
 			void DropCatalyst(const PlayerPtr& player, uint32_t catalystSlot);
 			void DropCatalyst();
 
+			// Server stuff
+			void AddEffect();
+
+			void SendObjectCreate(const ObjectPtr& object);
+			void SendObjectDelete(const ObjectPtr& object);
+			void SendObjectDelete(const std::vector<ObjectPtr>& objects);
+			void SendObjectUpdate(const ObjectPtr& object);
+			void SendAnimationState(const ObjectPtr& object, uint32_t state, bool overlay);
+			void SendObjectGfxState(const ObjectPtr& object, uint32_t state);
+			void SendServerEvent(const RakNet::ServerEvent& serverEvent);
+			void SendLabsPlayerUpdate(const PlayerPtr& player);
+
 		private:
 			std::unique_ptr<RakNet::Server> mServer;
 			std::unique_ptr<ObjectManager> mObjectManager;
+			std::unique_ptr<Lua> mLua;
 
 			std::map<int64_t, PlayerPtr> mPlayers;
 
