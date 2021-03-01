@@ -3,9 +3,9 @@
 #define _GAME_CHARACTER_HEADER
 
 // Include
-#include "raknet/types.h"
-#include <memory>
-#include <bitset>
+#include "attributes.h"
+
+#include <array>
 
 // Game
 namespace Game {
@@ -66,7 +66,7 @@ namespace Game {
 			void ResetUpdateBits();
 
 		private:
-			RakNet::AttributeData mPartAttributes;
+			Attributes mPartAttributes;
 
 			std::array<uint32_t, 9> mAbilityRanks { 0 };
 

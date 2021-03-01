@@ -58,6 +58,10 @@ namespace utils {
 		});
 	}
 
+	bool string_iequals(const char* lhs, const char* rhs) {
+		return string_iequals(std::string_view(lhs), std::string_view(rhs));
+	}
+
 	void string_replace(std::string& str, const std::string& old_str, const std::string& new_str) {
 		auto position = str.find(old_str);
 		if (position != std::string::npos) {

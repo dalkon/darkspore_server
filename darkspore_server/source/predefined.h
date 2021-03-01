@@ -11,6 +11,8 @@ namespace Game {
 	class Instance;
 	class Player;
 	class Object;
+	class ServerEventBase;
+	class Attributes;
 
 	// shared_ptrs
 	using InstancePtr = std::shared_ptr<Instance>;

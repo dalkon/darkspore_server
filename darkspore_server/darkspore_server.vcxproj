@@ -118,7 +118,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_WIN32_WINNT=0x0601;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;BOOST_NETWORK_ENABLE_HTTPS;BOOST_ASIO_DISABLE_CONCEPTS;RAPIDJSON_HAS_STDSTRING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0601;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;BOOST_NETWORK_ENABLE_HTTPS;BOOST_ASIO_DISABLE_CONCEPTS;RAPIDJSON_HAS_STDSTRING;SOL_STRINGS_ARE_NUMBERS=1;SOL_SAFE_FUNCTION=1;SOL_LUAJIT=1;SOL_EXCEPTIONS_SAFE_PROPAGATION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -148,6 +148,7 @@
     <ClInclude Include="source\blaze\server.h" />
     <ClInclude Include="source\databuffer.h" />
     <ClInclude Include="source\game\api.h" />
+    <ClInclude Include="source\game\attributes.h" />
     <ClInclude Include="source\game\character.h" />
     <ClInclude Include="source\game\config.h" />
     <ClInclude Include="source\game\creature.h" />
@@ -161,6 +162,7 @@
     <ClInclude Include="source\game\octree.h" />
     <ClInclude Include="source\game\party.h" />
     <ClInclude Include="source\game\player.h" />
+    <ClInclude Include="source\game\serverevent.h" />
     <ClInclude Include="source\http\multipart.h" />
     <ClInclude Include="source\http\router.h" />
     <ClInclude Include="source\http\server.h" />
@@ -203,6 +205,7 @@
     <ClCompile Include="source\blaze\tdf.cpp" />
     <ClCompile Include="source\databuffer.cpp" />
     <ClCompile Include="source\game\api.cpp" />
+    <ClCompile Include="source\game\attributes.cpp" />
     <ClCompile Include="source\game\character.cpp" />
     <ClCompile Include="source\game\config.cpp" />
     <ClCompile Include="source\game\creature.cpp" />
@@ -216,6 +219,7 @@
     <ClCompile Include="source\game\octree.cpp" />
     <ClCompile Include="source\game\party.cpp" />
     <ClCompile Include="source\game\player.cpp" />
+    <ClCompile Include="source\game\serverevent.cpp" />
     <ClCompile Include="source\http\multipart.cpp" />
     <ClCompile Include="source\http\router.cpp" />
     <ClCompile Include="source\http\server.cpp" />

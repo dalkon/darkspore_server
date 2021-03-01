@@ -41,11 +41,11 @@ Scheduler::Scheduler() {
 	});
 }
 
-uint32_t Scheduler::AddTask(uint32_t delay, const std::function<void()>& f) { return sInstance._AddTask(delay, f); }
+uint32_t Scheduler::AddTask(uint32_t delay, const std::function<void(uint32_t)>& f) { return sInstance._AddTask(delay, f); }
 void Scheduler::CancelTask(uint32_t id) { sInstance._CancelTask(id); }
 void Scheduler::Shutdown() { sInstance._Shutdown(); }
 
-uint32_t Scheduler::_AddTask(uint32_t delay, const std::function<void()>& f) {
+uint32_t Scheduler::_AddTask(uint32_t delay, const std::function<void(uint32_t)>& f) {
 	bool do_signal = false;
 
 	mLock.lock();

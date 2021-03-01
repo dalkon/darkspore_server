@@ -9,6 +9,7 @@
 
 #include "game/config.h"
 #include "game/noun.h"
+#include "game/lua.h"
 
 #include <iostream>
 
@@ -87,6 +88,9 @@ bool Application::OnInit() {
 
 	// Load noun files
 	(void)Game::NounDatabase::Instance();
+
+	// Load scripts
+	Game::GlobalLua::Instance().Initialize();
 
 	return true;
 }

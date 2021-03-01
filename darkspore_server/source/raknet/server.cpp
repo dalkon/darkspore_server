@@ -10,6 +10,7 @@
 
 #include "game/instance.h"
 #include "game/objectmanager.h"
+#include "game/serverevent.h"
 
 #include <glm/gtx/euler_angles.hpp>
 
@@ -284,100 +285,9 @@ namespace Ability {
 
 // TEMPORARY VARIABLES, TESTING ONLY!
 static bool teleportMovement = true;
-static std::vector<Game::ObjectPtr> objects_list;
 
 // RakNet
 namespace RakNet {
-	/*
-		Mapped Transport packets
-			
-
-		Mapped GMS packets
-			FirstRegMessage
-				GameState
-				DirectorState
-				ObjectCreate
-				ObjectUpdate
-				ObjectDelete
-				ObjectJump
-				ObjectTeleport
-				ObjectPlayerMove
-				ForcePhysicsUpdate
-				PhysicsChanged
-				LocomotionDataUpdate
-				LocomotionUnreliableDataUpdate
-				CombatantDataUpdate
-				InteractableDataUpdate
-				AgentBlackboardUpdate
-				LootDataUpdate
-				LabsPlayerUpdate
-				ServerEvent
-				ModifierCreated
-				ModifierUpdated
-				ModifierDeleted
-				GamePrepareForStart
-				GameStart
-				SetAnimationState
-				SetObjectGfxState
-				PlayerCharacterDeploy
-				ActionCommandResponse
-				ObjectivesInitForLevel
-				ObjectiveUpdated
-				ObjectivesComplete
-				ObjectiveAdd
-				CombatEvent
-				GravityForceUpdate
-				CooldownUpdate
-				CrystalMessage
-				VoteKickStarted
-				PartyMergeComplete
-				DebugPing
-
-			sub_451080 (observer?)
-				ArenaGameMsgs
-				JuggernautGameMsgs
-				KillRaceGameMsgs
-
-			sub_453C20, sub_452D50 (unreg?)
-				ChainGameMsgs
-				QuickGameMsgs
-				TutorialGameMsgs
-				ArenaGameMsgs
-				JuggernautGameMsgs
-				KillRaceGameMsgs
-				CinematicMsgs
-
-			sub_454890, sub_4544E0
-				JuggernautResultsMsgs
-
-			sub_454DD0
-				KillRaceLobbyMsgs
-
-			sub_454F30, sub_454B10
-				KillRaceResultsMsgs
-
-			sub_516C00, sub_516230
-				ReconnectPlayer
-
-			sub_52FA20, sub_52F800
-				ArenaGameMsgs
-
-			sub_9C1A40
-				PlayerStatusUpdate
-				ActionCommandMsgs
-				CrystalDragMessage
-				LootDropMessage
-				DebugPing
-
-			TryConnect
-				Connected
-				HelloPlayer
-				PlayerJoined
-				PlayerDeparted
-
-
-	*/
-
 	// Debug
 	void WriteDebugData(RakNet::BitStream& stream, size_t length) {
 		constexpr std::array<uint8_t, 8> bytes { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
@@ -579,15 +489,6 @@ namespace RakNet {
 					SendReloadLevel(client);
 					break;
 
-				case PacketID::PlayerCharacterDeploy: {
-					ServerEvent deployEvent;
-					deployEvent.ServerEventDef = utils::hash_id("character_entry_plasma_electric.ServerEventDef");
-
-					SendPlayerCharacterDeploy(client, player, 0);
-					SendServerEvent(client, deployEvent);
-					break;
-				}
-
 				case PacketID::ServerEvent: {
 					/*
 						Client event ids (quotes = voiceover, parenthesis = text)
@@ -625,40 +526,6 @@ namespace RakNet {
 							0xd30b856c "Ally disconnected
 							0xbe855f87 (Squad ability is unavailable. That squad member has perished.)
 					*/
-					auto playerObject = player->GetCharacterObject(1);
-
-					SporeNet::Part testPart(0);
-					testPart.SetRarity(SporeNet::PartRarity::Epic);
-
-					ServerEvent testEvent;
-					testEvent.ServerEventDef = utils::hash_id("character_entry_plasma_electric.ServerEventDef");
-					testEvent.simpleSwarmEffectID = 0;
-					testEvent.objectFxIndex = 0;
-					testEvent.bRemove = false;
-					testEvent.bHardStop = false;
-					testEvent.bForceAttach = false;
-					testEvent.bCritical = false;
-					testEvent.objectId = playerObject->GetId();
-					testEvent.secondaryObjectId = 0;
-					testEvent.attackerId = 0;
-					// testEvent.position {};
-					// testEvent.facing {};
-					// testEvent.orientation {};
-					// testEvent.targetPoint {};
-					testEvent.textValue = 0;
-					testEvent.clientEventID = 0x615f3861; // var_48
-					testEvent.clientIgnoreFlags = 0; // var_44
-					testEvent.lootReferenceId = 1;
-					testEvent.lootInstanceId = 2;
-					testEvent.lootRigblockId = testPart.GetRigblockAssetHash();
-					testEvent.lootSuffixAssetId = testPart.GetSuffixAssetHash();
-					testEvent.lootPrefixAssetId1 = testPart.GetPrefixAssetHash();
-					testEvent.lootPrefixAssetId2 = testPart.GetPrefixSecondaryAssetHash();
-					testEvent.lootItemLevel = testPart.GetLevel();
-					testEvent.lootRarity = static_cast<int32_t>(testPart.GetRarity());
-					testEvent.lootCreationTime = testPart.GetTimestamp();
-
-					SendServerEvent(client, testEvent);
 					break;
 				}
 
@@ -937,10 +804,12 @@ namespace RakNet {
 		*/
 
 		// Crystals
-		player->SetCrystal(labsCrystal(labsCrystal::AoEDamage, 0, false), 0);
+		player->SetCrystal(labsCrystal(labsCrystal::AoEDamage, 0, false), 7);
+		/*
 		player->SetCrystal(labsCrystal(labsCrystal::DamageAura, 1, false), 1);
 		player->SetCrystal(labsCrystal(labsCrystal::ImmuneSleep, 2, false), 2);
 		player->SetCrystal(labsCrystal(labsCrystal::AttackSpeed, 1, true), 3);
+		*/
 
 		// Game state data
 		auto& gameStateData = client->GetGameStateData();
@@ -1010,21 +879,6 @@ namespace RakNet {
 			}
 
 			case 0x04: {
-				// This causes the next state to activate... but also disconnects you
-				/*
-				ServerEvent event;
-				event.objectId = 0x0000000A;
-				event.ServerEventDef = utils::hash_id("character_beam_in_plasma_flame.serverEventDef");
-
-				SendServerEvent(client, event);
-				*/
-
-				/*
-				auto& gameStateData = client->GetGameStateData();
-				gameStateData.var0 = 0x31;
-				gameStateData.var1 = 0x25;
-				SendGameState(packet, gameStateData);
-				*/
 				break;
 			}
 
@@ -1227,7 +1081,6 @@ OnActionCommandMsgs(4)
 
 				object->SetOrientation(orientation);
 				mGame.UseAbility(object, combatData);
-				SendCooldownUpdate(client, object, actionResponse.abilityId, actionResponse.cooldown);
 
 				break;
 			}
@@ -1261,6 +1114,27 @@ OnActionCommandMsgs(4)
 				mGame.UseAbility(object, combatData);
 				SendCooldownUpdate(client, object, actionResponse.abilityId, actionResponse.cooldown);
 
+				break;
+			}
+
+			// Catalyst pickup
+			case 9: {
+				glm::vec3 currentPosition;
+				Read(mInStream, currentPosition);
+
+				glm::quat orientation;
+				Read(mInStream, orientation);
+
+				uint32_t catalystObjectId;
+				Read<uint32_t>(mInStream, catalystObjectId);
+
+				glm::vec3 catalystPosition;
+				Read(mInStream, catalystPosition);
+
+				uint32_t unknown;
+				Read<uint32_t>(mInStream, unknown);
+
+				mGame.InteractWithObject(player, catalystObjectId);
 				break;
 			}
 
@@ -1299,7 +1173,7 @@ OnActionCommandMsgs(4)
 				break;
 			}
 
-			// Loot pickup
+			// Interactable
 			case 11: {
 				glm::vec3 currentPosition;
 				Read(mInStream, currentPosition);
@@ -1307,10 +1181,10 @@ OnActionCommandMsgs(4)
 				glm::quat orientation;
 				Read(mInStream, orientation);
 
-				uint32_t lootObjectId;
-				Read<uint32_t>(mInStream, lootObjectId);
+				uint32_t interactableObjectId;
+				Read<uint32_t>(mInStream, interactableObjectId);
 
-				mGame.PickupLoot(player, lootObjectId);
+				mGame.InteractWithObject(player, interactableObjectId);
 				break;
 			}
 
@@ -1430,9 +1304,11 @@ OnActionCommandMsgs(4)
 		const auto& crystal = player->GetCrystal(crystalSlot);
 
 		CrystalData crystalData;
+		/*
 		crystalData.position.x = 1.f;
 		crystalData.position.y = 2.f;
 		crystalData.position.z = 3.f;
+		*/
 		// crystalData.position = position;
 
 		crystalData.unk32[0] = 0x12345678;
@@ -1516,8 +1392,8 @@ OnActionCommandMsgs(4)
 				auto& gameStateData = client->GetGameStateData();
 				gameStateData.state = static_cast<uint32_t>(GameState::ChainVoting);
 
-				// SendReconnectPlayer(client, GameState::Spaceship);
-				SendChainGame(client, 0);
+				SendReconnectPlayer(client, GameState::Spaceship);
+				// SendChainGame(client, 0);
 				break;
 			}
 
@@ -1539,30 +1415,7 @@ OnActionCommandMsgs(4)
 
 				// SendChainGame(client, 2);
 
-				// Create creatures
-				uint32_t creatureIndex = 1;
-				for (uint32_t i = 0; i < 3; ++i) {
-					const auto& characterObject = player->GetCharacterObject(i);
-					if (characterObject) {
-						characterObject->SetPosition(glm::vec3(20 + i * 2, 0, 0));
-						characterObject->SetVisible(true); // i == creatureIndex
-
-						characterObject->SetAttributeValue(Attribute::InvisibleToSecurityTeleporters, 1);
-						characterObject->SetAttributeValue(Attribute::AttackSpeedScale, 1);
-						characterObject->SetAttributeValue(Attribute::CooldownScale, 1);
-
-						SendObjectCreate(client, characterObject);
-						SendCombatantDataUpdate(client, characterObject, characterObject->GetCombatantData());
-						SendAttributeDataUpdate(client, characterObject, characterObject->GetAttributeData());
-					}
-				}
-
-				// SendPlayerCharacterDeploy(client, player, creatureIndex);
-
 				// Other stuff
-				ServerEvent deployEvent;
-				deployEvent.ServerEventDef = utils::hash_id("character_entry_plasma_electric.ServerEventDef");
-
 				cAIDirector director;
 				director.mBossId = 0;
 				director.mbBossSpawned = false;
@@ -1570,14 +1423,11 @@ OnActionCommandMsgs(4)
 				SendObjectivesInitForLevel(client);
 				SendDirectorState(client, director);
 
-				mGame.SwapCharacter(player, creatureIndex);
-
-				// SendServerEvent(client, deployEvent);
-				// SendQuickGame(client);
+				SendQuickGame(client);
 				// SendTutorial(client);
 				// SendChainGame(client, 2);
-				// SendObjectTeleport(client);
-				// SendArenaGameMessages(client);
+
+				mGame.SwapCharacter(player, 1);
 				break;
 			}
 		}
@@ -1832,7 +1682,7 @@ OnActionCommandMsgs(4)
 
 		// object creation data
 		cGameObjectCreateData createData;
-		createData.noun = object->GetNoun();
+		createData.noun = object->GetNounId();
 		createData.position = object->GetPosition();
 		createData.rotXDegrees = euler.x;
 		createData.rotYDegrees = euler.y;
@@ -2113,7 +1963,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const AttributeData& attributeData) {
+	void Server::SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Attributes& attributes) {
 		// 100%
 		if (!object) {
 			return;
@@ -2123,7 +1973,7 @@ OnActionCommandMsgs(4)
 		outStream.Write(PacketID::AttributeDataUpdate);
 
 		Write<uint32_t>(outStream, object->GetId());
-		attributeData.WriteReflection(outStream);
+		attributes.WriteReflection(outStream);
 
 		Send(outStream, client);
 	}
@@ -2207,7 +2057,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendServerEvent(const ClientPtr& client, const ServerEvent& serverEvent) {
+	void Server::SendServerEvent(const ClientPtr& client, const Game::ServerEventBase& serverEvent) {
 		// 100%
 		BitStream outStream(8);
 		outStream.Write(PacketID::ServerEvent);
@@ -2585,12 +2435,15 @@ OnActionCommandMsgs(4)
 		BitStream outStream(8);
 		outStream.Write(PacketID::CrystalMessage);
 
-		Write(outStream, crystalData.position);
-		for (const auto val : crystalData.unk32) {
-			Write<uint32_t>(outStream, val);
-		}
-
 		Write<uint8_t>(outStream, crystalData.unk8);
+		Write<uint32_t>(outStream, crystalData.unk32[0]);
+		Write<uint32_t>(outStream, crystalData.unk32[1]);
+		Write<uint32_t>(outStream, crystalData.unk32[2]);
+		Write<uint32_t>(outStream, crystalData.unk32[3]);
+		Write<uint32_t>(outStream, crystalData.unk32[4]);
+		Write<uint32_t>(outStream, crystalData.unk32[5]);
+		Write<uint32_t>(outStream, crystalData.unk32[6]);
+
 
 		Send(outStream, client);
 	}

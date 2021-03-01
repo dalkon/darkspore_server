@@ -6,6 +6,7 @@
 #include "object.h"
 #include "octree.h"
 #include "lua.h"
+#include "level.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -53,6 +54,7 @@ namespace Game {
 
 			ObjectPtr Get(uint32_t id) const;
 			ObjectPtr Create(uint32_t noun);
+			ObjectPtr Create(const MarkerPtr& marker);
 
 			TriggerVolumePtr GetTrigger(uint32_t id) const;
 			TriggerVolumePtr CreateTrigger(const glm::vec3& position, float radius, sol::function&& onEnter, sol::function&& onExit, sol::function&& onStay);

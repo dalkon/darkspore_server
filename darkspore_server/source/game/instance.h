@@ -9,11 +9,13 @@
 #include "blaze/functions.h"
 
 #include "player.h"
+#include "level.h"
 
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <memory>
 #include <functional>
 
@@ -92,6 +94,8 @@ namespace Game {
 			bool Start();
 			void Stop();
 
+			MarkerPtr GetMarker(uint32_t id) const;
+
 			PlayerPtr GetPlayer(int64_t id) const;
 			PlayerPtr GetPlayerByIndex(uint8_t index) const;
 			PlayerPtr AddPlayer(const SporeNet::UserPtr& user, uint8_t index);
@@ -127,6 +131,9 @@ namespace Game {
 			// Events
 			void OnPlayerStart(const PlayerPtr& player);
 
+			uint32_t AddTask(uint32_t delay, std::function<void(uint32_t)> task);
+			void CancelTask(uint32_t id);
+
 			// Network safe functions
 			bool ServerUpdate() const;
 			bool Update();
@@ -136,13 +143,13 @@ namespace Game {
 			// Abilities / Combat / Etc
 			void UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
 			void SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex);
+			void InteractWithObject(const PlayerPtr& player, uint32_t objectId);
 
 			// Loot
-			void PickupLoot(const PlayerPtr& player, uint32_t lootObjectId);
 			void DropLoot(const PlayerPtr& player, uint64_t lootInstanceId);
+			void DropLoot(const ObjectPtr& object, const ObjectPtr& targetObject, DropType dropType);
 			void DropLoot();
 
-			void PickupCatalyst(const PlayerPtr& player, uint32_t catalystObjectId);
 			void DropCatalyst(const PlayerPtr& player, uint32_t catalystSlot);
 			void DropCatalyst();
 
@@ -155,26 +162,40 @@ namespace Game {
 			void SendObjectUpdate(const ObjectPtr& object);
 			void SendAnimationState(const ObjectPtr& object, uint32_t state, bool overlay);
 			void SendObjectGfxState(const ObjectPtr& object, uint32_t state);
-			void SendServerEvent(const RakNet::ServerEvent& serverEvent);
+			void SendServerEvent(const ServerEventBase& serverEvent);
+			void SendServerEvent(const PlayerPtr& player, const ServerEventBase& serverEvent);
+			void SendCooldownUpdate(const ObjectPtr& object, uint32_t id, int64_t milliseconds);
 			void SendLabsPlayerUpdate(const PlayerPtr& player);
+
+		private:
+			// Loot
+			void PickupLoot(const PlayerPtr& player, const ObjectPtr& object);
+			void PickupCatalyst(const PlayerPtr& player, const ObjectPtr& object);
 
 		private:
 			std::unique_ptr<RakNet::Server> mServer;
 			std::unique_ptr<ObjectManager> mObjectManager;
 			std::unique_ptr<Lua> mLua;
 
+			std::unordered_map<uint32_t, MarkerPtr> mMarkers;
 			std::map<int64_t, PlayerPtr> mPlayers;
+
+			std::set<uint32_t> mEvents;
 
 			std::vector<RakNet::Objective> mObjectives;
 			std::vector<ObjectPtr> mObjects;
+			std::vector<glm::vec3> mPlayerSpawnpoints;
 
-			RakNet::ChainVoteData mChainData;
-			RakNet::GameStateData mStateData;
+			RakNet::ChainVoteData mChainData {};
+			RakNet::GameStateData mStateData {};
 
-			Blaze::ReplicatedGameData mData;
+			Blaze::ReplicatedGameData mData {};
 
 			uint64_t mGameStartTime = 0;
 			uint64_t mGameTime = 0;
+
+			Level mLevel {};
+			bool mLevelLoaded = false;
 
 			friend class GameManager;
 	};

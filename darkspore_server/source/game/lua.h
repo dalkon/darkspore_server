@@ -3,9 +3,6 @@
 #define _GAME_LUA_HEADER
 
 // Include
-#define SOL_STRINGS_ARE_NUMBERS 1
-#define SOL_SAFE_FUNCTION 1
-
 #include <sol/sol.hpp>
 #include <unordered_map>
 
@@ -15,22 +12,65 @@ namespace Game {
 	class Instance;
 	class LuaThread;
 
-	// Lua
-	class Lua {
+	// LuaBase
+	class LuaBase {
 		public:
-			Lua(Instance& game);
-			~Lua();
+			LuaBase() = default;
+			virtual ~LuaBase();
 
-			void Initialize();
-			void Terminate();
+			virtual void Initialize();
+			virtual void Reload();
 
 			static sol::protected_function_result ReportError(lua_State* L, sol::protected_function_result pfr);
 			static const char* GetStackTrace(lua_State* L, const char* error);
 
-			bool LoadFile(const std::string& path);
-			bool LoadBuffer(const std::string& buffer);
+			sol::protected_function_result LoadFile(const std::string& path);
+			sol::protected_function_result LoadBuffer(const std::string& buffer);
 
 			lua_State* GetState() const;
+
+		private:
+			void RegisterFunctions();
+
+		protected:
+			sol::state mState;
+	};
+
+	// GlobalLua
+	class GlobalLua : public LuaBase {
+		public:
+			~GlobalLua();
+
+			static GlobalLua& Instance();
+
+			void Initialize() override;
+			void Reload() override;
+
+			sol::bytecode GetAbility(const std::string& abilityName) const;
+			sol::bytecode GetAbility(uint32_t abilityId) const;
+
+		private:
+			void LoadAbilities();
+
+		private:
+			static GlobalLua sInstance;
+
+			std::unordered_map<uint32_t, sol::bytecode> mLoadedAbilities;
+	};
+
+	// Lua
+	class Lua : public LuaBase {
+		public:
+			Lua(Instance& game);
+			~Lua();
+
+			void Initialize() override;
+			void Reload() override;
+			void PreloadAbilities();
+
+			sol::table GetAbility(const std::string& abilityName);
+			sol::table GetAbility(uint32_t abilityId);
+
 			LuaThread* GetThread(lua_State* L) const;
 
 			template<typename... Args>
@@ -48,7 +88,6 @@ namespace Game {
 		private:
 			Instance& mGame;
 
-			sol::state mState;
 			sol::table mEventTable;
 
 			std::unordered_map<lua_State*, LuaThread*> mThreads;

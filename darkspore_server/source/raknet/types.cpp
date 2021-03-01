@@ -5,8 +5,8 @@
 
 #include <numbers>
 
-// Campaign level order (incorrect)
-constexpr const char* levelNames[] {
+// Campaign level order
+constexpr std::array<std::string_view, 25> levelNames {
 	// tutorial
 	"Darkspore_Tutorial_cryos_1_v2",
 
@@ -47,283 +47,7 @@ constexpr const char* levelNames[] {
 	"scaldron_4"
 };
 
-/*
-	ServerEvent types (append .ServerEventDef)
-		character_filter_exit_bio
-		character_filter_exit_necro
-		character_filter_exit_spacetime
-		character_filter_exit_plasma_electric
-		character_filter_exit_cyber
-		character_filter_entry_bio
-		character_filter_entry_necro
-		character_filter_entry_spacetime
-		character_filter_entry_plasma_electric
-		character_filter_entry_cyber
-		character_filter_character_holo_effect_locked
-		character_filter_character_holo_effect
-		character_filter_base_ring1_effect
-		character_filter_base_ring2_effect
-		character_lobby_swap_effect
-		character_lobby_dias_glow_effect
-		dna_pickup
-		resurrect_orb_full
-		resurrect_orb_pickup
-		mana_orb_full
-		mana_orb_pickup
-		health_orb_full
-		health_orb_pickup
-		combattext_damage
-		combattext_damage_critical
-		combattext_enemy_damage
-		combattext_enemy_damage_critical
-		combattext_absorb
-		combattext_absorb_critical
-		combattext_enemy_absorb
-		combattext_enemy_absorb_critical
-		combattext_heal
-		combattext_critical_heal
-		life_healing_target_effect
-		combattext_dodge
-		combattext_deflect
-		combattext_resist
-		combattext_immune
-		combattext_resurrected
-		combattext_slowed
-		combattext_stunned
-		combattext_taunted
-		combattext_suppressed
-		combattext_rooted
-		combattext_terrified
-		combattext_banished
-		common_death_regular_melee_effect_bio
-		common_death_regular_melee_effect_cyber
-		common_death_regular_melee_effect_necro
-		common_death_regular_melee_effect_plasma
-		common_death_regular_melee_effect_spacetime
-		common_death_critical_melee_effect_bio
-		common_death_critical_melee_effect_cyber
-		common_death_critical_melee_effect_necro
-		common_death_critical_melee_effect_plasma
-		common_death_critical_melee_effect_spacetime
-		common_death_regular_melee_effect_bio_noblood
-		common_death_regular_melee_effect_cyber_noblood
-		common_death_regular_melee_effect_necro_noblood
-		common_death_regular_melee_effect_plasma_noblood
-		common_death_regular_melee_effect_spacetime_noblood
-		common_death_critical_melee_effect_bio_noblood
-		common_death_critical_melee_effect_cyber_noblood
-		common_death_critical_melee_effect_necro_noblood
-		common_death_critical_melee_effect_plasma_noblood
-		common_death_critical_melee_effect_spacetime_noblood
-		common_death_critical_cyber_effect_bio
-		common_death_critical_cyber_effect_cyber
-		common_death_critical_cyber_effect_necro
-		common_death_critical_cyber_effect_plasma
-		common_death_critical_cyber_effect_spacetime
-		common_death_critical_cyber_effect_bio_noblood
-		common_death_critical_cyber_effect_cyber_noblood
-		common_death_critical_cyber_effect_necro_noblood
-		common_death_critical_cyber_effect_plasma_noblood
-		common_death_critical_cyber_effect_spacetime_noblood
-		common_death_critical_plasma_effect_bio
-		common_death_critical_plasma_effect_cyber
-		common_death_critical_plasma_effect_necro
-		common_death_critical_plasma_effect_plasma
-		common_death_critical_plasma_effect_spacetime
-		common_death_critical_plasma_effect_bio_noblood
-		common_death_critical_plasma_effect_cyber_noblood
-		common_death_critical_plasma_effect_necro_noblood
-		common_death_critical_plasma_effect_plasma_noblood
-		common_death_critical_plasma_effect_spacetime_noblood
-		common_death_critical_bio_effect_bio
-		common_death_critical_bio_effect_cyber
-		common_death_critical_bio_effect_necro
-		common_death_critical_bio_effect_plasma
-		common_death_critical_bio_effect_spacetime
-		common_death_critical_bio_effect_bio_noblood
-		common_death_critical_bio_effect_cyber_noblood
-		common_death_critical_bio_effect_necro_noblood
-		common_death_critical_bio_effect_plasma_noblood
-		common_death_critical_bio_effect_spacetime_noblood
-		common_death_critical_necro_effect_bio
-		common_death_critical_necro_effect_cyber
-		common_death_critical_necro_effect_necro
-		common_death_critical_necro_effect_plasma
-		common_death_critical_necro_effect_spacetime
-		common_death_critical_necro_effect_bio_noblood
-		common_death_critical_necro_effect_cyber_noblood
-		common_death_critical_necro_effect_necro_noblood
-		common_death_critical_necro_effect_plasma_noblood
-		common_death_critical_necro_effect_spacetime_noblood
-		common_death_critical_spacetime_effect_bio
-		common_death_critical_spacetime_effect_cyber
-		common_death_critical_spacetime_effect_necro
-		common_death_critical_spacetime_effect_plasma
-		common_death_critical_spacetime_effect_spacetime
-		common_death_critical_spacetime_effect_bio_noblood
-		common_death_critical_spacetime_effect_cyber_noblood
-		common_death_critical_spacetime_effect_necro_noblood
-		common_death_critical_spacetime_effect_plasma_noblood
-		common_death_critical_spacetime_effect_spacetime_noblood
-*/
-
-#define DEFINE_HASH(x) constexpr auto x = utils::hash_id(#x)
-namespace Hash {
-	DEFINE_HASH(cSpaceshipCameraTuning);
-	DEFINE_HASH(SpaceshipTuning);
-	DEFINE_HASH(cToolPos);
-	DEFINE_HASH(cAssetQueryString);
-	DEFINE_HASH(cLayerPrefs);
-	DEFINE_HASH(EditorPrefs);
-	DEFINE_HASH(cCinematicView);
-	DEFINE_HASH(Cinematic);
-	DEFINE_HASH(PopupTip);
-	DEFINE_HASH(UnlockDef);
-	DEFINE_HASH(UnlocksTuning);
-	DEFINE_HASH(WeaponDef);
-	DEFINE_HASH(WeaponTuning);
-	DEFINE_HASH(labsCharacter);
-	DEFINE_HASH(labsCrystal);
-	DEFINE_HASH(labsPlayer);
-	DEFINE_HASH(cControllerState);
-	DEFINE_HASH(CatalogEntry);
-	DEFINE_HASH(Catalog);
-	DEFINE_HASH(TestAsset);
-	DEFINE_HASH(TestProcessedAsset);
-	DEFINE_HASH(cLootData);
-	DEFINE_HASH(LootData);
-	DEFINE_HASH(LootSuffix);
-	DEFINE_HASH(LootPrefix);
-	DEFINE_HASH(LootRigblock);
-	DEFINE_HASH(LootPreferences);
-	DEFINE_HASH(cKeyAsset);
-	DEFINE_HASH(PlayerClass);
-	DEFINE_HASH(cLongDescription);
-	DEFINE_HASH(cEliteAffix);
-	DEFINE_HASH(NonPlayerClass);
-	DEFINE_HASH(ClassAttributes);
-	DEFINE_HASH(CharacterAnimation);
-	DEFINE_HASH(CharacterType);
-	DEFINE_HASH(ServerEvent);
-	DEFINE_HASH(cAudioEventData);
-	DEFINE_HASH(cHardpointInfo);
-	DEFINE_HASH(cEffectEventData);
-	DEFINE_HASH(ServerEventDef);
-	DEFINE_HASH(CombatEvent);
-	DEFINE_HASH(InteractableDef);
-	DEFINE_HASH(cInteractableData);
-	DEFINE_HASH(CombatantDef);
-	DEFINE_HASH(cCombatantData);
-	DEFINE_HASH(cGfxComponentDef);
-	DEFINE_HASH(Gfx);
-	DEFINE_HASH(cSPBoundingBox);
-	DEFINE_HASH(ExtentsCategory);
-	DEFINE_HASH(ObjectExtents);
-	DEFINE_HASH(cThumbnailCaptureParameters);
-	DEFINE_HASH(Noun);
-	DEFINE_HASH(DifficultyTuning);
-	DEFINE_HASH(cAttributeData);
-	DEFINE_HASH(cAgentBlackboard);
-	DEFINE_HASH(NavMeshLayer);
-	DEFINE_HASH(NavPowerTuning);
-	DEFINE_HASH(Markerset);
-	DEFINE_HASH(LevelMarkerset);
-	DEFINE_HASH(LevelCameraSettings);
-	DEFINE_HASH(LevelKey);
-	DEFINE_HASH(LevelObjectives);
-	DEFINE_HASH(Level);
-	DEFINE_HASH(DirectorClass);
-	DEFINE_HASH(LevelConfig);
-	DEFINE_HASH(DirectorBucket);
-	DEFINE_HASH(SectionConfig);
-	DEFINE_HASH(SpawnPointDef);
-	DEFINE_HASH(SpawnTriggerDef);
-	DEFINE_HASH(DirectorTuning);
-	DEFINE_HASH(cAIDirector);
-	DEFINE_HASH(cMapCameraData);
-	DEFINE_HASH(LocomotionTuning);
-	DEFINE_HASH(cLobParams);
-	DEFINE_HASH(cProjectileParams);
-	DEFINE_HASH(cLocomotionData);
-	DEFINE_HASH(TriggerVolumeEvents);
-	DEFINE_HASH(TriggerVolumeDef);
-	DEFINE_HASH(NPCAffix);
-	DEFINE_HASH(cAffixDifficultyTuning);
-	DEFINE_HASH(EliteNPCGlobals);
-	DEFINE_HASH(CrystalDef);
-	DEFINE_HASH(CrystalDropDef);
-	DEFINE_HASH(CrystalLevel);
-	DEFINE_HASH(CrystalTuning);
-	DEFINE_HASH(cGameObjectGfxStateData);
-	DEFINE_HASH(cGameObjectGfxStates);
-	DEFINE_HASH(GameObjectGfxStateTuning);
-	DEFINE_HASH(cVolumeDef);
-	DEFINE_HASH(cPressureSwitchDef);
-	DEFINE_HASH(cSwitchDef);
-	DEFINE_HASH(cDoorDef);
-	DEFINE_HASH(cNewGfxState);
-	DEFINE_HASH(cWaterSimData);
-	DEFINE_HASH(cGraphicsData);
-	DEFINE_HASH(cGrassData);
-	DEFINE_HASH(cSplineCameraData);
-	DEFINE_HASH(cAnimatorData);
-	DEFINE_HASH(cAnimatedData);
-	DEFINE_HASH(cLabsMarker);
-	DEFINE_HASH(sporelabsObject);
-	DEFINE_HASH(cGameObjectCreateData);
-	DEFINE_HASH(cAssetProperty);
-	DEFINE_HASH(cAssetPropertyList);
-	DEFINE_HASH(ability);
-	DEFINE_HASH(AIDefinition);
-	DEFINE_HASH(cAINode);
-	DEFINE_HASH(Phase);
-	DEFINE_HASH(Condition);
-	DEFINE_HASH(cGambitDefinition);
-	DEFINE_HASH(cAICondition);
-	DEFINE_HASH(MagicNumbers);
-	DEFINE_HASH(cWaterData);
-	DEFINE_HASH(TeleporterDef);
-	DEFINE_HASH(SpaceshipSpawnPointDef);
-	DEFINE_HASH(SharedComponentData);
-	DEFINE_HASH(cPointLightData);
-	DEFINE_HASH(cSpotLightData);
-	DEFINE_HASH(cLineLightData);
-	DEFINE_HASH(cParallelLightData);
-	DEFINE_HASH(cSplineCameraNodeBaseData);
-	DEFINE_HASH(cSplineCameraNodeData);
-	DEFINE_HASH(cOccluderData);
-	DEFINE_HASH(EventListenerData);
-	DEFINE_HASH(EventListenerDef);
-	DEFINE_HASH(cDecalData);
-	DEFINE_HASH(cCameraComponentData);
-	DEFINE_HASH(cCameraComponent);
-	DEFINE_HASH(AudioTriggerDef);
-	DEFINE_HASH(objective);
-	DEFINE_HASH(affix);
-	DEFINE_HASH(AffixTuning);
-	DEFINE_HASH(GravityForce);
-	DEFINE_HASH(CollisionVolumeDef);
-	DEFINE_HASH(ProjectileDef);
-	DEFINE_HASH(OrbitDef);
-	DEFINE_HASH(TriggerVolumeComponentDef);
-
-	DEFINE_HASH(Bfx);
-	DEFINE_HASH(Bin);
-}
-#undef DEFINE_HASH
-
-#define DEFINE_TYPE_HASH(x) constexpr auto type_##x = utils::hash_id(#x)
-namespace Hash {
-	DEFINE_TYPE_HASH(int);
-}
-#undef DEFINE_TYPE_HASH
-
-// Test classes
-namespace Hash {
-	constexpr auto Zero = utils::hash_id("0");
-	// constexpr auto Noun = utils::hash_id("Noun");
-}
-
+// RakNet
 namespace RakNet {
 	// helpers
 	BitSize_t ReallocateStream(RakNet::BitStream& stream, BitSize_t sizeInBits) {
@@ -1711,81 +1435,6 @@ namespace RakNet {
 		reflector.end();
 	}
 
-	// ServerEvent
-	void ServerEvent::WriteTo(BitStream& stream) const {
-		constexpr auto size = bytes_to_bits(0x98);
-
-		auto writeOffset = ReallocateStream(stream, size);
-
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x04));
-		Write(stream, simpleSwarmEffectID);
-		Write(stream, objectFxIndex);
-		Write(stream, bRemove);
-		Write(stream, bHardStop);
-		Write(stream, bForceAttach);
-		Write(stream, bCritical);
-
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x10));
-		Write(stream, ServerEventDef);
-
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x18));
-		Write(stream, objectId);
-		Write(stream, secondaryObjectId);
-		Write(stream, attackerId);
-		Write(stream, position);
-		Write(stream, facing);
-		Write(stream, orientation);
-		Write(stream, targetPoint);
-		Write(stream, textValue);
-		Write(stream, clientEventID);
-		Write(stream, clientIgnoreFlags);
-
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x68));
-		Write(stream, lootReferenceId);
-		Write(stream, lootInstanceId);
-		Write(stream, lootRigblockId);
-		Write(stream, lootSuffixAssetId);
-		Write(stream, lootPrefixAssetId1);
-		Write(stream, lootPrefixAssetId2);
-		Write(stream, lootItemLevel);
-		Write(stream, lootRarity);
-		Write(stream, lootCreationTime);
-
-		stream.SetWriteOffset(writeOffset + size);
-	}
-
-	void ServerEvent::WriteReflection(BitStream& stream) const {
-		reflection_serializer<26> reflector(stream);
-		reflector.begin();
-		reflector.write<0>(simpleSwarmEffectID);
-		reflector.write<1>(objectFxIndex);
-		reflector.write<2>(bRemove);
-		reflector.write<3>(bHardStop);
-		reflector.write<4>(bForceAttach);
-		reflector.write<5>(bCritical);
-		reflector.write<6>(ServerEventDef);
-		reflector.write<7>(objectId);
-		reflector.write<8>(secondaryObjectId);
-		reflector.write<9>(attackerId);
-		reflector.write<10>(position);
-		reflector.write<11>(facing);
-		reflector.write<12>(orientation);
-		reflector.write<13>(targetPoint);
-		reflector.write<14>(textValue);
-		reflector.write<15>(clientEventID);
-		reflector.write<16>(clientIgnoreFlags);
-		reflector.write<17>(lootReferenceId);
-		reflector.write<18>(lootInstanceId);
-		reflector.write<19>(lootRigblockId);
-		reflector.write<20>(lootSuffixAssetId);
-		reflector.write<21>(lootPrefixAssetId1);
-		reflector.write<22>(lootPrefixAssetId2);
-		reflector.write<23>(lootItemLevel);
-		reflector.write<24>(lootRarity);
-		reflector.write<25>(lootCreationTime);
-		reflector.end();
-	}
-
 	// DifficultyTuning
 	void DifficultyTuning::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x48);
@@ -1838,10 +1487,6 @@ namespace RakNet {
 
 	// ChainVoteData
 	ChainVoteData::ChainVoteData() {
-		// mEnemyNouns.fill(0);
-		// mLevelNouns.fill(0);
-		// mEnemyNouns.fill(utils::hash_id("nct_minn_su_drainer.noun"));
-
 		// 1-1
 		mEnemyNouns[0] = utils::hash_id("VerdanthBasicMelee.Noun");
 		mEnemyNouns[1] = utils::hash_id("ZelemBasicHybrid.Noun");
@@ -1862,6 +1507,17 @@ namespace RakNet {
 		mTimeRemaining = milliseconds;
 	}
 
+	std::string ChainVoteData::GetDifficultyName() const {
+		if (GetLevelIndex() == 0) {
+			return "tutorial";
+		}
+		return std::to_string(GetMajorDifficulty()) + "-" + std::to_string(GetMinorDifficulty());
+	}
+
+	std::string_view ChainVoteData::GetName() const {
+		return levelNames[mLevelIndex];
+	}
+
 	uint32_t ChainVoteData::GetLevel() const {
 		return mLevel;
 	}
@@ -1876,15 +1532,10 @@ namespace RakNet {
 	}
 
 	void ChainVoteData::SetLevelByIndex(uint32_t index) {
-		if (index >= std::extent_v<decltype(levelNames)>) {
-			return;
+		if (index < levelNames.size()) {
+			mLevelIndex = index;
+			mLevel = utils::hash_id(GetName().data() + std::string(".Level"));
 		}
-
-		std::string levelName = levelNames[index];
-		levelName += ".Level";
-
-		mLevel = utils::hash_id(levelName);
-		mLevelIndex = index;
 	}
 
 	void ChainVoteData::SetLevelInstance(uint32_t index) {
@@ -1894,10 +1545,8 @@ namespace RakNet {
 	uint32_t ChainVoteData::GetMarkerSet() const {
 		std::string markerSet = "levelshop";
 		markerSet = "ai_1";
-		// markerSet = "audio";
-		// std::string markerSet = "default";
 
-		std::string levelName = levelNames[mLevelIndex];
+		std::string levelName = GetName().data();
 		levelName += "_" + markerSet + ".Markerset";
 		return utils::hash_id(levelName);
 	}
@@ -2025,19 +1674,19 @@ namespace RakNet {
 	// Objective
 	void Objective::WriteTo(RakNet::BitStream& stream) const {
 		constexpr size_t maxDescriptionLength = 0x30;
+		constexpr size_t objectiveSize = sizeof(uint32_t) + sizeof(uint32_t) + maxDescriptionLength;
+
+		const auto writeOffset = ReallocateStream(stream, objectiveSize);
 
 		Write<uint32_t>(stream, id);
 		Write<uint32_t>(stream, value);
-		/*
-		Write<uint8_t>(stream, value0);
-		Write<uint8_t>(stream, value1);
-		Write<uint8_t>(stream, value2);
-		Write<uint8_t>(stream, value3);
-		*/
+
 		size_t length = std::min<size_t>(maxDescriptionLength, description.length());
 		size_t padding = maxDescriptionLength - length;
 
 		for (size_t i = 0; i < length; ++i) { Write<char>(stream, description[i]); }
 		for (size_t i = 0; i < padding; ++i) { Write<char>(stream, 0x00); }
+
+		stream.SetWriteOffset(writeOffset + objectiveSize);
 	}
 }

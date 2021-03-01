@@ -64,8 +64,35 @@ namespace Game {
 		mBoundingBox.mExtent = glm::vec3(1);
 
 		if (mNoun) {
-			if (mNoun->IsCreature() || mNoun->IsPlayer()) {
+			mAssetId = mNoun->GetAssetId();
+			if (mNoun->IsCreature()) {
 				mAgentBlackboardData = std::make_unique<RakNet::cAgentBlackboard>();
+			}
+
+			if (mNoun->IsPlayer()) {
+				// Later
+			} else {
+				const auto& data = mNoun->GetNonPlayerClassData();
+				if (!data) {
+					return;
+				}
+
+				SetTargetable(data->IsTargetable());
+
+				const auto& attributes = data->GetAttributes();
+				if (attributes) {
+					auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
+					if (health > 0) {
+						SetAttributeValue(Attribute::MaxHealth, health);
+						SetHealth(GetMaxHealth());
+					}
+
+					auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
+					if (mana > 0) {
+						SetAttributeValue(Attribute::MaxMana, mana);
+						SetMana(GetMaxMana());
+					}
+				}
 			}
 		}
 	}
@@ -80,12 +107,21 @@ namespace Game {
 
 	void Object::OnTick() {
 		if (mTickOverride) {
-			// mTickOverride.call<void>(shared_from_this());
+			mTickOverride.call<void>(shared_from_this());
 		}
 	}
 
-	void Object::SetTickOverride(sol::function func) {
+	void Object::SetTickOverride(sol::protected_function func) {
 		mTickOverride = func;
+	}
+
+	const std::unique_ptr<RakNet::cInteractableData>& Object::GetInteractableData() const {
+		return mInteractableData;
+	}
+
+	void Object::SetInteractableData(const RakNet::cInteractableData& data) {
+		mInteractableData = std::make_unique<RakNet::cInteractableData>(data);
+		SetFlags(GetFlags() | Flags::UpdateInteractableData);
 	}
 
 	RakNet::cCombatantData& Object::GetCombatantData() {
@@ -100,12 +136,8 @@ namespace Game {
 		return static_cast<bool>(mAttributes);
 	}
 
-	const RakNet::AttributeData& Object::GetAttributeData() const {
-		if (!HasAttributeData()) {
-			static RakNet::AttributeData _data;
-			return _data;
-		}
-		return *mAttributes;
+	const std::unique_ptr<Attributes>& Object::GetAttributeData() const {
+		return mAttributes;
 	}
 
 	bool Object::HasLootData() const {
@@ -114,7 +146,7 @@ namespace Game {
 
 	const RakNet::cLootData& Object::GetLootData() const {
 		if (!HasLootData()) {
-			static RakNet::cLootData _data;
+			static RakNet::cLootData _data {};
 			return _data;
 		}
 		return *mLootData;
@@ -130,7 +162,7 @@ namespace Game {
 
 	const RakNet::LocomotionData& Object::GetLocomotionData() const {
 		if (!HasLocomotionData()) {
-			static RakNet::LocomotionData _data;
+			static RakNet::LocomotionData _data {};
 			return _data;
 		}
 		return *mLocomotionData;
@@ -149,14 +181,22 @@ namespace Game {
 	}
 
 	uint64_t Object::GetAssetId() const {
-		return mNoun ? mNoun->GetAssetId() : 0ULL;
+		return mAssetId;
+	}
+
+	void Object::SetAssetId(uint64_t assetId) {
+		mAssetId = assetId;
+	}
+
+	const NounPtr& Object::GetNoun() const {
+		return mNoun;
 	}
 
 	uint32_t Object::GetId() const {
 		return mId;
 	}
 
-	uint32_t Object::GetNoun() const {
+	uint32_t Object::GetNounId() const {
 		return mNounId;
 	}
 
@@ -164,7 +204,6 @@ namespace Game {
 		return mNoun ? mNoun->GetType() : NounType::None;
 	}
 
-	// TODO: move reflections to Game classes and remove stuff from raknet/types.h
 	const glm::vec3& Object::GetPosition() const {
 		return mBoundingBox.mCenter;
 	}
@@ -189,6 +228,67 @@ namespace Game {
 
 	const BoundingBox& Object::GetBoundingBox() const {
 		return mBoundingBox;
+	}
+
+	float Object::GetFootprintRadius() const {
+		constexpr std::array<std::tuple<glm::vec3, float>, 17> objectExtents {
+			// Critter
+			std::make_tuple(glm::vec3(1, 1, 1), -10.f),
+			std::make_tuple(glm::vec3(1, 1, 1), -10.f),
+
+			// Minion
+			std::make_tuple(glm::vec3(1.5f, 1.5f, 2.25f), 1.f),
+			std::make_tuple(glm::vec3(1.6f, 1.6f, 1.5f), 1.f),
+
+			// Elite minion
+			std::make_tuple(glm::vec3(1.5f, 1.5f, 2.5f), 1.f),
+			std::make_tuple(glm::vec3(1.75f, 1.75f, 1.75f), 1.f),
+
+			// Player (ravager, tempest, sentinel)
+			std::make_tuple(glm::vec3(1.5f, 1.5f, 3.75f), 1.f),
+			std::make_tuple(glm::vec3(1.75f, 1.75f, 3.5f), 1.f),
+			std::make_tuple(glm::vec3(2, 2, 4), 1.f),
+
+			// Lieutenant
+			std::make_tuple(glm::vec3(2.2f, 2.2f, 4), 1.f),
+			std::make_tuple(glm::vec3(2.5f, 2.5f, 3.5f), 1.f),
+
+			// Elite lieutenant
+			std::make_tuple(glm::vec3(2.25f, 2.25f, 5.5f), 1.f),
+			std::make_tuple(glm::vec3(2.5f, 2.5f, 4.5f), 1.f),
+
+			// Captain
+			std::make_tuple(glm::vec3(3, 3, 5), 1.f),
+			std::make_tuple(glm::vec3(3.5f, 3.5f, 4.5f), 1.f),
+			
+			// Boss
+			std::make_tuple(glm::vec3(4.5f, 4.5f, 9), 1.f),
+			std::make_tuple(glm::vec3(5.5f, 5.5f, 8), 1.f)
+		};
+
+		float result = 0;
+		if (mNoun) {
+			auto presetExtents = mNoun->GetPresetExtents();
+			if (presetExtents == PresetExtents::None) {
+				const auto& bBox = mNoun->GetBoundingBox();
+
+				auto min = bBox.GetMin();
+				auto max = bBox.GetMax();
+
+				auto x = glm::min(glm::abs(min.x), glm::abs(max.x));
+				auto y = glm::min(glm::abs(min.y), glm::abs(max.y));
+
+				result = glm::sqrt((x * x) + (y * y)) * GetScale();
+			} else {
+				auto presetIndex = static_cast<uint32_t>(presetExtents) - 1;
+				if (objectExtents.size() < presetIndex) {
+					const auto& [extent, _] = objectExtents[presetIndex];
+					result = glm::sqrt(extent.x * extent.x * 2) * GetScale() * 0.5f;
+				}
+			}
+		}
+
+		return result;
 	}
 
 	// Effects
@@ -223,9 +323,10 @@ namespace Game {
 
 	void Object::SetAttributeValue(uint8_t idx, float value) {
 		if (!mAttributes) {
-			mAttributes = std::make_unique<RakNet::AttributeData>();
+			mAttributes = std::make_unique<Attributes>();
 		}
 		mAttributes->SetValue(idx, value);
+		SetFlags(GetFlags() | Flags::UpdateAttributes);
 	}
 
 	float Object::GetHealth() const {
@@ -267,6 +368,15 @@ namespace Game {
 	void Object::SetInteractableState(uint32_t interactableState) {
 		mInteractableState = interactableState;
 		mDataBits.set(ObjectDataBits::InteractableState);
+	}
+
+	uint32_t Object::GetMarkerId() const {
+		return mMarkerId;
+	}
+
+	void Object::SetMarkerId(uint32_t markerId) {
+		mMarkerId = markerId;
+		mDataBits.set(ObjectDataBits::MarkerId);
 	}
 
 	float Object::GetScale() const {
@@ -351,6 +461,15 @@ namespace Game {
 	}
 
 	// Combatant functions
+	std::tuple<bool, float, bool> Object::TakeDamage() {
+		float damage = 0;
+		return { true, damage, false };
+	}
+
+	std::tuple<float, bool> Object::Heal() {
+		return { 0.f, false };
+	}
+
 	void Object::OnChangeHealth(float healthChange) {
 		// TODO: Add scripting event (lua)
 		SetHealth(GetHealth() + healthChange);
@@ -450,7 +569,7 @@ namespace Game {
 		Write<uint8_t>(stream, mMovementType); // 0 to 6
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x088));
-		Write(stream, sourceMarkerKey_markerId);
+		Write(stream, mMarkerId);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x0AC));
 		Write(stream, mLastAnimationState);
@@ -501,7 +620,7 @@ namespace Game {
 			if (mDataBits.test(19)) { reflector.write<19>(mMovementType); }
 			if (mDataBits.test(20)) { reflector.write<20>(mDisableRepulsion); }
 			if (mDataBits.test(21)) { reflector.write<21>(mInteractableState); }
-			if (mDataBits.test(22)) { reflector.write<22>(sourceMarkerKey_markerId); }
+			if (mDataBits.test(22)) { reflector.write<22>(mMarkerId); }
 		}
 		reflector.end();
 	}

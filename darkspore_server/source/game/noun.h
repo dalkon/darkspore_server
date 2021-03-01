@@ -5,6 +5,7 @@
 // Include
 #include "raknet/types.h"
 #include <pugixml.hpp>
+#include <array>
 #include <memory>
 #include <unordered_map>
 
@@ -31,6 +32,185 @@ namespace Game {
 		public:
 			glm::vec3 mCenter;
 			glm::vec3 mExtent;
+	};
+
+	// ClassAttribute
+	namespace ClassAttribute {
+		enum Key {
+			Health = 0,
+			Mana,
+			Strength,
+			Dexterity,
+			Mind,
+			PhysicalDefense,
+			MagicalDefense,
+			EnergyDefense,
+			Critical,
+			CombatSpeed,
+			NonCombatSpeed,
+			StealthDetection,
+			MovementSpeedBuff,
+
+			BaseCount = 13,
+			MaxCount = 9
+		};
+	}
+
+	// ClassAttributes
+	class ClassAttributes {
+		public:
+			void Read(pugi::xml_node node);
+
+			float GetBaseAttribute(ClassAttribute::Key key) const;
+			float GetMaxAttribute(ClassAttribute::Key key) const;
+
+		private:
+			std::array<float, ClassAttribute::BaseCount> mBaseAttributes { 0 };
+			std::array<float, ClassAttribute::MaxCount> mMaxAttributes { 0 };
+
+			std::string mPath;
+
+			uint32_t mId = 0;
+
+			friend class NounDatabase;
+	};
+
+	// NpcType
+	enum class NpcType : uint32_t {
+		Minion = 0,
+		Special,
+		Boss,
+		Destructible,
+		Interactable,
+		Agent,
+		Victim,
+		Captain
+	};
+
+	// DropType
+	enum class DropType : uint32_t {
+		None = 1 << 0,
+		Orbs = 1 << 1,
+		Catalysts = 1 << 2,
+		Loot = 1 << 3,
+		DNA = 1 << 4
+	};
+
+	// Homeworld
+	enum class Homeworld : uint32_t {
+		ZelemsNexus = 0,
+		Nocturna,
+		Verdanth,
+		Cryos,
+		Infinity
+	};
+
+	// NpcAffix
+	class NpcAffix {
+		public:
+			void Read(pugi::xml_node node);
+
+			const std::shared_ptr<NpcAffix>& GetChild() const;
+			const std::shared_ptr<NpcAffix>& GetParent() const;
+
+		private:
+			std::shared_ptr<NpcAffix> mChild;
+			std::shared_ptr<NpcAffix> mParent;
+
+			std::string mChildName;
+			std::string mParentName;
+			std::string mModifier;
+			std::string mPath;
+
+			uint32_t mId = 0;
+
+			friend class NounDatabase;
+	};
+
+	// EliteAffix
+	class EliteAffix {
+		public:
+			void Read(pugi::xml_node node);
+
+		private:
+			std::shared_ptr<NpcAffix> mNpcAffix;
+
+			int32_t mMinDifficulty = 0;
+			int32_t mMaxDifficulty = 0;
+	};
+
+	// PlayerClass
+	class PlayerClass {
+		public:
+			void Read(pugi::xml_node node);
+
+			const std::shared_ptr<ClassAttributes>& GetAttributes() const;
+
+		private:
+			std::shared_ptr<ClassAttributes> mAttributes;
+
+			std::array<std::string, 5> mAbilities;
+
+			std::string mName;
+			std::string mEffect;
+			std::string mPath;
+
+			Homeworld mHomeworld = Homeworld::ZelemsNexus;
+
+			uint32_t mCreatureType = 0;
+			uint32_t mCreatureClass = 0;
+			uint32_t mPrimaryAttribute = 0; // str, dex, mind
+			uint32_t mId = 0;
+
+			int32_t mUnlockLevel = 0;
+
+			float mWeaponMinDamage = 0;
+			float mWeaponMaxDamage = 0;
+
+			bool mNoHands = false;
+			bool mNoFeet = false;
+
+			friend class NounDatabase;
+	};
+
+	// NonPlayerClass
+	class NonPlayerClass {
+		public:
+			void Read(pugi::xml_node node);
+			
+			const std::shared_ptr<ClassAttributes>& GetAttributes() const;
+
+			bool IsTargetable() const;
+			bool IsPet() const;
+
+		private:
+			std::shared_ptr<ClassAttributes> mAttributes;
+
+			std::vector<EliteAffix> mEliteAffixes;
+			std::vector<DropType> mDropTypes;
+
+			std::string mName;
+			std::string mEffect;
+			std::string mPath;
+
+			NpcType mNpcType = NpcType::Minion;
+
+			uint32_t mCreatureType = 0;
+			uint32_t mId = 0;
+
+			int32_t mChallengeValue = 0;
+			int32_t mNpcRank = 0;
+
+			float mAggroRange = 0;
+			float mAlertRange = 0;
+			float mDropAggroRange = 0;
+			float mDropDelay = 0;
+			float mPlayerCountHealthScale = 0;
+
+			bool mTargetable = false;
+			bool mIsPet = false;
+
+			friend class NounDatabase;
 	};
 
 	// NounType
@@ -81,6 +261,28 @@ namespace Game {
 		BossPortal				= 0xC1B461BC
 	};
 
+	// PresetExtents
+	enum class PresetExtents : uint32_t {
+		None = 0,
+		CritterVertical,
+		CritterHorizontal,
+		MinionVertical,
+		MinionHorizontal,
+		EliteMinionVertical,
+		EliteMinionHorizontal,
+		PlayerTempest,
+		PlayerRavager,
+		PlayerSentinel,
+		LieutenantVertical,
+		LieutenantHorizontal,
+		EliteLieutenantVertical,
+		EliteLieutenantHorizontal,
+		CaptainVertical,
+		CaptainHorizontal,
+		BossVertical,
+		BossHorizontal
+	};
+
 	// Noun
 	class Noun {
 		public:
@@ -88,12 +290,16 @@ namespace Game {
 
 			const BoundingBox& GetBoundingBox() const;
 
+			const std::shared_ptr<NonPlayerClass>& GetNonPlayerClassData() const;
+			const std::shared_ptr<PlayerClass>& GetPlayerClassData() const;
+
 			const std::string& GetName() const;
 
 			uint64_t GetAssetId() const;
 			uint32_t GetId() const;
 
 			NounType GetType() const;
+			PresetExtents GetPresetExtents() const;
 
 			bool IsCreature() const;
 			bool IsPlayer() const;
@@ -101,10 +307,11 @@ namespace Game {
 		private:
 			BoundingBox mBoundingBox;
 
+			std::shared_ptr<NonPlayerClass> mNpcClassData;
+			std::shared_ptr<PlayerClass> mPlayerClassData;
+
 			std::vector<uint64_t> mEliteAssetIds;
 
-			std::string mNpcClassData;
-			std::string mPlayerClassData;
 			std::string mCharacterAnimationData;
 			std::string mName;
 
@@ -112,6 +319,7 @@ namespace Game {
 			uint32_t mId = 0;
 
 			NounType mType = NounType::None;
+			PresetExtents mPresetExtents = PresetExtents::None;
 
 			bool mIsFlora = false;
 			bool mIsMineral = false;
@@ -129,12 +337,27 @@ namespace Game {
 		public:
 			static NounDatabase& Instance();
 
-			void Load();
+			bool Load();
 
-			NounPtr Get(uint32_t noun) const;
+			NounPtr Get(uint32_t id) const;
+			std::shared_ptr<NonPlayerClass> GetNonPlayerClass(uint32_t id) const;
+			std::shared_ptr<PlayerClass> GetPlayerClass(uint32_t id) const;
+			std::shared_ptr<NpcAffix> GetNpcAffix(uint32_t id) const;
+			std::shared_ptr<ClassAttributes> GetClassAttributes(uint32_t id) const;
+
+		private:
+			bool LoadNouns();
+			bool LoadNonPlayerClasses();
+			bool LoadPlayerClasses();
+			bool LoadNpcAffixes();
+			bool LoadClassAttributes();
 
 		private:
 			std::unordered_map<uint32_t, NounPtr> mNouns;
+			std::unordered_map<uint32_t, std::shared_ptr<NonPlayerClass>> mNonPlayerClasses;
+			std::unordered_map<uint32_t, std::shared_ptr<PlayerClass>> mPlayerClasses;
+			std::unordered_map<uint32_t, std::shared_ptr<NpcAffix>> mNpcAffixes;
+			std::unordered_map<uint32_t, std::shared_ptr<ClassAttributes>> mClassAttributes;
 
 			bool mLoaded = false;
 	};

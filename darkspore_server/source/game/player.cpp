@@ -292,6 +292,15 @@ namespace Game {
 		SetUpdateBits(PlayerUpdateBits::CharacterBits << index);
 	}
 
+	uint32_t Player::GetOpenCrystalSlot() const {
+		for (uint32_t i = 0; i < mCrystals.size(); ++i) {
+			if (mCrystals[i].crystalNoun == 0) {
+				return i;
+			}
+		}
+		return 0xFFFFFFFF;
+	}
+
 	const RakNet::labsCrystal& Player::GetCrystal(uint32_t index) const {
 		if (mCrystals.size() < index) {
 			static RakNet::labsCrystal defaultCrystal;

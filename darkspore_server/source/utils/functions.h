@@ -49,6 +49,7 @@ namespace utils {
 	// Strings
 	bool string_iequals(const std::string& lhs, const std::string& rhs);
 	bool string_iequals(std::string_view lhs, std::string_view rhs);
+	bool string_iequals(const char* lhs, const char* rhs);
 
 	void string_replace(std::string& str, const std::string& old_str, const std::string& new_str);
 
@@ -59,16 +60,6 @@ namespace utils {
 	std::vector<std::string_view> explode_string(std::string_view str, std::string_view delim, int32_t limit = -1);
 
 	// Numbers
-	template<typename T>
-	std::enable_if_t<std::is_enum_v<T>, T> to_number(std::string_view str) {
-		return static_cast<T>(tonumber<std::underlying_type_t<T>>(str));
-	}
-
-	template<typename T>
-	std::enable_if_t<std::is_enum_v<T>, T> to_number(const std::string& str) {
-		return static_cast<T>(tonumber<std::underlying_type_t<T>>(str));
-	}
-
 	template<typename T>
 	std::enable_if_t<std::is_integral_v<T>, T> to_number(std::string_view str, int base = 10) {
 		T value;
@@ -126,6 +117,16 @@ namespace utils {
 		return to_number<T>(strView);
 	}
 
+	template<typename T>
+	std::enable_if_t<std::is_enum_v<T>, T> to_number(std::string_view str) {
+		return static_cast<T>(to_number<std::underlying_type_t<T>>(str));
+	}
+
+	template<typename T>
+	std::enable_if_t<std::is_enum_v<T>, T> to_number(const std::string& str) {
+		return static_cast<T>(to_number<std::underlying_type_t<T>>(str));
+	}
+
 	// TODO: move xml & js stuff
 	// XML
 	void xml_add_text_node(pugi::xml_node& node, const std::string& name, const std::string& value);
@@ -174,92 +175,52 @@ namespace utils {
 		return hash_id(pStr.data());
 	}
 
-	// Functions
-	template<typename T>
-	struct impl_function_traits {
-		static_assert(sizeof(T) == 0, "function_traits<T>: T is not a function type");
-		static constexpr bool valid = false;
-		static constexpr std::size_t arity = 0;
-	};
+	// Helpers
+	template<typename T, typename U = std::underlying_type_t<T>> requires std::is_enum_v<T>
+	struct enum_helper {
+		static T band(T value) { return value; }
+		static T bor(T value) { return value; }
+		static T bxor(T value) { return value; }
 
-	template<typename T>
-	struct function_traits : public impl_function_traits<decltype(&T::operator())> {};
-
-	template<class Class, typename Result, typename... Args>
-	struct function_traits<Result(Class::*)(Args...)> {
-		static constexpr bool valid = true;
-		static constexpr size_t arity = sizeof...(Args);
-
-		using result_type = Result;
-		using argument_tuple = std::tuple<Args...>;
-
-		template <size_t argument_index>
-		struct argument_type {
-			static_assert(argument_index < arity, "error: invalid parameter index.");
-			using type = typename std::tuple_element<argument_index, argument_tuple>::type;
-		};
-	};
-
-	template<typename Result, typename... Args>
-	struct function_traits<Result(Args...)> {
-		static constexpr bool valid = true;
-		static constexpr std::size_t arity = sizeof...(Args);
-
-		using result_type = Result;
-		using argument_tuple = std::tuple<Args...>;
-
-		template <size_t argument_index>
-		struct argument {
-			static_assert(argument_index < arity, "error: invalid parameter index.");
-			using type = typename std::tuple_element<argument_index, argument_tuple>::type;
-		};
-	};
-
-	// Generics
-	namespace generics {
-		constexpr size_t max_arity = 10;
-
-		struct variadic_t {};
-
-		namespace detail {
-			template <size_t>
-			struct arbitrary_t {
-				template<typename T> operator T&& ();
-				template<typename T> operator T& ();
-			};
-
-			template<typename F, size_t... Is, typename U = decltype(std::declval<F>()(arbitrary_t<Is>{}...))>
-			constexpr auto test_signature(std::index_sequence<Is...>) {
-				return std::integral_constant<size_t, sizeof...(Is)>{};
-			}
-
-			template<size_t I, typename F>
-			constexpr auto arity_impl(int) -> decltype(test_signature<F>(std::make_index_sequence<I>{})) {
-				return {};
-			}
-
-			template<size_t I, typename F, typename = std::enable_if_t<(I > 0)>>
-			constexpr auto arity_impl(...) {
-				return arity_impl<I - 1, F>(0);
-			}
-
-			template<typename F, size_t MaxArity = 10>
-			constexpr auto arity_impl() {
-				constexpr auto tmp = arity_impl<MaxArity + 1, F>(0);
-				if constexpr (tmp == MaxArity + 1) {
-					return variadic_t {};
-				} else {
-					return tmp;
-				}
+		template<typename... Ts>
+		static T band(T lhs, T rhs, Ts&&... args) {
+			lhs = static_cast<T>(static_cast<U>(lhs) & static_cast<U>(rhs));
+			if constexpr (sizeof...(args) == 0) {
+				return lhs;
+			} else {
+				return band(lhs, std::forward<Ts>(args)...);
 			}
 		}
 
-		template<typename F, size_t MaxArity = max_arity>
-		constexpr auto arity = detail::arity_impl<std::decay_t<F>, MaxArity>();
+		template<typename... Ts>
+		static T bor(T lhs, T rhs, Ts&&... args) {
+			lhs = static_cast<T>(static_cast<U>(lhs) | static_cast<U>(rhs));
+			if constexpr (sizeof...(args) == 0) {
+				return lhs;
+			} else {
+				return bor(lhs, std::forward<Ts>(args)...);
+			}
+		}
 
-		template<typename F, size_t MaxArity = max_arity>
-		constexpr bool is_variadic_v = std::is_same_v<std::decay_t<decltype(arity_v<F, MaxArity>)>, variadic_t>;
-	}
+		template<typename... Ts>
+		static T bxor(T lhs, T rhs, Ts&&... args) {
+			lhs = static_cast<T>(static_cast<U>(lhs) ^ static_cast<U>(rhs));
+			if constexpr (sizeof...(args) == 0) {
+				return lhs;
+			} else {
+				return bxor(lhs, std::forward<Ts>(args)...);
+			}
+		}
+
+		template<typename... Ts>
+		static bool test(T value, Ts&&... args) {
+			if constexpr (sizeof...(args) == 0) {
+				return static_cast<U>(value) != 0;
+			} else {
+				return static_cast<U>(band(value, bor(std::forward<Ts>(args)...))) != 0;
+			}
+		}
+	};
 }
 
 #endif

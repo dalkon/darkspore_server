@@ -111,6 +111,45 @@ namespace Game {
 		return nullptr;
 	}
 
+	ObjectPtr ObjectManager::Create(const MarkerPtr& marker) {
+		if (!marker) {
+			return nullptr;
+		}
+
+		ObjectPtr object;
+		if (const auto& teleporterData = marker->GetTeleporterData()) {
+			const auto& triggerVolumeData = teleporterData->GetTriggerVolumeData();
+			if (triggerVolumeData) {
+				// object = CreateTrigger(marker->GetPosition(), triggerVolumeData->GetBoundingBox().mExtent.x);
+			}
+		} else {
+			object = Create(marker->GetNoun());
+		}
+
+		if (object) {
+			auto overrideAssetId = marker->GetOverrideAssetId();
+			if (overrideAssetId > 0) {
+				object->SetAssetId(overrideAssetId);
+			}
+
+			object->SetPosition(marker->GetPosition());
+			object->SetOrientation(marker->GetRotation());
+			object->SetScale(marker->GetScale());
+			object->SetMarkerId(marker->GetId());
+
+			const auto& interactableData = marker->GetInteractableData();
+			if (interactableData) {
+				RakNet::cInteractableData data;
+				data.mInteractableAbility = utils::hash_id(interactableData->GetAbility());
+				data.mNumUsesAllowed = interactableData->GetUsesAllowed();
+				data.mNumTimesUsed = 0;
+				object->SetInteractableData(data);
+			}
+		}
+
+		return object;
+	}
+
 	TriggerVolumePtr ObjectManager::GetTrigger(uint32_t id) const {
 		if (auto it = mObjects.find(id); it != mObjects.end()) {
 			if (it->second->IsTrigger()) {

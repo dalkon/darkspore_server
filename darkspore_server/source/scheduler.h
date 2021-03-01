@@ -16,18 +16,18 @@
 // Task
 class Task {
 	public:
-		auto operator()() const { mFunction(); }
+		auto operator()() const { mFunction(mId); }
 		auto GetExecutionPoint() const { return mExecutionPoint; }
 
 		auto GetId() const { return mId; }
 		void SetId(uint32_t id) { mId = id; }
 
 	private:
-		Task(uint32_t delay, const std::function<void()>& f) :
+		Task(uint32_t delay, const std::function<void(uint32_t)>& f) :
 			mExecutionPoint(std::chrono::system_clock::now() + std::chrono::milliseconds(delay)), mFunction(f) {}
 
 		std::chrono::system_clock::time_point mExecutionPoint;
-		std::function<void()> mFunction;
+		std::function<void(uint32_t)> mFunction;
 
 		uint32_t mId = 0;
 
@@ -46,13 +46,13 @@ class Scheduler {
 		Scheduler();
 
 	public:
-		static uint32_t AddTask(uint32_t delay, const std::function<void()>& f);
+		static uint32_t AddTask(uint32_t delay, const std::function<void(uint32_t)>& f);
 		static void CancelTask(uint32_t id);
 
 		static void Shutdown();
 
 	private:
-		uint32_t _AddTask(uint32_t delay, const std::function<void()>& f);
+		uint32_t _AddTask(uint32_t delay, const std::function<void(uint32_t)>& f);
 		void _CancelTask(uint32_t id);
 
 		void _Shutdown();

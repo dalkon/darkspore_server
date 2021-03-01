@@ -4,6 +4,7 @@
 
 // Include
 #include "noun.h"
+#include "attributes.h"
 #include "lua.h"
 #include <map>
 
@@ -50,7 +51,7 @@ namespace Game {
 			MovementType,
 			DisableRepulsion,
 			InteractableState,
-			SourceMarker,
+			MarkerId,
 			Count
 		};
 	}
@@ -66,8 +67,9 @@ namespace Game {
 				UpdateAttributes				= 1 << 3,
 				UpdateLootData					= 1 << 4,
 				UpdateAgentBlackboardData		= 1 << 5,
+				UpdateInteractableData			= 1 << 6,
 
-				UpdateFlags = UpdateCombatant | UpdateAttributes | UpdateLootData | UpdateAgentBlackboardData
+				UpdateFlags = UpdateCombatant | UpdateAttributes | UpdateLootData | UpdateAgentBlackboardData | UpdateInteractableData
 			};
 
 		protected:
@@ -82,13 +84,16 @@ namespace Game {
 			virtual void OnDeactivate();
 			virtual void OnTick();
 
-			void SetTickOverride(sol::function func);
+			void SetTickOverride(sol::protected_function func);
+
+			const std::unique_ptr<RakNet::cInteractableData>& GetInteractableData() const;
+			void SetInteractableData(const RakNet::cInteractableData& data);
 
 			RakNet::cCombatantData& GetCombatantData();
 			const RakNet::cCombatantData& GetCombatantData() const;
 
 			bool HasAttributeData() const;
-			const RakNet::AttributeData& GetAttributeData() const;
+			const std::unique_ptr<Attributes>& GetAttributeData() const;
 
 			bool HasLootData() const;
 			const RakNet::cLootData& GetLootData() const;
@@ -101,9 +106,12 @@ namespace Game {
 			const RakNet::cAgentBlackboard& GetAgentBlackboardData() const;
 
 			uint64_t GetAssetId() const;
+			void SetAssetId(uint64_t assetId);
+
+			const NounPtr& GetNoun() const;
 
 			uint32_t GetId() const;
-			uint32_t GetNoun() const;
+			uint32_t GetNounId() const;
 
 			NounType GetType() const;
 
@@ -114,6 +122,8 @@ namespace Game {
 			void SetOrientation(const glm::quat& orientation);
 
 			const BoundingBox& GetBoundingBox() const;
+
+			float GetFootprintRadius() const;
 
 			// Effects
 			uint8_t AddEffect(uint32_t effect);
@@ -134,6 +144,9 @@ namespace Game {
 
 			uint32_t GetInteractableState() const;
 			void SetInteractableState(uint32_t interactableState);
+
+			uint32_t GetMarkerId() const;
+			void SetMarkerId(uint32_t markerId);
 
 			float GetScale() const;
 			void SetScale(float scale);
@@ -162,6 +175,9 @@ namespace Game {
 			void MarkForDeletion();
 
 			// Combatant functions
+			std::tuple<bool, float, bool> TakeDamage();
+			std::tuple<float, bool> Heal();
+
 			void OnChangeHealth(float healthChange);
 			void OnChangeMana(float manaChange);
 
@@ -193,19 +209,22 @@ namespace Game {
 		protected:
 			ObjectManager& mManager;
 
-			sol::function mTickOverride;
+			sol::protected_function mTickOverride;
 
 			BoundingBox mBoundingBox;
 
 			RakNet::cCombatantData mCombatantData;
 
 			std::unique_ptr<EffectList> mEffects;
-			std::unique_ptr<RakNet::AttributeData> mAttributes;
+			std::unique_ptr<Attributes> mAttributes;
+			std::unique_ptr<RakNet::cInteractableData> mInteractableData;
 			std::unique_ptr<RakNet::cLootData> mLootData;
 			std::unique_ptr<RakNet::LocomotionData> mLocomotionData;
 			std::unique_ptr<RakNet::cAgentBlackboard> mAgentBlackboardData;
 
 			NounPtr mNoun;
+
+			uint64_t mAssetId;
 
 			uint32_t mId;
 			uint32_t mNounId;
@@ -227,7 +246,7 @@ namespace Game {
 			uint32_t mOverrideMoveIdleAnimationState = 0;
 			uint32_t mGraphicsState = 0;
 			uint32_t mInteractableState = 0;
-			uint32_t sourceMarkerKey_markerId = 0;
+			uint32_t mMarkerId = 0;
 
 			float mScale = 1;
 			float mMarkerScale = 1;

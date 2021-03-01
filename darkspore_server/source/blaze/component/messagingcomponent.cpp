@@ -189,11 +189,15 @@ namespace Blaze {
 						}
 
 						messageTextView = &messageText[5];
-						game->AddServerTask([game, buffer = std::string(messageTextView)] {
-							game->GetLua().LoadBuffer(buffer);
-						});
-
-						messageText = "<load lua buffer>";
+						if (messageTextView.starts_with("reload")) {
+							game->AddServerTask([game] { game->GetLua().Reload(); });
+							messageText = "<reload lua scripts>";
+						} else {
+							game->AddServerTask([game, buffer = std::string(messageTextView)] {
+								game->GetLua().LoadBuffer(buffer);
+							});
+							messageText = "<load lua buffer>";
+						}
 					}
 				}
 

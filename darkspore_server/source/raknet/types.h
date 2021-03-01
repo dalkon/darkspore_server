@@ -843,43 +843,6 @@ namespace RakNet {
 		void WriteReflection(BitStream& stream) const;
 	};
 
-	// ServerEvent
-	struct ServerEvent {
-		enum Type {
-
-		};
-
-		uint32_t simpleSwarmEffectID = 0;
-		uint8_t objectFxIndex = 0;
-		bool bRemove = false;
-		bool bHardStop = false;
-		bool bForceAttach = false;
-		bool bCritical = false;
-		asset ServerEventDef = 0;
-		tObjID objectId = 0;
-		tObjID secondaryObjectId = 0;
-		tObjID attackerId = 0;
-		glm::vec3 position {};
-		glm::vec3 facing {};
-		glm::quat orientation {};
-		glm::vec3 targetPoint {};
-		int32_t textValue = 0;
-		uint32_t clientEventID = 0;
-		uint8_t clientIgnoreFlags = 0;
-		uint64_t lootReferenceId = 0;
-		uint64_t lootInstanceId = 0;
-		uint32_t lootRigblockId = 0;
-		uint32_t lootSuffixAssetId = 0;
-		uint32_t lootPrefixAssetId1 = 0;
-		uint32_t lootPrefixAssetId2 = 0;
-		int32_t lootItemLevel = 0;
-		int32_t lootRarity = 0;
-		uint64_t lootCreationTime = 0;
-
-		void WriteTo(BitStream& stream) const;
-		void WriteReflection(BitStream& stream) const;
-	};
-
 	// DifficultyTuning
 	struct DifficultyTuning {
 		std::array<float, 2> HealthPercentIncrease;
@@ -909,6 +872,9 @@ namespace RakNet {
 			float GetTimeRemaining() const;
 			void SetTimeRemaining(float milliseconds);
 
+			std::string GetDifficultyName() const;
+			std::string_view GetName() const;
+
 			uint32_t GetLevel() const;
 			void SetLevel(uint32_t level);
 
@@ -927,7 +893,6 @@ namespace RakNet {
 			void SetCompleted(bool completed);
 
 			void SetEnemyNoun(std::string_view nounStr, uint32_t index);
-			void SetTest(uint32_t val) { mPlayerAsset = val; }
 
 			void WriteTo(RakNet::BitStream& stream) const;
 

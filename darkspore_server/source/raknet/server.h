@@ -108,11 +108,9 @@ namespace RakNet {
 		constexpr MessageID DebugPing = 0xCC;
 	}
 
+	//
 	struct CrystalData {
-		uint32_t unk32[4];
-
-		glm::vec3 position;
-
+		uint32_t unk32[7];
 		uint8_t unk8;
 	};
 
@@ -187,13 +185,13 @@ namespace RakNet {
 			void SendPhysicsChanged(const ClientPtr& client);
 			void SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const LocomotionData& locomotionData);
 			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position);
-			void SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const AttributeData& attributeData);
+			void SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Attributes& attributes);
 			void SendCombatantDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cCombatantData& combatantData);
 			void SendInteractableDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cInteractableData& interactableData);
 			void SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cAgentBlackboard& agentBlackboard);
 			void SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cLootData& lootData);
 			void SendCooldownUpdate(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t id, int64_t milliseconds);
-			void SendServerEvent(const ClientPtr& client, const ServerEvent& serverEvent);
+			void SendServerEvent(const ClientPtr& client, const Game::ServerEventBase& serverEvent);
 			void SendCombatEvent(const ClientPtr& client, const CombatEvent& combatEvent);
 			void SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object);
 			void SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object);

@@ -4,6 +4,8 @@
 
 #include "objectmanager.h"
 #include "lua.h"
+#include "serverevent.h"
+#include "scheduler.h"
 
 #include "raknet/server.h"
 #include "sporenet/instance.h"
@@ -58,6 +60,11 @@ namespace Game {
 	}
 
 	void Instance::Stop() {
+		for (uint32_t id : mEvents) {
+			Scheduler::CancelTask(id);
+		}
+
+		mEvents.clear();
 		if (mServer && mServer->is_running()) {
 			mServer->stop();
 			// wait until it stops
@@ -66,6 +73,11 @@ namespace Game {
 		mServer.reset();
 		mLua.reset();
 		mObjectManager.reset();
+	}
+
+	MarkerPtr Instance::GetMarker(uint32_t id) const {
+		auto it = mMarkers.find(id);
+		return (it != mMarkers.end()) ? it->second : nullptr;
 	}
 
 	PlayerPtr Instance::GetPlayer(int64_t id) const {
@@ -136,7 +148,91 @@ namespace Game {
 	}
 
 	void Instance::OnPlayerStart(const PlayerPtr& player) {
+		mLua->PreloadAbilities();
+
+		std::string levelName = mChainData.GetName().data();
+		if (!mLevelLoaded) {
+			mLevelLoaded = mLevel.Load(mChainData.GetDifficultyName(), levelName);
+			if (mLevelLoaded) {
+				Markerset markerset;
+				if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
+					const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
+					for (const auto& marker : markers) {
+						mPlayerSpawnpoints.push_back(marker->GetPosition());
+					}
+				}
+			}
+		}
+
+		if (mLevelLoaded) {
+			// create level objects and whatnot
+			Markerset markerset;
+			if (mLevel.GetMarkerset(levelName + "_obelisk_1.Markerset", markerset)) {
+				const auto& healthObelisks = markerset.GetMarkersByType(utils::hash_id("prefab_health_obelisk.Noun"));
+				for (const auto& marker : healthObelisks) {
+					const auto& object = mObjectManager->Create(marker);
+					if (object) {
+						SendObjectCreate(object);
+					}
+				}
+
+				const auto& bossObelisks = markerset.GetMarkersByType(utils::hash_id("prefab_boss_obelisk.Noun"));
+				for (const auto& marker : bossObelisks) {
+					const auto& object = mObjectManager->Create(marker);
+					if (object) {
+						SendObjectCreate(object);
+					}
+				}
+			}
+
+			if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
+				for (const auto& marker : markerset.GetMarkers()) {
+					mMarkers[marker->GetId()] = marker;
+
+					const auto& teleporterData = marker->GetTeleporterData();
+					if (teleporterData) {
+						const auto& object = mObjectManager->Create(marker);
+						if (object) {
+							SendObjectCreate(object);
+						}
+					}
+				}
+			}
+		}
+
 		mLua->LoadFile("data/lua/player_start.lua");
+
+		// Create creatures
+		glm::vec3 spawnpoint;
+		if (player->GetId() < mPlayerSpawnpoints.size()) {
+			spawnpoint = mPlayerSpawnpoints[player->GetId()];
+		}
+
+		for (uint32_t i = 0; i < 3; ++i) {
+			const auto& characterObject = player->GetCharacterObject(i);
+			if (characterObject) {
+				characterObject->SetPosition(spawnpoint);
+				characterObject->SetVisible(true); // i == creatureIndex
+
+				characterObject->SetAttributeValue(Attribute::InvisibleToSecurityTeleporters, 1);
+				characterObject->SetAttributeValue(Attribute::AttackSpeedScale, 1);
+				characterObject->SetAttributeValue(Attribute::CooldownScale, 1);
+
+				SendObjectCreate(characterObject);
+				SendObjectUpdate(characterObject);
+			}
+		}
+	}
+
+	uint32_t Instance::AddTask(uint32_t delay, std::function<void(uint32_t)> task) {
+		auto id = Scheduler::AddTask(delay, task);
+		mEvents.insert(id);
+		return id;
+	}
+
+	void Instance::CancelTask(uint32_t id) {
+		mEvents.erase(id);
+		Scheduler::CancelTask(id);
 	}
 
 	bool Instance::ServerUpdate() const {
@@ -172,8 +268,6 @@ namespace Game {
 			return;
 		}
 
-		// TODO: do we check triggers here instead of at update... or both?
-
 		bool teleport = locomotionData.mGoalFlags & 0x020;
 		if (teleport) {
 			object->SetPosition(locomotionData.mGoalPosition);
@@ -191,6 +285,14 @@ namespace Game {
 	void Instance::UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData) {
 		if (!object) {
 			return;
+		}
+
+		auto ability = mLua->GetAbility(combatData.abilityId);
+		if (ability != sol::nil) {
+			sol::object value = ability["tick"];
+			if (value.is<sol::protected_function>()) {
+				value.as<sol::protected_function>().call<void>(ability, ObjectPtr(object), mObjectManager->Get(combatData.targetId), combatData.cursorPosition);
+			}
 		}
 
 		// mLua->LoadFile("ability_test.lua");
@@ -230,40 +332,35 @@ namespace Game {
 		SendLabsPlayerUpdate(player);
 	}
 
-	void Instance::PickupLoot(const PlayerPtr& player, uint32_t lootObjectId) {
+	void Instance::InteractWithObject(const PlayerPtr& player, uint32_t objectId) {
 		if (!player) {
 			return;
 		}
 
-		const auto& object = mObjectManager->Get(lootObjectId);
-		if (!object) {
+		const auto& object = mObjectManager->Get(objectId);
+		if (!object || object->IsMarkedForDeletion()) {
 			return;
 		}
 
-		object->MarkForDeletion();
-		if (!object->HasLootData()) {
-			return;
-		}
+		const auto& noun = object->GetNoun();
+		if (noun) {
+			switch (noun->GetType()) {
+				case NounType::Loot:
+					PickupLoot(player, object);
+					break;
 
-		const auto& lootData = object->GetLootData();
+				case NounType::Crystal:
+					PickupCatalyst(player, object);
+					break;
 
-		RakNet::ServerEvent lootEvent;
-		lootEvent.textValue = player->GetId();
-		lootEvent.clientEventID = 0x615f3861;
-		lootEvent.clientIgnoreFlags = 0;
-		lootEvent.lootReferenceId = 0;
-		lootEvent.lootInstanceId = lootData.mLootInstanceId;
-		lootEvent.lootRigblockId = lootData.mRigblockAsset;
-		lootEvent.lootSuffixAssetId = lootData.mSuffixAssetId;
-		lootEvent.lootPrefixAssetId1 = lootData.mPrefixAssetId1;
-		lootEvent.lootPrefixAssetId2 = lootData.mPrefixAssetId2;
-		lootEvent.lootItemLevel = lootData.mItemLevel;
-		lootEvent.lootRarity = lootData.mRarity;
-		lootEvent.lootCreationTime = 0;
-
-		for (const auto& [_, client] : mServer->GetClients()) {
-			mServer->SendServerEvent(client, lootEvent);
-			mServer->SendObjectDelete(client, object);
+				default:
+					const auto& characterObject = player->GetDeployedCharacterObject();
+					DropLoot(characterObject, characterObject, utils::enum_helper<DropType>::bor(DropType::Catalysts, DropType::Orbs));
+					break;
+			}
+		} else {
+			const auto& characterObject = player->GetDeployedCharacterObject();
+			DropLoot(characterObject, characterObject, utils::enum_helper<DropType>::bor(DropType::Catalysts, DropType::Orbs));
 		}
 	}
 
@@ -345,40 +442,82 @@ namespace Game {
 		}
 	}
 
-	void Instance::PickupCatalyst(const PlayerPtr& player, uint32_t catalystObjectId) {
-		if (!player) {
+	void Instance::DropLoot(const ObjectPtr& object, const ObjectPtr& targetObject, DropType dropType) {
+		if (!object || !targetObject) {
 			return;
 		}
 
-		const auto& object = mObjectManager->Get(catalystObjectId);
-		if (!object) {
-			return;
+		const auto& interactableData = object->GetInteractableData();
+		if (interactableData) {
+
 		}
 
-		object->MarkForDeletion();
-		if (!object->HasLootData()) {
-			return;
+		const auto& position = object->GetPosition(); // client uses "GetClosestPosition" but no way in hell im implementing that.
+		const auto& footprintRadius = object->GetFootprintRadius();
+		if (utils::enum_helper<DropType>::test(dropType, DropType::Orbs)) {
+			float orbDifficultyScale;
+			if (mChainData.GetLevelIndex() < 72) {
+				orbDifficultyScale = 5.f;
+			} else {
+				orbDifficultyScale = 1.f;
+			}
+
+			uint32_t orbType = 1;
+			uint32_t orbServerEvent = 0;
+			switch (orbType) {
+				case 1:
+					orbType = utils::hash_id("HealthOrb.Noun");
+					orbServerEvent = utils::hash_id("health_orb_drop.ServerEventDef");
+					break;
+
+				case 2:
+					orbType = utils::hash_id("ManaOrb.Noun");
+					orbServerEvent = utils::hash_id("mana_orb_drop.ServerEventDef");
+					break;
+
+				case 3:
+					orbType = utils::hash_id("ResurrectOrb.Noun");
+					orbServerEvent = utils::hash_id("resurrect_orb_drop.ServerEventDef");
+					break;
+			}
+
+			if (orbType) {
+				ServerEvent serverEvent;
+				serverEvent.mServerEventDef = orbServerEvent;
+				serverEvent.mTargetPoint = position;
+
+				const auto& object = mObjectManager->Create(orbType);
+				object->SetPosition(position);
+
+				SendObjectCreate(object);
+				SendServerEvent(serverEvent);
+			}
 		}
 
-		const auto& lootData = object->GetLootData();
+		if (utils::enum_helper<DropType>::test(dropType, DropType::Catalysts)) {
+			auto crystalFind = targetObject->GetAttributeValue(Attribute::CrystalFind);
+			switch (object->GetTeam()) {
+				case 2:
+					break;
 
-		RakNet::ServerEvent lootEvent;
-		lootEvent.textValue = player->GetId();
-		lootEvent.clientEventID = 0x615f3861;
-		lootEvent.clientIgnoreFlags = 0;
-		lootEvent.lootReferenceId = 0;
-		lootEvent.lootInstanceId = lootData.mLootInstanceId;
-		lootEvent.lootRigblockId = lootData.mRigblockAsset;
-		lootEvent.lootSuffixAssetId = lootData.mSuffixAssetId;
-		lootEvent.lootPrefixAssetId1 = lootData.mPrefixAssetId1;
-		lootEvent.lootPrefixAssetId2 = lootData.mPrefixAssetId2;
-		lootEvent.lootItemLevel = lootData.mItemLevel;
-		lootEvent.lootRarity = lootData.mRarity;
-		lootEvent.lootCreationTime = 0;
+				default:
+					break;
+			}
 
-		for (const auto& [_, client] : mServer->GetClients()) {
-			mServer->SendServerEvent(client, lootEvent);
-			mServer->SendObjectDelete(client, object);
+			RakNet::labsCrystal crystal(RakNet::labsCrystal::AttackSpeed, 0, false);
+
+			const auto& object = mObjectManager->Create(crystal.crystalNoun);
+			object->SetPosition(position);
+
+			SendObjectCreate(object);
+		}
+
+		if (utils::enum_helper<DropType>::test(dropType, DropType::DNA)) {
+			//
+		}
+
+		if (utils::enum_helper<DropType>::test(dropType, DropType::Loot)) {
+			//
 		}
 	}
 
@@ -392,9 +531,13 @@ namespace Game {
 			return;
 		}
 
-		auto firstClient = clients.begin()->second;
-		auto player = firstClient->GetPlayer();
-		auto characterObject = player->GetCharacterObject(1);
+		const auto& firstClient = clients.begin()->second;
+		const auto& player = firstClient->GetPlayer();
+
+		auto characterObject = player->GetDeployedCharacterObject();
+		if (!characterObject) {
+			return;
+		}
 
 		auto position = characterObject->GetPosition();
 
@@ -481,7 +624,7 @@ namespace Game {
 			}
 
 			if (flags & Object::UpdateAttributes) {
-				mServer->SendAttributeDataUpdate(client, object, object->GetAttributeData());
+				mServer->SendAttributeDataUpdate(client, object, *object->GetAttributeData());
 				newFlags &= ~Object::UpdateAttributes;
 			}
 
@@ -493,6 +636,11 @@ namespace Game {
 			if (flags & Object::UpdateAgentBlackboardData) {
 				mServer->SendAgentBlackboardUpdate(client, object, object->GetAgentBlackboardData());
 				newFlags &= ~Object::UpdateAgentBlackboardData;
+			}
+
+			if (flags & Object::UpdateInteractableData) {
+				mServer->SendInteractableDataUpdate(client, object, *object->GetInteractableData());
+				newFlags &= ~Object::UpdateInteractableData;
 			}
 			
 			if (object->mDataBits.any()) {
@@ -534,9 +682,30 @@ namespace Game {
 		}
 	}
 
-	void Instance::SendServerEvent(const RakNet::ServerEvent& serverEvent) {
+	void Instance::SendServerEvent(const ServerEventBase& serverEvent) {
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendServerEvent(client, serverEvent);
+		}
+	}
+
+	void Instance::SendServerEvent(const PlayerPtr& player, const ServerEventBase& serverEvent) {
+		if (!player) {
+			return;
+		}
+
+		const auto& client = mServer->GetClient(player->GetId());
+		if (client) {
+			mServer->SendServerEvent(client, serverEvent);
+		}
+	}
+
+	void Instance::SendCooldownUpdate(const ObjectPtr& object, uint32_t id, int64_t milliseconds) {
+		if (!object) {
+			return;
+		}
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendCooldownUpdate(client, object, id, milliseconds);
 		}
 	}
 
@@ -550,5 +719,59 @@ namespace Game {
 		}
 
 		player->ResetUpdateBits();
+	}
+
+	void Instance::PickupLoot(const PlayerPtr& player, const ObjectPtr& object) {
+		if (!player || !object || object->IsMarkedForDeletion()) {
+			return;
+		}
+
+		object->MarkForDeletion();
+		if (!object->HasLootData()) {
+			return;
+		}
+
+		ClientEvent lootEvent;
+		lootEvent.SetLootPickup(player->GetId(), object->GetLootData());
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendServerEvent(client, lootEvent);
+		}
+	}
+
+	void Instance::PickupCatalyst(const PlayerPtr& player, const ObjectPtr& object) {
+		if (!player || !object || object->IsMarkedForDeletion()) {
+			return;
+		}
+
+		uint32_t slot = player->GetOpenCrystalSlot();
+		if (slot != 0xFFFFFFFF) {
+			// object->MarkForDeletion();
+
+			auto crystal = RakNet::labsCrystal(RakNet::labsCrystal::AttackSpeed, 2, true);
+
+			RakNet::CrystalData crystalData;
+			crystalData.unk8 = 0;
+			crystalData.unk32[0] = 5;
+			crystalData.unk32[1] = 0;
+			crystalData.unk32[2] = 0;
+			crystalData.unk32[3] = crystal.crystalNoun;
+			crystalData.unk32[4] = crystal.level;
+			crystalData.unk32[5] = 0;
+			crystalData.unk32[6] = 0;
+
+			player->SetCrystal(std::move(crystal), 5);
+			for (const auto& [_, client] : mServer->GetClients()) {
+				mServer->SendCrystalMessage(client, crystalData);
+			}
+		} else {
+			// TODO: add bounce
+			ClientEvent catalystEvent;
+			catalystEvent.SetCatalystPickup(player->GetId());
+
+			for (const auto& [_, client] : mServer->GetClients()) {
+				mServer->SendServerEvent(client, catalystEvent);
+			}
+		}
 	}
 }

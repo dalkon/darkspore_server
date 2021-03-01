@@ -228,6 +228,12 @@
     <ClInclude Include="source\game\level.h">
       <Filter>Header Files\game</Filter>
     </ClInclude>
+    <ClInclude Include="source\game\serverevent.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="source\game\attributes.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -384,6 +390,12 @@
       <Filter>Source Files\game</Filter>
     </ClCompile>
     <ClCompile Include="source\game\level.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\serverevent.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\attributes.cpp">
       <Filter>Source Files\game</Filter>
     </ClCompile>
   </ItemGroup>

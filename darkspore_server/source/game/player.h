@@ -6,35 +6,10 @@
 #include "predefined.h"
 #include "character.h"
 
+#include "raknet/types.h"
+
 // Game
 namespace Game {
-	/*
-		if (mReflectionBits.test(0)) { reflector.write<0>(mbDataSetup); }
-		if (mReflectionBits.test(1)) { reflector.write<1>(mCurrentDeckIndex); }
-		if (mReflectionBits.test(2)) { reflector.write<2>(mQueuedDeckIndex); }
-		if (mReflectionBits.test(3)) { reflector.write<3>(mCharacterData); }
-		if (mReflectionBits.test(4)) { reflector.write<4>(mPlayerIndex); }
-		if (mReflectionBits.test(5)) { reflector.write<5>(mTeam); }
-		if (mReflectionBits.test(6)) { reflector.write<6>(mPlayerOnlineId); }
-		if (mReflectionBits.test(7)) { reflector.write<7>(mStatus); }
-		if (mReflectionBits.test(8)) { reflector.write<8>(mStatusProgress); }
-		if (mReflectionBits.test(9)) { reflector.write<9>(mCurrentCreatureId); }
-		if (mReflectionBits.test(10)) { reflector.write<10>(mEnergyPoints); }
-		if (mReflectionBits.test(11)) { reflector.write<11>(mbIsCharged); }
-		if (mReflectionBits.test(12)) { reflector.write<12>(mDNA); }
-		if (mReflectionBits.test(13)) { reflector.write<13>(mCrystals); }
-		if (mReflectionBits.test(14)) { reflector.write<14>(mCrystalBonuses); }
-		if (mReflectionBits.test(15)) { reflector.write<15>(mAvatarLevel); }
-		if (mReflectionBits.test(16)) { reflector.write<16>(mAvatarXP); }
-		if (mReflectionBits.test(17)) { reflector.write<17>(mChainProgression); }
-		if (mReflectionBits.test(18)) { reflector.write<18>(mLockCamera); }
-		if (mReflectionBits.test(19)) { reflector.write<19>(mbLockedOverdrive); }
-		if (mReflectionBits.test(20)) { reflector.write<20>(mbLockedCrystals); }
-		if (mReflectionBits.test(21)) { reflector.write<21>(mLockedAbilityMin); }
-		if (mReflectionBits.test(22)) { reflector.write<22>(mLockedDeckIndexMin); }
-		if (mReflectionBits.test(23)) { reflector.write<23>(mDeckScore); }
-	*/
-
 	// PlayerDataBits
 	namespace PlayerDataBits {
 		enum : uint8_t {
@@ -126,6 +101,7 @@ namespace Game {
 
 			const Character& GetCharacter(uint32_t index) const;
 
+			uint32_t GetOpenCrystalSlot() const;
 			const RakNet::labsCrystal& GetCrystal(uint32_t index) const;
 			void SetCrystal(RakNet::labsCrystal&& crystal, uint32_t index);
 
