@@ -2,8 +2,33 @@
 // Include
 #include "object.h"
 #include "objectmanager.h"
+#include "instance.h"
 
+#include "utils/functions.h"
 #include "utils/log.h"
+
+// magic numbers
+constexpr std::array<float, 19> magicNumbers {
+	1.f, // DamagePerPointOfStrength
+	1.f, // DamagePerPointOfDexterity
+	1.f, // DamagePerPointOfMind
+	5.f, // HealthPerPointofStrength
+	6.f, // PhysicalDefensePerPointofDexterity
+	4.f, // CritRatingPerPointofDexterity
+	6.f, // EnergyDefensePerPointofMind
+	1.f, // ManaPerPointofMind
+	6.f, // DefenseRatingDecreaseMultiplier
+	1.05f, // DefenseRatingDecreaseBase
+	6.f, // CriticalRatingDecreaseMultiplier
+	1.05f, // CriticalRatingDecreaseBase
+	2.f, // CriticalDamageBonus
+	8.f, // PrimaryAttributeIgnoreAmount
+	0.5f, // LeechEffectivenessForAoE
+	1.f, // LeechEffectivenessForAbilities
+	1.f, // LeechEffectivenessForBasics
+	0.8f, // DodgePercentCap
+	0.8f // ResistPercentCap
+};
 
 // Game
 namespace Game {
@@ -70,14 +95,10 @@ namespace Game {
 			}
 
 			if (mNoun->IsPlayer()) {
-				// Later
-			} else {
-				const auto& data = mNoun->GetNonPlayerClassData();
+				const auto& data = mNoun->GetPlayerClassData();
 				if (!data) {
 					return;
 				}
-
-				SetTargetable(data->IsTargetable());
 
 				const auto& attributes = data->GetAttributes();
 				if (attributes) {
@@ -91,6 +112,48 @@ namespace Game {
 					if (mana > 0) {
 						SetAttributeValue(Attribute::MaxMana, mana);
 						SetMana(GetMaxMana());
+					}
+
+					auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+					if (nonCombatSpeed > 0) {
+						SetAttributeValue(Attribute::NonCombatSpeed, nonCombatSpeed);
+					}
+
+					auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+					if (combatSpeed > 0) {
+						SetAttributeValue(Attribute::CombatSpeed, combatSpeed);
+					}
+				}
+			} else {
+				const auto& data = mNoun->GetNonPlayerClassData();
+				if (!data) {
+					return;
+				}
+
+				SetTargetable(data->IsTargetable());
+
+				const auto& attributes = data->GetAttributes();
+				if (attributes) {
+					auto health = attributes->GetBaseAttribute(ClassAttribute::Health) * 10;
+					if (health > 0) {
+						SetAttributeValue(Attribute::MaxHealth, health);
+						SetHealth(GetMaxHealth());
+					}
+
+					auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
+					if (mana > 0) {
+						SetAttributeValue(Attribute::MaxMana, mana);
+						SetMana(GetMaxMana());
+					}
+
+					auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+					if (nonCombatSpeed > 0) {
+						// SetAttributeValue(Attribute::NonCombatSpeed, nonCombatSpeed);
+					}
+
+					auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+					if (combatSpeed > 0) {
+						// SetAttributeValue(Attribute::CombatSpeed, combatSpeed);
 					}
 				}
 			}
@@ -461,9 +524,28 @@ namespace Game {
 	}
 
 	// Combatant functions
-	std::tuple<bool, float, bool> Object::TakeDamage() {
+	std::tuple<bool, float, bool> Object::TakeDamage(
+		const AttributesPtr& attackerAttributes,
+		const std::tuple<float, float>& damageRange,
+		int32_t damageType, int32_t damageSource, float damageCoefficient,
+		int32_t descriptors, float damageMultiplier, const glm::vec3& direction
+	) {
+		// calculate damage stuff
 		float damage = 0;
-		return { true, damage, false };
+		bool critical = false;
+		if (damage <= 0) {
+			damage = utils::random::get<float>(1, 10);
+			if (utils::random::get<uint32_t>(0, 1)) {
+				critical = true;
+			}
+		}
+
+		SetHealth(GetHealth() - damage);
+		if (GetHealth() <= 0) {
+			mManager.GetGame().SendObjectGfxState(shared_from_this(), utils::hash_id("dead"));
+		}
+
+		return { true, damage, critical };
 	}
 
 	std::tuple<float, bool> Object::Heal() {

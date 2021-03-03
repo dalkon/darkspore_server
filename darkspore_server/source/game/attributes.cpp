@@ -63,6 +63,15 @@ namespace Game {
 		SetValue(static_cast<uint8_t>(idx), value);
 	}
 
+	std::tuple<float, float> Attributes::GetWeaponDamage() const {
+		return std::make_tuple(mMinWeaponDamage, mMaxWeaponDamage);
+	}
+
+	void Attributes::SetWeaponDamage(float minDamage, float maxDamage) {
+		mMinWeaponDamage = minDamage;
+		mMaxWeaponDamage = maxDamage;
+	}
+
 	void Attributes::WriteTo(RakNet::BitStream& stream) const {
 		using RakNet::bytes_to_bits;
 		using RakNet::ReallocateStream;

@@ -892,6 +892,7 @@ namespace RakNet {
 			bool IsCompleted() const;
 			void SetCompleted(bool completed);
 
+			uint32_t GetEnemyNoun(uint32_t index) const;
 			void SetEnemyNoun(std::string_view nounStr, uint32_t index);
 
 			void WriteTo(RakNet::BitStream& stream) const;

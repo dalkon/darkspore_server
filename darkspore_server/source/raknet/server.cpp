@@ -2067,7 +2067,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendCombatEvent(const ClientPtr& client, const CombatEvent& combatEvent) {
+	void Server::SendCombatEvent(const ClientPtr& client, const Game::CombatEvent& combatEvent) {
 		// 100%
 		BitStream outStream(8);
 		outStream.Write(PacketID::CombatEvent);

@@ -93,4 +93,7 @@ namespace utils {
 	std::string xml_get_text_node(const pugi::xml_node& node, const std::string& name) {
 		return node.child(name.c_str()).text().get();
 	}
+
+	// random
+	thread_local std::mt19937 random::sGenerator;
 }

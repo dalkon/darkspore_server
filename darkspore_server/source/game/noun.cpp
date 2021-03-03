@@ -31,13 +31,18 @@ namespace Game {
 
 	// BoundingBox
 	BoundingBox::BoundingBox() {
-		mCenter = glm::vec3(0);
-		mExtent = glm::vec3(0);
+		mCenter = glm::zero<glm::vec3>();
+		mExtent = glm::zero<glm::vec3>();
 	}
 
 	BoundingBox::BoundingBox(const glm::vec3& min, const glm::vec3& max) {
-		mCenter = (max + min) * glm::vec3(0.5f);
-		mExtent = (max - min) * glm::vec3(0.5f);
+		constexpr auto half = glm::vec3(0.5f);
+		mCenter = (max + min) * half;
+		mExtent = (max - min) * half;
+	}
+
+	bool BoundingBox::IsPoint() const {
+		return mExtent == glm::zero<glm::vec3>();
 	}
 
 	bool BoundingBox::Contains(const glm::vec3& point) const {
@@ -46,9 +51,11 @@ namespace Game {
 	}
 
 	bool BoundingBox::Contains(const BoundingBox& boundingBox) const {
-		auto distance = glm::abs(mCenter - boundingBox.mCenter);
-		auto distanceRequired = mExtent + boundingBox.mExtent;
-		return glm::all(glm::lessThan(distance, distanceRequired));
+		auto delta = mExtent - boundingBox.mExtent;
+		if (glm::any(glm::lessThan(delta, glm::zero<glm::vec3>()))) {
+			return false;
+		}
+		return Contains(boundingBox.mCenter);
 	}
 
 	bool BoundingBox::Intersects(const BoundingBox& boundingBox) const {

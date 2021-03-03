@@ -82,12 +82,16 @@ namespace LuaFunction {
 		sol::state_view state(L);
 
 		Game::Instance& game = state["Game"]["Instance"];
-		game.AddTask(delay, [&game, callback = std::move(callback), args = std::vector<sol::object>(args.begin(), args.end())](uint32_t id) mutable {
-			game.AddServerTask([&game, id, callback = std::move(callback), args = std::move(args)]() mutable {
-				game.CancelTask(id);
-				callback.call<void>(sol::as_args(args));
+		if (delay > 0) {
+			game.AddTask(delay, [&game, callback = std::move(callback), args = std::vector<sol::object>(args.begin(), args.end())](uint32_t id) mutable {
+				game.AddServerTask([&game, id, callback = std::move(callback), args = std::move(args)]() mutable {
+					game.CancelTask(id);
+					callback.call<void>(sol::as_args(args));
+				});
 			});
-		});
+		} else {
+			callback.call<void>(args);
+		}
 	}
 
 	auto StopEvent(sol::this_state L, uint32_t id) {
@@ -182,7 +186,6 @@ namespace LuaFunction {
 
 		auto object = game.GetObjectManager().CreateTrigger(position, radius, std::move(onEnter), std::move(onExit), std::move(onStay));
 		if (object) {
-			object->SetPosition(position);
 			game.SendObjectCreate(object);
 		}
 
@@ -193,14 +196,13 @@ namespace LuaFunction {
 		sol::state_view state(L);
 
 		Game::Instance& game = state["Game"]["Instance"];
-		const auto& objectManager = game.GetObjectManager();
 
 		std::vector<Game::NounType> types;
 		for (const auto& entry : objectTypes) {
 			types.push_back(static_cast<Game::NounType>(entry.second.as<uint32_t>()));
 		}
 
-		auto objects = objectManager.GetObjectsInRadius(position, radius, types);
+		auto objects = game.GetObjectManager().GetObjectsInRadius(position, radius, types);
 		auto objectCount = static_cast<int>(objects.size());
 
 		auto result = state.create_table(objectCount, 0);
@@ -294,6 +296,22 @@ namespace LuaFunction {
 		return attributes;
 	}
 
+	auto Object_GetWeaponDamage(sol::this_state L, sol::object objectValue) {
+		sol::state_view state(L);
+
+		Game::Instance& game = state["Game"]["Instance"];
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+
+		sol::table damageRange = state.create_table(2);
+		if (object && object->HasAttributeData()) {
+			const auto& weaponDamage = object->GetAttributeData()->GetWeaponDamage();
+			damageRange[1] = std::get<0>(weaponDamage);
+			damageRange[2] = std::get<1>(weaponDamage);
+		}
+
+		return damageRange;
+	}
+
 	auto Object_AddCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, int64_t milliseconds) {
 		sol::state_view state(L);
 
@@ -314,7 +332,7 @@ namespace LuaFunction {
 	auto Object_TakeDamage(sol::this_state L,
 		sol::object objectValue, sol::object attackerValue, sol::object attributesSnapshotValue,
 		sol::table damageRange,
-		int32_t damageType, int32_t damageSource, float damageCoefficent,
+		int32_t damageType, int32_t damageSource, float damageCoefficient,
 		int32_t descriptors, float damageMultiplier, glm::vec3 direction
 	) {
 		sol::state_view state(L);
@@ -329,11 +347,32 @@ namespace LuaFunction {
 			if (attributesSnapshotValue.is<Game::AttributesPtr>()) {
 				attributes = attributesSnapshotValue.as<Game::AttributesPtr>();
 			}
+
+			const auto& result = object->TakeDamage(
+				attributes,
+				std::make_tuple(damageRange.raw_get_or(1, 0.f), damageRange.raw_get_or(2, 0.f)),
+				damageType, damageSource, damageCoefficient,
+				descriptors, damageMultiplier, direction
+			);
+
+			Game::CombatEvent combatEvent;
+			combatEvent.mTargetId = object->GetId();
+			combatEvent.mDirection = direction;
+			combatEvent.mDeltaHealth = std::get<1>(result);
+			combatEvent.mIntegerHpChange = combatEvent.mDeltaHealth;
+			if (std::get<2>(result)) {
+				combatEvent.mFlags = Game::CombatEventFlags::Critical;
+			}
+
+			game.SendCombatEvent(combatEvent);
+			return result;
 		}
+
+		return std::make_tuple(false, 0.f, false);
 	}
 
 	auto Object_Heal(sol::this_state L, sol::object objectValue, sol::object attackerValue) {
-
+		return std::make_tuple(0.f, false);
 	}
 
 	auto Object_AddEffect(sol::this_state L, sol::object objectValue, std::string serverEventDef, sol::optional<sol::object> secondaryObjectValue) {
@@ -1101,6 +1140,8 @@ namespace Game {
 			objectType["GetAttributesSnapshot"] = &LuaFunction::Object_GetAttributesSnapshot;
 			objectType["GetAttributeValue"] = &Object::GetAttributeValue;
 			objectType["SetAttributeValue"] = &Object::SetAttributeValue;
+
+			objectType["GetWeaponDamage"] = &LuaFunction::Object_GetWeaponDamage;
 
 			objectType["GetScale"] = &Object::GetScale;
 			objectType["SetScale"] = &Object::SetScale;

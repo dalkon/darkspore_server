@@ -94,6 +94,8 @@ namespace Game {
 			bool Start();
 			void Stop();
 
+			bool LoadLevel();
+
 			MarkerPtr GetMarker(uint32_t id) const;
 
 			PlayerPtr GetPlayer(int64_t id) const;
@@ -164,6 +166,7 @@ namespace Game {
 			void SendObjectGfxState(const ObjectPtr& object, uint32_t state);
 			void SendServerEvent(const ServerEventBase& serverEvent);
 			void SendServerEvent(const PlayerPtr& player, const ServerEventBase& serverEvent);
+			void SendCombatEvent(const CombatEvent& combatEvent);
 			void SendCooldownUpdate(const ObjectPtr& object, uint32_t id, int64_t milliseconds);
 			void SendLabsPlayerUpdate(const PlayerPtr& player);
 

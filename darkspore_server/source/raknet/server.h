@@ -192,7 +192,7 @@ namespace RakNet {
 			void SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cLootData& lootData);
 			void SendCooldownUpdate(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t id, int64_t milliseconds);
 			void SendServerEvent(const ClientPtr& client, const Game::ServerEventBase& serverEvent);
-			void SendCombatEvent(const ClientPtr& client, const CombatEvent& combatEvent);
+			void SendCombatEvent(const ClientPtr& client, const Game::CombatEvent& combatEvent);
 			void SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object);
 			void SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object);
 			void SendModifierDeleted(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId);

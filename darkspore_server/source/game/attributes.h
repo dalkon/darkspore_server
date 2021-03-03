@@ -151,6 +151,9 @@ namespace Game {
 			void SetValue(uint8_t idx, float value);
 			void SetValue(AttributeType idx, float value);
 
+			std::tuple<float, float> GetWeaponDamage() const;
+			void SetWeaponDamage(float minDamage, float maxDamage);
+
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
 

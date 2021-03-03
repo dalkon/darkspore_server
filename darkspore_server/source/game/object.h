@@ -175,7 +175,12 @@ namespace Game {
 			void MarkForDeletion();
 
 			// Combatant functions
-			std::tuple<bool, float, bool> TakeDamage();
+			std::tuple<bool, float, bool> TakeDamage(
+				const AttributesPtr& attackerAttributes,
+				const std::tuple<float, float>& damageRange,
+				int32_t damageType, int32_t damageSource, float damageCoefficient,
+				int32_t descriptors, float damageMultiplier, const glm::vec3& direction
+			);
 			std::tuple<float, bool> Heal();
 
 			void OnChangeHealth(float healthChange);

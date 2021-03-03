@@ -75,6 +75,38 @@ namespace Game {
 		mObjectManager.reset();
 	}
 
+	bool Instance::LoadLevel() {
+		if (!mLevelLoaded) {
+			std::string levelName = mChainData.GetName().data();
+			mLevelLoaded = mLevel.Load(mChainData.GetDifficultyName(), levelName);
+			if (mLevelLoaded) {
+				LevelConfig config;
+				if (mChainData.IsCompleted()) {
+					config = mLevel.GetConfig();
+				} else {
+					config = mLevel.GetFirstTimeConfig();
+				}
+
+				mChainData.SetEnemyNoun(config.GetMinion(0).GetNounName(), 0);
+				mChainData.SetEnemyNoun(config.GetMinion(1).GetNounName(), 1);
+				mChainData.SetEnemyNoun(config.GetMinion(2).GetNounName(), 2);
+				mChainData.SetEnemyNoun(config.GetSpecial(0).GetNounName(), 3);
+				mChainData.SetEnemyNoun(config.GetSpecial(1).GetNounName(), 4);
+				mChainData.SetEnemyNoun(config.GetSpecial(2).GetNounName(), 5);
+
+				Markerset markerset;
+				if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
+					const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
+					for (const auto& marker : markers) {
+						mPlayerSpawnpoints.push_back(marker->GetPosition());
+					}
+				}
+			}
+		}
+
+		return mLevelLoaded;
+	}
+
 	MarkerPtr Instance::GetMarker(uint32_t id) const {
 		auto it = mMarkers.find(id);
 		return (it != mMarkers.end()) ? it->second : nullptr;
@@ -149,22 +181,11 @@ namespace Game {
 
 	void Instance::OnPlayerStart(const PlayerPtr& player) {
 		mLua->PreloadAbilities();
-
-		std::string levelName = mChainData.GetName().data();
-		if (!mLevelLoaded) {
-			mLevelLoaded = mLevel.Load(mChainData.GetDifficultyName(), levelName);
-			if (mLevelLoaded) {
-				Markerset markerset;
-				if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
-					const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
-					for (const auto& marker : markers) {
-						mPlayerSpawnpoints.push_back(marker->GetPosition());
-					}
-				}
-			}
-		}
+		mLevelLoaded = LoadLevel();
 
 		if (mLevelLoaded) {
+			std::string levelName = mChainData.GetName().data();
+
 			// create level objects and whatnot
 			Markerset markerset;
 			if (mLevel.GetMarkerset(levelName + "_obelisk_1.Markerset", markerset)) {
@@ -197,6 +218,40 @@ namespace Game {
 						}
 					}
 				}
+			}
+
+			const auto TestEnemy = [this](const auto& markerset) {
+				for (const auto& marker : markerset.GetMarkers()) {
+					mMarkers[marker->GetId()] = marker;
+
+					switch (marker->GetNoun()) {
+						case utils::hash_id("SpawnPoint_Director.Noun"):
+						case utils::hash_id("SpawnPoint_DirectorA.Noun"):
+						case utils::hash_id("SpawnPoint_DirectorB.Noun"):
+						case utils::hash_id("SpawnPoint_DirectorWanderer.Noun"):
+						{
+							const auto& object = mObjectManager->Create(mChainData.GetEnemyNoun(utils::random::get<uint32_t>(0, 5)));
+							if (object) {
+								object->SetPosition(marker->GetPosition());
+								object->SetOrientation(marker->GetRotation());
+								SendObjectCreate(object);
+							}
+							break;
+						}
+					}
+				}
+			};
+
+			if (mLevel.GetMarkerset(levelName + "_AI_WandererA.Markerset", markerset)) {
+				TestEnemy(markerset);
+			}
+
+			if (mLevel.GetMarkerset(levelName + "_AI_WandererB.Markerset", markerset)) {
+				TestEnemy(markerset);
+			}
+
+			if (mLevel.GetMarkerset(levelName + "_AI_WandererC.Markerset", markerset)) {
+				TestEnemy(markerset);
 			}
 		}
 
@@ -696,6 +751,12 @@ namespace Game {
 		const auto& client = mServer->GetClient(player->GetId());
 		if (client) {
 			mServer->SendServerEvent(client, serverEvent);
+		}
+	}
+
+	void Instance::SendCombatEvent(const CombatEvent& combatEvent) {
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendCombatEvent(client, combatEvent);
 		}
 	}
 

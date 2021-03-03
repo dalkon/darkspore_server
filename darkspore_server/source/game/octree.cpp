@@ -3,6 +3,8 @@
 #include "octree.h"
 #include "objectmanager.h"
 
+#include "utils/log.h"
+
 // TODO: just change this octree to focus on triggers
 
 // Game
@@ -14,18 +16,18 @@ namespace Game {
 	void OctTree::Update() {
 		if (!mReady) {
 			if (!mBuilt) {
-				while (!mQueue.empty()) {
-					mObjects.push_back(mQueue.back());
-					mQueue.pop_back();
+				for (const auto& object : mQueue) {
+					mObjects.push_back(object);
 				}
+				mQueue.clear();
 
 				BuildTree();
 				mBuilt = true;
 			} else {
-				while (!mQueue.empty()) {
-					Insert(mQueue.back());
-					mQueue.pop_back();
+				for (const auto& object : mQueue) {
+					Insert(object);
 				}
+				mQueue.clear();
 			}
 			mReady = true;
 		}
@@ -47,6 +49,15 @@ namespace Game {
 			}
 		}
 
+		// Remove object marked to be deleted
+		for (int32_t index = static_cast<int32_t>(mObjects.size()) - 1; index >= 0; --index) {
+			const auto& object = mObjects[index];
+			if (object->IsMarkedForDeletion()) {
+				mObjects.erase(std::next(mObjects.begin(), index));
+			}
+		}
+
+		// Get objects that have moved
 		decltype(mObjects) movedObjects;
 		movedObjects.reserve(mObjects.size());
 
@@ -54,17 +65,6 @@ namespace Game {
 			if (object->IsDirty()) {
 				object->SetDirty(false);
 				movedObjects.push_back(object);
-			}
-		}
-
-		for (int32_t index = static_cast<int32_t>(mObjects.size()) - 1; index >= 0; --index) {
-			const auto& object = mObjects[index];
-			if (object->IsMarkedForDeletion()) {
-				auto it = std::find(movedObjects.begin(), movedObjects.end(), object);
-				if (it != movedObjects.end()) {
-					movedObjects.erase(it);
-				}
-				mObjects.erase(mObjects.begin() + index);
 			}
 		}
 
@@ -91,7 +91,7 @@ namespace Game {
 			auto current = this;
 
 			const auto& bBox = movedObject->GetBoundingBox();
-			if (bBox.mExtent != glm::zero<glm::vec3>()) {
+			if (!bBox.IsPoint()) {
 				while (!current->mRegion.Contains(bBox)) {
 					if (!current->mParentNode) {
 						break;
@@ -125,12 +125,11 @@ namespace Game {
 		}
 
 		if (!mParentNode) {
-			std::vector<std::tuple<ObjectPtr, ObjectPtr>> collisions;
+			std::vector<std::tuple<TriggerVolumePtr, ObjectPtr>> collisions;
 			GetTriggerInteractions(collisions, {});
 
 			for (const auto& [trigger, object] : collisions) {
-				auto triggerObject = std::static_pointer_cast<TriggerVolume>(trigger);
-				triggerObject->AddObject(object);
+				trigger->AddObject(object);
 			}
 		}
 	}
@@ -142,11 +141,11 @@ namespace Game {
 			}
 		}
 
-		glm::vec3 extent = mRegion.mExtent;
-		if (extent == glm::zero<glm::vec3>()) {
+		if (mRegion.IsPoint()) {
 			// TODO: get and update extents.
 		}
 
+		glm::vec3 extent = mRegion.mExtent;
 		if (extent.x <= sSmallestExtent && extent.y <= sSmallestExtent && extent.z <= sSmallestExtent) {
 			return;
 		}
@@ -172,7 +171,7 @@ namespace Game {
 		for (int32_t index = 0, size = static_cast<int32_t>(mObjects.size()); index < size; ++index) {
 			const auto& object = mObjects[index];
 			const BoundingBox& boundingBox = object->GetBoundingBox();
-			if (boundingBox.mExtent != glm::zero<glm::vec3>()) {
+			if (!boundingBox.IsPoint()) {
 				for (uint32_t corner = 0; corner < 8; ++corner) {
 					if (octant[corner].Contains(boundingBox)) {
 						objectList[corner].push_back(object);
@@ -195,7 +194,7 @@ namespace Game {
 		}
 
 		for (int32_t index = static_cast<int32_t>(objectRemoveList.size()) - 1; index >= 0; --index) {
-			mObjects.erase(mObjects.begin() + objectRemoveList[index]);
+			mObjects.erase(std::next(mObjects.begin(), objectRemoveList[index]));
 		}
 
 		//Create child nodes where there are items contained in the bounding region
@@ -216,24 +215,28 @@ namespace Game {
 		mReady = false;
 	}
 
-	void OctTree::Insert(const ObjectPtr& object) {
-		if (mObjects.size() <= 1 && mActiveNodes == 0) {
+	bool OctTree::Insert(const ObjectPtr& object) {
+		if (mObjects.empty() && mActiveNodes == 0) {
 			mObjects.push_back(object);
-			return;
+			return true;
 		}
 
 		const glm::vec3& extent = mRegion.mExtent;
 		if (extent.x <= sSmallestExtent && extent.y <= sSmallestExtent && extent.z <= sSmallestExtent) {
 			mObjects.push_back(object);
-			return;
+			return true;
 		}
 
 		const BoundingBox& boundingBox = object->GetBoundingBox();
 
 		bool isInRegion = mRegion.Contains(boundingBox);
-		if (!isInRegion && mParentNode) {
-			mParentNode->Insert(object);
-			return;
+		if (!isInRegion) {
+			if (mParentNode) {
+				return mParentNode->Insert(object);
+			} else {
+				std::cout << "Object outside of root region. (x: " << mRegion.mCenter.x << ", y: " << mRegion.mCenter.y << ", z: " << mRegion.mCenter.z << ")" << std::endl;
+				return false;
+			}
 		}
 
 		const glm::vec3& rMin = mRegion.GetMin();
@@ -252,24 +255,24 @@ namespace Game {
 		childOctant[7] = mChildNode[7] ? mChildNode[7]->mRegion : BoundingBox(glm::vec3(rMin.x, rCenter.y, rCenter.z), glm::vec3(rCenter.x, rMax.y, rMax.z));	// Top left (front)
 
 		if (isInRegion) {
-			bool found = false;
 			for (uint32_t corner = 0; corner < 8; ++corner) {
 				const auto& childRegion = childOctant[corner];
 				if (childRegion.Contains(boundingBox)) {
 					auto& childNode = mChildNode[corner];
 					if (childNode) {
-						childNode->Insert(object);
+						if (childNode->Insert(object)) {
+							return true;
+						}
 					} else {
 						childNode = CreateNode(childRegion, object);
 						mActiveNodes |= (1 << corner);
+						return true;
 					}
-					found = true;
 				}
 			}
 
-			if (!found) {
-				mObjects.push_back(object);
-			}
+			mObjects.push_back(object);
+			return true;
 		}
 		/*
 		else if (Item.BoundingSphere.Radius != 0 && m_region.Contains(Item.BoundingSphere) == ContainmentType.Contains) {
@@ -290,12 +293,7 @@ namespace Game {
 			if (!found) m_objects.Add(Item);
 		}
 		*/
-		else {
-			//either the item lies outside of the enclosed bounding box or it is intersecting it. Either way, we need to rebuild
-			//the entire tree by enlarging the containing bounding box
-			//BoundingBox enclosingArea = FindBox();
-			BuildTree();
-		}
+		return false;
 	}
 
 	std::vector<ObjectPtr> OctTree::GetObjectsInRadius(const glm::vec3& position, float radius, const std::vector<NounType>& types) const {
@@ -314,92 +312,111 @@ namespace Game {
 			return;
 		}
 
-		if (mObjects.empty() || mActiveNodes == 0) {
-			return;
-		}
-
 		for (const auto& object : mObjects) {
-			if (!region.Contains(object->GetBoundingBox())) {
-				continue;
-			}
-
 			if (types.empty()) {
-				objects.push_back(object);
+				if (region.Intersects(object->GetBoundingBox())) {
+					objects.push_back(object);
+				}
 			} else {
 				auto type = object->GetType();
 				for (auto acceptedType : types) {
 					if (type == acceptedType) {
-						objects.push_back(object);
+						if (region.Intersects(object->GetBoundingBox())) {
+							objects.push_back(object);
+						}
 						break;
 					}
 				}
 			}
 		}
 
-		for (uint32_t flags = mActiveNodes, index = 0; flags > 0; flags >>= 1, ++index) {
-			auto& childNode = mChildNode[index];
-			if ((flags & 1) && childNode && region.Contains(childNode->mRegion)) {
-				childNode->GetObjectsInRadius(objects, region, types);
+		if (mActiveNodes) {
+			for (const auto& childNode : mChildNode) {
+				if (childNode && region.Intersects(childNode->mRegion)) {
+					childNode->GetObjectsInRadius(objects, region, types);
+				}
 			}
 		}
 	}
 
-	void OctTree::GetTriggerInteractions(std::vector<std::tuple<ObjectPtr, ObjectPtr>>& collisions, std::vector<ObjectPtr> parentTriggers) const {
+	void OctTree::GetTriggerInteractions(std::vector<std::tuple<TriggerVolumePtr, ObjectPtr>>& collisions, std::vector<TriggerVolumePtr> parentTriggers) const {
 		// TODO: just store triggers in a seperate vector as to not fetch them each time?
 		if (!mObjects.empty()) {
-			std::remove_reference_t<decltype(parentTriggers)> localTriggers;
+			decltype(parentTriggers) localTriggers;
 			if (parentTriggers.empty()) {
 				for (const auto& object : mObjects) {
-					if (object->IsTrigger()) {
-						localTriggers.push_back(object);
+					if (object->IsTrigger() && !object->GetBoundingBox().IsPoint()) {
+						localTriggers.push_back(std::static_pointer_cast<TriggerVolume>(object));
 					}
 				}
 			} else {
 				for (const auto& trigger : parentTriggers) {
-					const BoundingBox& triggerBox = trigger->GetBoundingBox();
-					if (triggerBox.mExtent == glm::zero<glm::vec3>()) {
-						continue;
-					}
-
-					const auto& triggerObject = std::static_pointer_cast<TriggerVolume>(trigger);
+					const auto& triggerBox = trigger->GetBoundingBox();
 					for (const auto& object : mObjects) {
+						const auto& objectBox = object->GetBoundingBox();
 						if (object->IsTrigger()) {
-							localTriggers.push_back(object);
+							if (!objectBox.IsPoint()) {
+								localTriggers.push_back(std::static_pointer_cast<TriggerVolume>(object));
+							}
 							continue;
 						}
 
-						if (object != triggerObject->GetOwnerObject() && triggerBox.Contains(object->GetPosition())) {
+						if (object != trigger->GetOwnerObject() && triggerBox.Intersects(objectBox)) {
 							collisions.push_back(std::make_tuple(trigger, object));
 						}
 					}
 				}
 			}
 
-			for (const auto& trigger : localTriggers) {
-				const BoundingBox& triggerBox = trigger->GetBoundingBox();
-				if (triggerBox.mExtent == glm::zero<glm::vec3>()) {
-					continue;
+			if (!localTriggers.empty()) {
+#if 1
+				auto node = this;
+				while (node) {
+					if (!node->mParentNode) {
+						break;
+					}
+					node = node->mParentNode;
 				}
 
-				const auto& triggerObject = std::static_pointer_cast<TriggerVolume>(trigger);
-				for (const auto& object : mObjects) {
-					if (object->IsTrigger()) {
-						continue;
-					}
+				for (const auto& trigger : localTriggers) {
+					std::vector<ObjectPtr> foundObjects;
+					node->GetObjectsInRadius(foundObjects, trigger->GetBoundingBox(), {});
 
-					if (object != triggerObject->GetOwnerObject() && triggerBox.Contains(object->GetPosition())) {
+					for (const auto& object : foundObjects) {
+						if (object->IsTrigger() || object == trigger->GetOwnerObject()) {
+							continue;
+						}
 						collisions.push_back(std::make_tuple(trigger, object));
 					}
+			}
+#else
+				auto current = this;
+				while (current) {
+					for (const auto& trigger : localTriggers) {
+						const auto& triggerBox = trigger->GetBoundingBox();
+						for (const auto& object : current->mObjects) {
+							if (object->IsTrigger()) {
+								continue;
+							}
+
+							if (object != trigger->GetOwnerObject() && triggerBox.Intersects(object->GetBoundingBox())) {
+								collisions.push_back(std::make_tuple(trigger, object));
+							}
+						}
+					}
+					current = current->mParentNode;
 				}
+#endif
 			}
 
 			parentTriggers.insert(parentTriggers.end(), localTriggers.begin(), localTriggers.end());
 		}
 
-		for (uint32_t flags = mActiveNodes, index = 0; flags > 0; flags >>= 1, ++index) {
-			const auto& childNode = mChildNode[index];
-			if ((flags & 1) && childNode) {
-				childNode->GetTriggerInteractions(collisions, parentTriggers);
+		if (mActiveNodes) {
+			for (const auto& childNode : mChildNode) {
+				if (childNode) {
+					childNode->GetTriggerInteractions(collisions, parentTriggers);
+				}
 			}
 		}
 	}

@@ -132,6 +132,45 @@ namespace Game {
 			int32_t mTextValue = 0; // PlayerCashOut, PlayerLeftGame, PlayerReady, LootDrop
 	};
 
+	// CombatEvent
+	enum class CombatEventFlags : uint32_t {
+		None = 0x000000,
+		KillingBlow = 0x000004,
+		Critical = 0x000008,
+		Deflect = 0x000010,
+		Dodge = 0x000020,
+		Immune = 0x000040,
+		Resist = 0x000080,
+		Resurrected = 0x000100,
+		Flag0200 = 0x000200,
+		Slowed = 0x000800,
+		Stunned = 0x001000,
+		Taunted = 0x004000,
+		Supressed = 0x008000,
+		Rooted = 0x010000,
+		Terrified = 0x020000,
+		Banished = 0x040000,
+	};
+
+	class CombatEvent {
+		public:
+			void WriteReflection(RakNet::BitStream& stream) const;
+
+		public:
+			glm::vec3 mDirection {};
+
+			CombatEventFlags mFlags = CombatEventFlags::None;
+
+			uint32_t mTargetId = 0;
+			uint32_t mSourceId = 0;
+			uint32_t mAbilityId = 0;
+
+			int32_t mIntegerHpChange = 0;
+
+			float mDeltaHealth = 0;
+			float mAbsorbedAmount = 0;
+	};
+
 	/*
 	struct ServerEvent {
 		uint32_t simpleSwarmEffectID = 0;

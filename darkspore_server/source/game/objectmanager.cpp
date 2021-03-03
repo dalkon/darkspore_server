@@ -14,8 +14,8 @@ namespace Game {
 	{
 		SetScale(0); // hide the object, effects will still show.
 		SetHasCollision(false);
+		SetPosition(position);
 
-		mBoundingBox.mCenter = position;
 		mBoundingBox.mExtent = glm::vec3(radius);
 		// mBoundingBox.mExtent.z = NAN;
 
@@ -98,9 +98,10 @@ namespace Game {
 			return nullptr;
 		}
 
-		if (auto it = mObjects.try_emplace(id); it.second) {
+		const auto& [it, inserted] = mObjects.try_emplace(id);
+		if (inserted) {
 			auto object = ObjectPtr(new Object(*this, id, noun));
-			it.first->second = object;
+			it->second = object;
 
 			mOctTree->Enqueue(object);
 			mActiveObjects.insert(object);
@@ -165,9 +166,10 @@ namespace Game {
 			return nullptr;
 		}
 
-		if (auto it = mObjects.try_emplace(id); it.second) {
+		const auto& [it, inserted] = mObjects.try_emplace(id);
+		if (inserted) {
 			auto object = TriggerVolumePtr(new TriggerVolume(*this, id, position, radius, std::move(onEnter), std::move(onExit), std::move(onStay)));
-			it.first->second = object;
+			it->second = object;
 
 			mOctTree->Enqueue(object);
 			mActiveObjects.insert(object);
@@ -194,8 +196,11 @@ namespace Game {
 		if (!mMarkedObjects.empty()) {
 			mGame.SendObjectDelete(mMarkedObjects);
 			for (const auto& object : mMarkedObjects) {
-				mObjects.erase(object->GetId());
 				mActiveObjects.erase(object);
+
+				auto id = object->GetId();
+				mObjects.erase(id);
+				mOpenObjectIds.push_back(id);
 			}
 			mMarkedObjects.clear();
 		}
@@ -212,17 +217,14 @@ namespace Game {
 	}
 
 	uint32_t ObjectManager::GetNextObjectId() {
-		constexpr uint32_t START_ID = 1;
+		static thread_local uint32_t sNextId = 1;
 
 		uint32_t id;
 		if (!mOpenObjectIds.empty()) {
 			id = mOpenObjectIds.back();
 			mOpenObjectIds.pop_back();
-		} else if (mObjects.empty()) {
-			id = START_ID;
 		} else {
-			auto end = mObjects.end();
-			id = (--end)->first + 1;
+			id = sNextId++;
 		}
 
 		if (id == 0) {

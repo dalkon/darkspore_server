@@ -142,4 +142,19 @@ namespace Game {
 		reflector.write<25>(mLootCreationTime);
 		reflector.end();
 	}
+
+	// CombatEvent
+	void CombatEvent::WriteReflection(RakNet::BitStream& stream) const {
+		RakNet::reflection_serializer<8> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mFlags);
+		reflector.write<1>(mDeltaHealth);
+		reflector.write<2>(mAbsorbedAmount);
+		reflector.write<3>(mTargetId);
+		reflector.write<4>(mSourceId);
+		reflector.write<5>(mAbilityId);
+		reflector.write<6>(mDirection);
+		reflector.write<7>(mIntegerHpChange);
+		reflector.end();
+	}
 }

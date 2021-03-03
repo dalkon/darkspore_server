@@ -1222,12 +1222,9 @@ namespace Blaze {
 		chainData.SetStarLevel(0);
 		chainData.SetCompleted(false);
 
-		/*
-		chainData.SetEnemyNoun("TutorialBasicPoison.Noun", 0);
-		chainData.SetEnemyNoun("TutorialBasicDiseased.Noun", 1);
-		chainData.SetEnemyNoun("TutorialBasicRanged.Noun", 2);
-		chainData.SetEnemyNoun("TutorialSloth.Noun", 3);
-		*/
+		if (!game->LoadLevel()) {
+			// some error, could not load level.
+		}
 
 		// Packet
 		TDF::Packet packet;

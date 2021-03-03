@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <string_view>
+#include <random>
 #include <pugixml.hpp>
 
 // utils
@@ -176,6 +177,23 @@ namespace utils {
 	}
 
 	// Helpers
+	class random {
+		public:
+			template<typename T>
+			static T get(T min, T max) {
+				if constexpr (std::is_floating_point_v<T>) {
+					std::uniform_real_distribution<T> distribution(min, max);
+					return distribution(sGenerator);
+				} else if constexpr (std::is_integral_v<T>) {
+					std::uniform_int_distribution<T> distribution(min, max);
+					return distribution(sGenerator);
+				}
+			}
+
+		private:
+			static thread_local std::mt19937 sGenerator;
+	};
+
 	template<typename T, typename U = std::underlying_type_t<T>> requires std::is_enum_v<T>
 	struct enum_helper {
 		static T band(T value) { return value; }

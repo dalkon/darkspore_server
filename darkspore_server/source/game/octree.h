@@ -20,13 +20,13 @@ namespace Game {
 			void BuildTree();
 
 			void Enqueue(const ObjectPtr& object);
-			void Insert(const ObjectPtr& object);
+			bool Insert(const ObjectPtr& object);
 
 			std::vector<ObjectPtr> GetObjectsInRadius(const glm::vec3& position, float radius, const std::vector<NounType>& types) const;
 
 		protected:
 			void GetObjectsInRadius(std::vector<ObjectPtr>& objects, const BoundingBox& region, const std::vector<NounType>& types) const;
-			void GetTriggerInteractions(std::vector<std::tuple<ObjectPtr, ObjectPtr>>& collisions, std::vector<ObjectPtr> parentTriggers) const;
+			void GetTriggerInteractions(std::vector<std::tuple<TriggerVolumePtr, ObjectPtr>>& collisions, std::vector<TriggerVolumePtr> parentTriggers) const;
 
 			OctTree* CreateNode(const BoundingBox& region, const std::vector<ObjectPtr>& objectList);
 			OctTree* CreateNode(const BoundingBox& region, const ObjectPtr& object);

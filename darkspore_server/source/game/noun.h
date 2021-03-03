@@ -17,6 +17,7 @@ namespace Game {
 			BoundingBox();
 			BoundingBox(const glm::vec3& min, const glm::vec3& max);
 
+			bool IsPoint() const;
 			bool Contains(const glm::vec3& point) const;
 			bool Contains(const BoundingBox& boundingBox) const;
 			bool Intersects(const BoundingBox& boundingBox) const;

@@ -186,19 +186,32 @@ namespace Game {
 		public:
 			void Read(pugi::xml_node node);
 
+			const std::string& GetNounName() const;
+
+			int32_t GetMinLevel() const;
+			int32_t GetMaxLevel() const;
+
+			bool IsHordeLegal() const;
+
 		private:
 			std::string mNounName;
 
-			int32_t mMinLevel;
-			int32_t mMaxLevel;
+			int32_t mMinLevel = 0;
+			int32_t mMaxLevel = 100;
 
-			bool mHordeLegal;
+			bool mHordeLegal = true;
 	};
 
 	// LevelConfig
 	class LevelConfig {
 		public:
 			void Read(pugi::xml_node node);
+
+			DirectorClass GetMinion(size_t idx) const;
+			DirectorClass GetSpecial(size_t idx) const;
+			DirectorClass GetBoss(size_t idx) const;
+			DirectorClass GetAgent(size_t idx) const;
+			DirectorClass GetCaptain(size_t idx) const;
 
 		private:
 			std::vector<DirectorClass> mMinions;
@@ -217,6 +230,10 @@ namespace Game {
 			bool Load(const std::string& difficultyName, const std::string& levelName);
 
 			bool GetMarkerset(const std::string& name, Markerset& markerset) const;
+
+			const LevelConfig& GetConfig() const;
+			const LevelConfig& GetFirstTimeConfig() const;
+			const LevelConfig& GetPlanetConfig() const;
 
 		private:
 			std::unordered_map<uint32_t, Markerset> mMarkersets;

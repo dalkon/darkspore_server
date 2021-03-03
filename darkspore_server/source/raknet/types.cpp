@@ -1575,6 +1575,13 @@ namespace RakNet {
 		mCompletedLevel = completed;
 	}
 
+	uint32_t ChainVoteData::GetEnemyNoun(uint32_t index) const {
+		if (index < mEnemyNouns.size()) {
+			return mEnemyNouns[index];
+		}
+		return 0;
+	}
+
 	void ChainVoteData::SetEnemyNoun(std::string_view nounStr, uint32_t index) {
 		if (index < mEnemyNouns.size()) {
 			mEnemyNouns[index] = utils::hash_id(nounStr);

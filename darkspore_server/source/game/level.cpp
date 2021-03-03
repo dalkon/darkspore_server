@@ -292,6 +292,22 @@ namespace Game {
 		mHordeLegal = utils::xml_get_text_node<bool>(node, "hordeLegal");
 	}
 
+	const std::string& DirectorClass::GetNounName() const {
+		return mNounName;
+	}
+
+	int32_t DirectorClass::GetMinLevel() const {
+		return mMinLevel;
+	}
+
+	int32_t DirectorClass::GetMaxLevel() const {
+		return mMaxLevel;
+	}
+
+	bool DirectorClass::IsHordeLegal() const {
+		return mHordeLegal;
+	}
+
 	// LevelConfig
 	void LevelConfig::Read(pugi::xml_node node) {
 		read_list(node, "minion", mMinions);
@@ -299,6 +315,26 @@ namespace Game {
 		read_list(node, "boss", mBoss);
 		read_list(node, "agent", mAgent);
 		read_list(node, "captain", mCaptain);
+	}
+
+	DirectorClass LevelConfig::GetMinion(size_t idx) const {
+		return mMinions.size() > idx ? mMinions[idx] : DirectorClass();
+	}
+
+	DirectorClass LevelConfig::GetSpecial(size_t idx) const {
+		return mSpecial.size() > idx ? mSpecial[idx] : DirectorClass();
+	}
+
+	DirectorClass LevelConfig::GetBoss(size_t idx) const {
+		return mBoss.size() > idx ? mBoss[idx] : DirectorClass();
+	}
+
+	DirectorClass LevelConfig::GetAgent(size_t idx) const {
+		return mAgent.size() > idx ? mAgent[idx] : DirectorClass();
+	}
+
+	DirectorClass LevelConfig::GetCaptain(size_t idx) const {
+		return mCaptain.size() > idx ? mCaptain[idx] : DirectorClass();
 	}
 
 	// Level
@@ -362,5 +398,17 @@ namespace Game {
 			return true;
 		}
 		return false;
+	}
+
+	const LevelConfig& Level::GetConfig() const {
+		return mConfig;
+	}
+
+	const LevelConfig& Level::GetFirstTimeConfig() const {
+		return mFirstTimeConfig;
+	}
+
+	const LevelConfig& Level::GetPlanetConfig() const {
+		return mPlanetConfig;
 	}
 }

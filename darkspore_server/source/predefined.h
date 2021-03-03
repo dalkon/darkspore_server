@@ -11,13 +11,16 @@ namespace Game {
 	class Instance;
 	class Player;
 	class Object;
+	class TriggerVolume;
 	class ServerEventBase;
+	class CombatEvent;
 	class Attributes;
 
 	// shared_ptrs
 	using InstancePtr = std::shared_ptr<Instance>;
 	using PlayerPtr = std::shared_ptr<Player>;
 	using ObjectPtr = std::shared_ptr<Object>;
+	using TriggerVolumePtr = std::shared_ptr<TriggerVolume>;
 }
 
 // RakNet
