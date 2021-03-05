@@ -179,12 +179,12 @@ namespace LuaFunction {
 		return game.GetObjectManager().GetTrigger(id);
 	}
 
-	auto nObjectManager_CreateTriggerVolume(sol::this_state L, glm::vec3 position, float radius, sol::function onEnter, sol::function onExit, sol::function onStay) {
+	auto nObjectManager_CreateTriggerVolume(sol::this_state L, glm::vec3 position, float radius) {
 		sol::state_view state(L);
 
 		Game::Instance& game = state["Game"]["Instance"];
 
-		auto object = game.GetObjectManager().CreateTrigger(position, radius, std::move(onEnter), std::move(onExit), std::move(onStay));
+		auto object = game.GetObjectManager().CreateTrigger(position, radius);
 		if (object) {
 			game.SendObjectCreate(object);
 		}
@@ -332,7 +332,7 @@ namespace LuaFunction {
 	auto Object_TakeDamage(sol::this_state L,
 		sol::object objectValue, sol::object attackerValue, sol::object attributesSnapshotValue,
 		sol::table damageRange,
-		int32_t damageType, int32_t damageSource, float damageCoefficient,
+		Game::DamageType damageType, Game::DamageSource damageSource, float damageCoefficient,
 		int32_t descriptors, float damageMultiplier, glm::vec3 direction
 	) {
 		sol::state_view state(L);
@@ -359,7 +359,10 @@ namespace LuaFunction {
 			combatEvent.mTargetId = object->GetId();
 			combatEvent.mDirection = direction;
 			combatEvent.mDeltaHealth = std::get<1>(result);
-			combatEvent.mIntegerHpChange = combatEvent.mDeltaHealth;
+
+			// I dunno, add some confusion effect maybe for this to be of any use
+			combatEvent.mIntegerHpChange = static_cast<int32_t>(combatEvent.mDeltaHealth);
+
 			if (std::get<2>(result)) {
 				combatEvent.mFlags = Game::CombatEventFlags::Critical;
 			}
@@ -852,118 +855,118 @@ namespace Game {
 
 	void Lua::RegisterEnums() {
 		// Attribute
-		mState.new_enum<Attribute::Type>("Attribute", {
-			{ "Strength", Attribute::Strength },
-			{ "Dexterity", Attribute::Dexterity },
-			{ "Mind", Attribute::Mind },
-			{ "MaxHealthIncrease", Attribute::MaxHealthIncrease },
-			{ "MaxHealth", Attribute::MaxHealth },
-			{ "MaxMana", Attribute::MaxMana },
-			{ "DamageReduction", Attribute::DamageReduction },
-			{ "PhysicalDefense", Attribute::PhysicalDefense },
-			{ "PhysicalDamageReduction", Attribute::PhysicalDamageReduction },
-			{ "EnergyDefense", Attribute::EnergyDefense },
-			{ "CriticalRating", Attribute::CriticalRating },
-			{ "NonCombatSpeed", Attribute::NonCombatSpeed },
-			{ "CombatSpeed", Attribute::CombatSpeed },
-			{ "DamageBuff", Attribute::DamageBuff },
-			{ "Silence", Attribute::Silence },
-			{ "Immobilized", Attribute::Immobilized },
-			{ "DefenseBoostBasicDamage", Attribute::DefenseBoostBasicDamage },
-			{ "PhysicalDamageIncrease", Attribute::PhysicalDamageIncrease },
-			{ "PhysicalDamageIncreaseFlat", Attribute::PhysicalDamageIncreaseFlat },
-			{ "AutoCrit", Attribute::AutoCrit },
-			{ "BehindDirectDamageIncrease", Attribute::BehindDirectDamageIncrease },
-			{ "BehindOrSideDirectDamageIncrease", Attribute::BehindOrSideDirectDamageIncrease },
-			{ "CriticalDamageIncrease", Attribute::CriticalDamageIncrease },
-			{ "AttackSpeedScale", Attribute::AttackSpeedScale },
-			{ "CooldownScale", Attribute::CooldownScale },
-			{ "Frozen", Attribute::Frozen },
-			{ "ProjectileSpeedIncrease", Attribute::ProjectileSpeedIncrease },
-			{ "AoEResistance", Attribute::AoEResistance },
-			{ "EnergyDamageBuff", Attribute::EnergyDamageBuff },
-			{ "Intangible", Attribute::Intangible },
-			{ "HealingReduction", Attribute::HealingReduction },
-			{ "EnergyDamageIncrease", Attribute::EnergyDamageIncrease },
-			{ "EnergyDamageIncreaseFlat", Attribute::EnergyDamageIncreaseFlat },
-			{ "Immune", Attribute::Immune },
-			{ "StealthDetection", Attribute::StealthDetection },
-			{ "LifeSteal", Attribute::LifeSteal },
-			{ "RejectModifier", Attribute::RejectModifier },
-			{ "AoEDamage", Attribute::AoEDamage },
-			{ "TechnologyTypeDamage", Attribute::TechnologyTypeDamage },
-			{ "SpacetimeTypeDamage", Attribute::SpacetimeTypeDamage },
-			{ "LifeTypeDamage", Attribute::LifeTypeDamage },
-			{ "ElementsTypeDamage", Attribute::ElementsTypeDamage },
-			{ "SupernaturalTypeDamage", Attribute::SupernaturalTypeDamage },
-			{ "TechnologyTypeResistance", Attribute::TechnologyTypeResistance },
-			{ "SpacetimeTypeResistance", Attribute::SpacetimeTypeResistance },
-			{ "LifeTypeResistance", Attribute::LifeTypeResistance },
-			{ "ElementsTypeResistance", Attribute::ElementsTypeResistance },
-			{ "SupernaturalTypeResistance", Attribute::SupernaturalTypeResistance },
-			{ "MovementSpeedBuff", Attribute::MovementSpeedBuff },
-			{ "ImmuneToDebuffs", Attribute::ImmuneToDebuffs },
-			{ "BuffDuration", Attribute::BuffDuration },
-			{ "DebuffDuration", Attribute::DebuffDuration },
-			{ "ManaSteal", Attribute::ManaSteal },
-			{ "DebuffDurationIncrease", Attribute::DebuffDurationIncrease },
-			{ "EnergyDamageReduction", Attribute::EnergyDamageReduction },
-			{ "Incorporeal", Attribute::Incorporeal },
-			{ "DoTDamageIncrease", Attribute::DoTDamageIncrease },
-			{ "MindControlled", Attribute::MindControlled },
-			{ "SwapDisabled", Attribute::SwapDisabled },
-			{ "ImmuneToRandomTeleport", Attribute::ImmuneToRandomTeleport },
-			{ "ImmuneToBanish", Attribute::ImmuneToBanish },
-			{ "ImmuneToKnockback", Attribute::ImmuneToKnockback },
-			{ "AoeRadius", Attribute::AoeRadius },
-			{ "PetDamage", Attribute::PetDamage },
-			{ "PetHealth", Attribute::PetHealth },
-			{ "CrystalFind", Attribute::CrystalFind },
-			{ "DNADropped", Attribute::DNADropped },
-			{ "RangeIncrease", Attribute::RangeIncrease },
-			{ "OrbEffectiveness", Attribute::OrbEffectiveness },
-			{ "OverdriveBuildup", Attribute::OverdriveBuildup },
-			{ "OverdriveDuration", Attribute::OverdriveDuration },
-			{ "LootFind", Attribute::LootFind },
-			{ "Surefooted", Attribute::Surefooted },
-			{ "ImmuneToStunned", Attribute::ImmuneToStunned },
-			{ "ImmuneToSleep", Attribute::ImmuneToSleep },
-			{ "ImmuneToTerrified", Attribute::ImmuneToTerrified },
-			{ "ImmuneToSilence", Attribute::ImmuneToSilence },
-			{ "ImmuneToCursed", Attribute::ImmuneToCursed },
-			{ "ImmuneToPoisonOrDisease", Attribute::ImmuneToPoisonOrDisease },
-			{ "ImmuneToBurning", Attribute::ImmuneToBurning },
-			{ "ImmuneToRooted", Attribute::ImmuneToRooted },
-			{ "ImmuneToSlow", Attribute::ImmuneToSlow },
-			{ "ImmuneToPull", Attribute::ImmuneToPull },
-			{ "DoTDamageDoneIncrease", Attribute::DoTDamageDoneIncrease },
-			{ "AggroIncrease", Attribute::AggroIncrease },
-			{ "AggroDecrease", Attribute::AggroDecrease },
-			{ "PhysicalDamageDoneIncrease", Attribute::PhysicalDamageDoneIncrease },
-			{ "PhysicalDamageDoneByAbilityIncrease", Attribute::PhysicalDamageDoneByAbilityIncrease },
-			{ "EnergyDamageDoneIncrease", Attribute::EnergyDamageDoneIncrease },
-			{ "EnergyDamageDoneByAbilityIncrease", Attribute::EnergyDamageDoneByAbilityIncrease },
-			{ "ChannelTimeDecrease", Attribute::ChannelTimeDecrease },
-			{ "CrowdControlDurationDecrease", Attribute::CrowdControlDurationDecrease },
-			{ "DoTDurationDecrease", Attribute::DoTDurationDecrease },
-			{ "AoEDurationIncrease", Attribute::AoEDurationIncrease },
-			{ "HealIncrease", Attribute::HealIncrease },
-			{ "OnLockdown", Attribute::OnLockdown },
-			{ "HoTDoneIncrease", Attribute::HoTDoneIncrease },
-			{ "ProjectileDamageIncrease", Attribute::ProjectileDamageIncrease },
-			{ "DeployBonusInvincibilityTime", Attribute::DeployBonusInvincibilityTime },
-			{ "PhysicalDamageDecreaseFlat", Attribute::PhysicalDamageDecreaseFlat },
-			{ "EnergyDamageDecreaseFlat", Attribute::EnergyDamageDecreaseFlat },
-			{ "MinWeaponDamage", Attribute::MinWeaponDamage },
-			{ "MaxWeaponDamage", Attribute::MaxWeaponDamage },
-			{ "MinWeaponDamagePercent", Attribute::MinWeaponDamagePercent },
-			{ "MaxWeaponDamagePercent", Attribute::MaxWeaponDamagePercent },
-			{ "DirectAttackDamage", Attribute::DirectAttackDamage },
-			{ "DirectAttackDamagePercent", Attribute::DirectAttackDamagePercent },
-			{ "GetHitAnimDisabled", Attribute::GetHitAnimDisabled },
-			{ "XPBoost", Attribute::XPBoost },
-			{ "InvisibleToSecurityTeleporters", Attribute::InvisibleToSecurityTeleporters },
-			{ "BodyScale", Attribute::BodyScale }
+		mState.new_enum<AttributeType>("Attribute", {
+			{ "Strength", AttributeType::Strength },
+			{ "Dexterity", AttributeType::Dexterity },
+			{ "Mind", AttributeType::Mind },
+			{ "MaxHealthIncrease", AttributeType::MaxHealthIncrease },
+			{ "MaxHealth", AttributeType::MaxHealth },
+			{ "MaxMana", AttributeType::MaxMana },
+			{ "DamageReduction", AttributeType::DamageReduction },
+			{ "PhysicalDefense", AttributeType::PhysicalDefense },
+			{ "PhysicalDamageReduction", AttributeType::PhysicalDamageReduction },
+			{ "EnergyDefense", AttributeType::EnergyDefense },
+			{ "CriticalRating", AttributeType::CriticalRating },
+			{ "NonCombatSpeed", AttributeType::NonCombatSpeed },
+			{ "CombatSpeed", AttributeType::CombatSpeed },
+			{ "DamageBuff", AttributeType::DamageBuff },
+			{ "Silence", AttributeType::Silence },
+			{ "Immobilized", AttributeType::Immobilized },
+			{ "DefenseBoostBasicDamage", AttributeType::DefenseBoostBasicDamage },
+			{ "PhysicalDamageIncrease", AttributeType::PhysicalDamageIncrease },
+			{ "PhysicalDamageIncreaseFlat", AttributeType::PhysicalDamageIncreaseFlat },
+			{ "AutoCrit", AttributeType::AutoCrit },
+			{ "BehindDirectDamageIncrease", AttributeType::BehindDirectDamageIncrease },
+			{ "BehindOrSideDirectDamageIncrease", AttributeType::BehindOrSideDirectDamageIncrease },
+			{ "CriticalDamageIncrease", AttributeType::CriticalDamageIncrease },
+			{ "AttackSpeedScale", AttributeType::AttackSpeedScale },
+			{ "CooldownScale", AttributeType::CooldownScale },
+			{ "Frozen", AttributeType::Frozen },
+			{ "ProjectileSpeedIncrease", AttributeType::ProjectileSpeedIncrease },
+			{ "AoEResistance", AttributeType::AoEResistance },
+			{ "EnergyDamageBuff", AttributeType::EnergyDamageBuff },
+			{ "Intangible", AttributeType::Intangible },
+			{ "HealingReduction", AttributeType::HealingReduction },
+			{ "EnergyDamageIncrease", AttributeType::EnergyDamageIncrease },
+			{ "EnergyDamageIncreaseFlat", AttributeType::EnergyDamageIncreaseFlat },
+			{ "Immune", AttributeType::Immune },
+			{ "StealthDetection", AttributeType::StealthDetection },
+			{ "LifeSteal", AttributeType::LifeSteal },
+			{ "RejectModifier", AttributeType::RejectModifier },
+			{ "AoEDamage", AttributeType::AoEDamage },
+			{ "TechnologyTypeDamage", AttributeType::TechnologyTypeDamage },
+			{ "SpacetimeTypeDamage", AttributeType::SpacetimeTypeDamage },
+			{ "LifeTypeDamage", AttributeType::LifeTypeDamage },
+			{ "ElementsTypeDamage", AttributeType::ElementsTypeDamage },
+			{ "SupernaturalTypeDamage", AttributeType::SupernaturalTypeDamage },
+			{ "TechnologyTypeResistance", AttributeType::TechnologyTypeResistance },
+			{ "SpacetimeTypeResistance", AttributeType::SpacetimeTypeResistance },
+			{ "LifeTypeResistance", AttributeType::LifeTypeResistance },
+			{ "ElementsTypeResistance", AttributeType::ElementsTypeResistance },
+			{ "SupernaturalTypeResistance", AttributeType::SupernaturalTypeResistance },
+			{ "MovementSpeedBuff", AttributeType::MovementSpeedBuff },
+			{ "ImmuneToDebuffs", AttributeType::ImmuneToDebuffs },
+			{ "BuffDuration", AttributeType::BuffDuration },
+			{ "DebuffDuration", AttributeType::DebuffDuration },
+			{ "ManaSteal", AttributeType::ManaSteal },
+			{ "DebuffDurationIncrease", AttributeType::DebuffDurationIncrease },
+			{ "EnergyDamageReduction", AttributeType::EnergyDamageReduction },
+			{ "Incorporeal", AttributeType::Incorporeal },
+			{ "DoTDamageIncrease", AttributeType::DoTDamageIncrease },
+			{ "MindControlled", AttributeType::MindControlled },
+			{ "SwapDisabled", AttributeType::SwapDisabled },
+			{ "ImmuneToRandomTeleport", AttributeType::ImmuneToRandomTeleport },
+			{ "ImmuneToBanish", AttributeType::ImmuneToBanish },
+			{ "ImmuneToKnockback", AttributeType::ImmuneToKnockback },
+			{ "AoeRadius", AttributeType::AoeRadius },
+			{ "PetDamage", AttributeType::PetDamage },
+			{ "PetHealth", AttributeType::PetHealth },
+			{ "CrystalFind", AttributeType::CrystalFind },
+			{ "DNADropped", AttributeType::DNADropped },
+			{ "RangeIncrease", AttributeType::RangeIncrease },
+			{ "OrbEffectiveness", AttributeType::OrbEffectiveness },
+			{ "OverdriveBuildup", AttributeType::OverdriveBuildup },
+			{ "OverdriveDuration", AttributeType::OverdriveDuration },
+			{ "LootFind", AttributeType::LootFind },
+			{ "Surefooted", AttributeType::Surefooted },
+			{ "ImmuneToStunned", AttributeType::ImmuneToStunned },
+			{ "ImmuneToSleep", AttributeType::ImmuneToSleep },
+			{ "ImmuneToTerrified", AttributeType::ImmuneToTerrified },
+			{ "ImmuneToSilence", AttributeType::ImmuneToSilence },
+			{ "ImmuneToCursed", AttributeType::ImmuneToCursed },
+			{ "ImmuneToPoisonOrDisease", AttributeType::ImmuneToPoisonOrDisease },
+			{ "ImmuneToBurning", AttributeType::ImmuneToBurning },
+			{ "ImmuneToRooted", AttributeType::ImmuneToRooted },
+			{ "ImmuneToSlow", AttributeType::ImmuneToSlow },
+			{ "ImmuneToPull", AttributeType::ImmuneToPull },
+			{ "DoTDamageDoneIncrease", AttributeType::DoTDamageDoneIncrease },
+			{ "AggroIncrease", AttributeType::AggroIncrease },
+			{ "AggroDecrease", AttributeType::AggroDecrease },
+			{ "PhysicalDamageDoneIncrease", AttributeType::PhysicalDamageDoneIncrease },
+			{ "PhysicalDamageDoneByAbilityIncrease", AttributeType::PhysicalDamageDoneByAbilityIncrease },
+			{ "EnergyDamageDoneIncrease", AttributeType::EnergyDamageDoneIncrease },
+			{ "EnergyDamageDoneByAbilityIncrease", AttributeType::EnergyDamageDoneByAbilityIncrease },
+			{ "ChannelTimeDecrease", AttributeType::ChannelTimeDecrease },
+			{ "CrowdControlDurationDecrease", AttributeType::CrowdControlDurationDecrease },
+			{ "DoTDurationDecrease", AttributeType::DoTDurationDecrease },
+			{ "AoEDurationIncrease", AttributeType::AoEDurationIncrease },
+			{ "HealIncrease", AttributeType::HealIncrease },
+			{ "OnLockdown", AttributeType::OnLockdown },
+			{ "HoTDoneIncrease", AttributeType::HoTDoneIncrease },
+			{ "ProjectileDamageIncrease", AttributeType::ProjectileDamageIncrease },
+			{ "DeployBonusInvincibilityTime", AttributeType::DeployBonusInvincibilityTime },
+			{ "PhysicalDamageDecreaseFlat", AttributeType::PhysicalDamageDecreaseFlat },
+			{ "EnergyDamageDecreaseFlat", AttributeType::EnergyDamageDecreaseFlat },
+			{ "MinWeaponDamage", AttributeType::MinWeaponDamage },
+			{ "MaxWeaponDamage", AttributeType::MaxWeaponDamage },
+			{ "MinWeaponDamagePercent", AttributeType::MinWeaponDamagePercent },
+			{ "MaxWeaponDamagePercent", AttributeType::MaxWeaponDamagePercent },
+			{ "DirectAttackDamage", AttributeType::DirectAttackDamage },
+			{ "DirectAttackDamagePercent", AttributeType::DirectAttackDamagePercent },
+			{ "GetHitAnimDisabled", AttributeType::GetHitAnimDisabled },
+			{ "XPBoost", AttributeType::XPBoost },
+			{ "InvisibleToSecurityTeleporters", AttributeType::InvisibleToSecurityTeleporters },
+			{ "BodyScale", AttributeType::BodyScale }
 		});
 
 		// NounType
@@ -1049,6 +1052,22 @@ namespace Game {
 			{ "HordeIncoming", ClientEventID::HordeIncoming },
 			{ "HordeDefeated", ClientEventID::HordeDefeated }
 		});
+
+		// DamageSource
+		mState.new_enum<DamageSource>("DamageSource", {
+			{ "Physical", DamageSource::Physical },
+			{ "Energy", DamageSource::Energy }
+		});
+
+		// DamageType
+		mState.new_enum<DamageType>("DamageType", {
+			{ "Technology", DamageType::Technology },
+			{ "Spacetime", DamageType::Spacetime },
+			{ "Life", DamageType::Life },
+			{ "Elements", DamageType::Elements },
+			{ "Supernatural", DamageType::Supernatural },
+			{ "Generic", DamageType::Generic }
+		});
 	}
 
 	void Lua::RegisterFunctions() {
@@ -1119,10 +1138,13 @@ namespace Game {
 			objectType["GetPosition"] = &Object::GetPosition;
 			objectType["SetPosition"] = &Object::SetPosition;
 
+			objectType["GetExtent"] = &Object::GetExtent;
+			objectType["SetExtent"] = &Object::SetExtent;
+
 			objectType["GetFacing"] = &LuaFunction::Object_GetFacing;
 			objectType["GetFootprintRadius"] = &LuaFunction::Object_GetFootprintRadius;
 
-			objectType["SetTickOverride"] = &Object::SetTickOverride;
+			objectType["SetTickOverride"] = sol::resolve<void(sol::protected_function)>(&Object::SetTickOverride);
 
 			objectType["Move"] = &LuaFunction::Object_Move;
 
@@ -1138,10 +1160,13 @@ namespace Game {
 			objectType["SetGraphicsState"] = &LuaFunction::Object_SetGraphicsState;
 
 			objectType["GetAttributesSnapshot"] = &LuaFunction::Object_GetAttributesSnapshot;
-			objectType["GetAttributeValue"] = &Object::GetAttributeValue;
-			objectType["SetAttributeValue"] = &Object::SetAttributeValue;
+			objectType["GetAttributeValue"] = sol::resolve<float(uint8_t) const>(&Object::GetAttributeValue);
+			objectType["SetAttributeValue"] = sol::resolve<void(uint8_t, float)>(&Object::SetAttributeValue);
 
 			objectType["GetWeaponDamage"] = &LuaFunction::Object_GetWeaponDamage;
+
+			objectType["GetMarkerId"] = &Object::GetMarkerId;
+			objectType["SetMarkerId"] = &Object::SetMarkerId;
 
 			objectType["GetScale"] = &Object::GetScale;
 			objectType["SetScale"] = &Object::SetScale;
@@ -1193,6 +1218,10 @@ namespace Game {
 
 			triggerType["Attach"] = &LuaFunction::Trigger_Attach;
 			triggerType["Detach"] = &LuaFunction::Trigger_Detach;
+
+			triggerType["SetOnEnterCallback"] = &TriggerVolume::SetOnEnterCallback;
+			triggerType["SetOnExitCallback"] = &TriggerVolume::SetOnExitCallback;
+			triggerType["SetOnStayCallback"] = &TriggerVolume::SetOnStayCallback;
 		}
 	}
 

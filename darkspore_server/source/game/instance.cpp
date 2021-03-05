@@ -255,7 +255,7 @@ namespace Game {
 			}
 		}
 
-		mLua->LoadFile("data/lua/player_start.lua");
+		// mLua->LoadFile("data/lua/player_start.lua");
 
 		// Create creatures
 		glm::vec3 spawnpoint;
@@ -269,9 +269,9 @@ namespace Game {
 				characterObject->SetPosition(spawnpoint);
 				characterObject->SetVisible(true); // i == creatureIndex
 
-				characterObject->SetAttributeValue(Attribute::InvisibleToSecurityTeleporters, 1);
-				characterObject->SetAttributeValue(Attribute::AttackSpeedScale, 1);
-				characterObject->SetAttributeValue(Attribute::CooldownScale, 1);
+				characterObject->SetAttributeValue(AttributeType::InvisibleToSecurityTeleporters, 1);
+				characterObject->SetAttributeValue(AttributeType::AttackSpeedScale, 1);
+				characterObject->SetAttributeValue(AttributeType::CooldownScale, 1);
 
 				SendObjectCreate(characterObject);
 				SendObjectUpdate(characterObject);
@@ -550,7 +550,7 @@ namespace Game {
 		}
 
 		if (utils::enum_helper<DropType>::test(dropType, DropType::Catalysts)) {
-			auto crystalFind = targetObject->GetAttributeValue(Attribute::CrystalFind);
+			auto crystalFind = targetObject->GetAttributeValue(AttributeType::CrystalFind);
 			switch (object->GetTeam()) {
 				case 2:
 					break;

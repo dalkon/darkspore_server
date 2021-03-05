@@ -148,11 +148,9 @@ namespace SporeNet {
 			const auto& get_extended_data() const { return mExtendedData; }
 
 			// Creature
-			const std::vector<CreaturePtr>& GetCreatures() const;
-
 			CreaturePtr GetCreatureById(uint32_t id) const;
 
-			void UnlockCreature(uint32_t templateId);
+			uint32_t UnlockCreature(uint32_t templateId);
 
 			// Squads
 			const std::vector<SquadPtr>& GetSquads() const;

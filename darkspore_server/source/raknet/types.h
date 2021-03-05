@@ -14,128 +14,6 @@
 #include <tuple>
 #include <bitset>
 
-// TODO: find somewhere to place this
-namespace Attribute {
-	enum Type : uint8_t {
-		Strength = 0,
-		Dexterity,
-		Mind,
-		MaxHealthIncrease,
-		MaxHealth,
-		MaxMana,
-		DamageReduction,
-		PhysicalDefense,
-		PhysicalDamageReduction,
-		EnergyDefense,
-		CriticalRating,
-		NonCombatSpeed,
-		CombatSpeed,
-		DamageBuff,
-		Silence,
-		Immobilized,
-		DefenseBoostBasicDamage,
-		PhysicalDamageIncrease,
-		PhysicalDamageIncreaseFlat,
-		AutoCrit,
-		BehindDirectDamageIncrease,
-		BehindOrSideDirectDamageIncrease,
-		CriticalDamageIncrease,
-		AttackSpeedScale,
-		CooldownScale,
-		Frozen,
-		ProjectileSpeedIncrease,
-		AoEResistance,
-		EnergyDamageBuff,
-		Intangible,
-		HealingReduction,
-		EnergyDamageIncrease,
-		EnergyDamageIncreaseFlat,
-		Immune,
-		StealthDetection,
-		LifeSteal,
-		RejectModifier,
-		AoEDamage,
-		TechnologyTypeDamage,
-		SpacetimeTypeDamage,
-		LifeTypeDamage,
-		ElementsTypeDamage,
-		SupernaturalTypeDamage,
-		TechnologyTypeResistance,
-		SpacetimeTypeResistance,
-		LifeTypeResistance,
-		ElementsTypeResistance,
-		SupernaturalTypeResistance,
-		MovementSpeedBuff,
-		ImmuneToDebuffs,
-		BuffDuration,
-		DebuffDuration,
-		ManaSteal,
-		DebuffDurationIncrease,
-		EnergyDamageReduction,
-		Incorporeal,
-		DoTDamageIncrease,
-		MindControlled,
-		SwapDisabled,
-		ImmuneToRandomTeleport,
-		ImmuneToBanish,
-		ImmuneToKnockback,
-		AoeRadius,
-		PetDamage,
-		PetHealth,
-		CrystalFind,
-		DNADropped,
-		RangeIncrease,
-		OrbEffectiveness,
-		OverdriveBuildup,
-		OverdriveDuration,
-		LootFind,
-		Surefooted,
-		ImmuneToStunned,
-		// ImmuneToShocked,
-		ImmuneToSleep,
-		// ImmuneToTaunted,
-		ImmuneToTerrified,
-		ImmuneToSilence,
-		ImmuneToCursed,
-		ImmuneToPoisonOrDisease,
-		ImmuneToBurning,
-		ImmuneToRooted,
-		ImmuneToSlow,
-		ImmuneToPull,
-		DoTDamageDoneIncrease,
-		AggroIncrease,
-		AggroDecrease,
-		PhysicalDamageDoneIncrease,
-		PhysicalDamageDoneByAbilityIncrease,
-		EnergyDamageDoneIncrease,
-		EnergyDamageDoneByAbilityIncrease,
-		ChannelTimeDecrease,
-		CrowdControlDurationDecrease,
-		DoTDurationDecrease,
-		AoEDurationIncrease,
-		HealIncrease,
-		OnLockdown,
-		HoTDoneIncrease,
-		ProjectileDamageIncrease,
-		// DistributeDamageAmongSquad,
-		DeployBonusInvincibilityTime,
-		PhysicalDamageDecreaseFlat,
-		EnergyDamageDecreaseFlat,
-		MinWeaponDamage,
-		MaxWeaponDamage,
-		MinWeaponDamagePercent,
-		MaxWeaponDamagePercent,
-		DirectAttackDamage,
-		DirectAttackDamagePercent,
-		GetHitAnimDisabled,
-		XPBoost,
-		InvisibleToSecurityTeleporters,
-		BodyScale,
-		// DefenseBoostPhysicalDamage,
-		Count
-	};
-}
-
 // RakNet
 namespace RakNet {
 	// types
@@ -467,33 +345,6 @@ namespace RakNet {
 		void WriteReflection(BitStream& stream) const;
 	};
 
-	// labsCharacter
-	class labsCharacter {
-		public:
-			labsCharacter();
-
-			void WriteTo(BitStream& stream) const;
-			void WriteReflection(BitStream& stream) const;
-			
-		public:
-			int32_t version = 0;
-			asset nounDef = 0;
-			uint64_t assetID = 0;
-			uint32_t mCreatureType = 0;
-			uint64_t mDeployCooldownMs = 0;
-			uint32_t mAbilityPoints = 0;
-			std::array<uint32_t, 9> mAbilityRanks;
-			float mHealthPoints = 0;
-			float mMaxHealthPoints = 0;
-			float mManaPoints = 0;
-			float mMaxManaPoints = 0;
-			float mGearScore = 300.f;
-			float mGearScoreFlattened = 300.f;
-
-			// make some sort of map?
-			std::array<float, Attribute::Count> partsAttributes { 0.f };
-	};
-
 	// labsCrystal
 	struct labsCrystal {
 		enum Type {
@@ -544,59 +395,6 @@ namespace RakNet {
 
 		void WriteTo(BitStream& stream) const;
 		void WriteReflection(BitStream& stream) const;
-	};
-
-	// labsPlayer
-	class labsPlayer {
-		public:
-			enum {
-				Characters = 3,
-
-				Status = 7,
-				StatusProgress = 8,
-
-				FieldCount = 24,
-			};
-
-			labsPlayer();
-
-			void SetUpdateBits(uint8_t bitIndex);
-			void SetUpdateBits(std::initializer_list<uint8_t>&& bitIndexes);
-			void ResetUpdateBits();
-
-			void WriteTo(BitStream& stream) const;
-			void WriteReflection(BitStream& stream) const;
-
-		public:
-			bool mbDataSetup = false; // if true then game thinks your lvl/xp is capped (demo mode?)
-			int32_t mCurrentDeckIndex = 0;
-			int32_t mQueuedDeckIndex = 0;
-			std::array<labsCharacter, 3> mCharacters {};
-			uint8_t mPlayerIndex = 0;
-			uint8_t mTeam = 0;
-			uint64_t mPlayerOnlineId = 0;
-			uint32_t mStatus = 0;
-			float mStatusProgress = 0.f;
-			tObjID mCurrentCreatureId = 0;
-			float mEnergyPoints = 0.f;
-			bool mbIsCharged = false;
-			int32_t mDNA = 0;
-
-			std::array<labsCrystal, 9> mCrystals {};
-			std::array<bool, 8> mCrystalBonuses { false };
-
-			uint32_t mAvatarLevel = 0;
-			float mAvatarXP = 0.f;
-			uint32_t mChainProgression = 0;
-			bool mLockCamera = false;
-			bool mbLockedOverdrive = false;
-			bool mbLockedCrystals = false;
-			uint32_t mLockedAbilityMin = 0;
-			uint32_t mLockedDeckIndexMin = 0;
-			uint32_t mDeckScore = 0;
-
-		private:
-			std::bitset<FieldCount> mReflectionBits;
 	};
 
 	// cGameObjectCreateData
@@ -700,32 +498,6 @@ namespace RakNet {
 			glm::vec3 mInitialDirection;
 			glm::vec3 mOffset;
 			int32_t reflectedLastUpdate;
-	};
-
-	// cAttributeData in Darkspore
-	class AttributeData {
-		public:
-			AttributeData();
-
-			const auto& GetData() const { return mData; }
-			const auto& GetErasedData() const { return mErasedData; }
-			const auto& GetDataBits() const { return mDataBits; }
-
-			float GetValue(uint8_t idx) const;
-			void SetValue(uint8_t idx, float value);
-
-			void WriteTo(BitStream& stream) const;
-			void WriteReflection(BitStream& stream) const;
-
-			void ResetReflectionBits();
-
-		private:
-			std::vector<std::tuple<uint8_t, float>> mData;
-			std::vector<uint8_t> mErasedData;
-			std::bitset<Attribute::Count> mDataBits;
-
-			float mMinWeaponDamage;
-			float mMaxWeaponDamage;
 	};
 
 	// cCombatantData

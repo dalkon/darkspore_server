@@ -267,6 +267,52 @@ namespace Game {
 		noun->add("locomotionTuning", nullable_type, std::tuple(0x130, LocomotionTuning));
 	*/
 
+	// AINode
+	void AINode::Read(pugi::xml_node node) {
+		ReadListNode(node, "output", mOutput);
+
+		mPhaseData = utils::xml_get_text_node(node, "mpPhaseData");
+		mConditionData = utils::xml_get_text_node(node, "mpConditionData");
+
+		mX = utils::xml_get_text_node<int32_t>(node, "nodeX");
+		mY = utils::xml_get_text_node<int32_t>(node, "nodeY");
+	}
+
+	// AIDefinition
+	void AIDefinition::Read(pugi::xml_node node) {
+		ReadListNode(node, "ainode", mNodes);
+
+		mDeathAbility = utils::xml_get_text_node(node, "deathAbility");
+		mDeathCondition = utils::xml_get_text_node(node, "deathCondition");
+		mFirstAggroAbility = utils::xml_get_text_node(node, "firstAggroAbility");
+		mSecondaryFirstAggroAbility = utils::xml_get_text_node(node, "firstAggroAbility2");
+		mFirstAlertAbility = utils::xml_get_text_node(node, "firstAlertAbility");
+		mSubsequentAggroAbility = utils::xml_get_text_node(node, "subsequentAggroAbility");
+		mPassiveAbility = utils::xml_get_text_node(node, "passiveAbility");
+		mCombatIdle = utils::xml_get_text_node(node, "combatIdle");
+		mSecondaryCombatIdle = utils::xml_get_text_node(node, "combatIdle2");
+		mSecondaryCombatIdleCondition = utils::xml_get_text_node(node, "combatIdle2Condition");
+		mPassiveIdle = utils::xml_get_text_node(node, "passiveIdle");
+		mPreAggroIdle = utils::xml_get_text_node(node, "preAggroIdle");
+		mSecondaryPreAggroIdle = utils::xml_get_text_node(node, "preAggroIdle2");
+		mTargetTooFar = utils::xml_get_text_node(node, "targetTooFar");
+
+		mAggroType = utils::xml_get_text_node<uint32_t>(node, "aggroType");
+		mCombatIdleCooldown = utils::xml_get_text_node<uint32_t>(node, "combatIdleCooldown");
+		mSecondaryCombatIdleCooldown = utils::xml_get_text_node<uint32_t>(node, "combatIdle2Cooldown");
+		mTargetTooFarCooldown = utils::xml_get_text_node<uint32_t>(node, "targetTooFarCooldown");
+
+		mUseSecondaryStart = utils::xml_get_text_node<float>(node, "useSecondaryStart");
+
+		mFaceTarget = utils::xml_get_text_node<bool>(node, "faceTarget");
+		mAlwaysRun = utils::xml_get_text_node<bool>(node, "alwaysRunAI");
+		mRandomizeCooldowns = utils::xml_get_text_node<bool>(node, "randomizeCooldowns");
+	}
+
+	const std::string& AIDefinition::GetPassiveAbility() const {
+		return mPassiveAbility;
+	}
+
 	// Noun
 	void Noun::Read(pugi::xml_node node) {
 		auto get_vec3 = [](pugi::xml_node node) {
@@ -300,6 +346,11 @@ namespace Game {
 				mPlayerClassData = database.GetPlayerClass(utils::hash_id(playerClassName));
 			}
 
+			auto aidefinitionName = utils::xml_get_text_node(node, "aiDefinition");
+			if (!aidefinitionName.empty()) {
+				mAIDefinition = database.GetAIDefinition(utils::hash_id(aidefinitionName));
+			}
+
 			mCharacterAnimationData = utils::xml_get_text_node(node, "characterAnimationData");
 
 			mAssetId = utils::xml_get_text_node<uint64_t>(node, "assetId");
@@ -325,6 +376,10 @@ namespace Game {
 
 	const std::shared_ptr<PlayerClass>& Noun::GetPlayerClassData() const {
 		return mPlayerClassData;
+	}
+
+	const std::shared_ptr<AIDefinition>& Noun::GetAIDefinition() const {
+		return mAIDefinition;
 	}
 
 	const std::string& Noun::GetName() const {
@@ -366,6 +421,7 @@ namespace Game {
 
 	bool NounDatabase::Load() {
 		mLoaded = true;
+		if (!LoadAIDefinitions()) { return false; }
 		if (!LoadClassAttributes()) { return false; }
 		if (!LoadNpcAffixes()) { return false; }
 		if (!LoadPlayerClasses()) { return false; }
@@ -404,6 +460,13 @@ namespace Game {
 
 	std::shared_ptr<ClassAttributes> NounDatabase::GetClassAttributes(uint32_t id) const {
 		if (auto it = mClassAttributes.find(id); it != mClassAttributes.end()) {
+			return it->second;
+		}
+		return nullptr;
+	}
+
+	std::shared_ptr<AIDefinition> NounDatabase::GetAIDefinition(uint32_t id) const {
+		if (auto it = mAIDefinitions.find(id); it != mAIDefinitions.end()) {
 			return it->second;
 		}
 		return nullptr;
@@ -594,6 +657,43 @@ namespace Game {
 			return false;
 		} else {
 			std::cout << " done. (loaded: " << mClassAttributes.size() << ", failed: " << failed << ")" << std::endl;
+			return true;
+		}
+	}
+
+	bool NounDatabase::LoadAIDefinitions() {
+		std::cout << "Loading aidefinitions...";
+
+		size_t failed = 0;
+
+		const auto& dataPath = "data/aidefinition/";
+		for (const auto& entry : std::filesystem::directory_iterator(dataPath)) {
+			const auto& path = entry.path();
+			if (entry.is_regular_file() && path.extension() == ".xml") {
+				pugi::xml_document document;
+				if (auto parse_result = document.load_file(path.c_str())) {
+					auto data = std::make_shared<AIDefinition>();
+					if (auto rootNode = document.child("aidefinition")) {
+						data->Read(rootNode);
+
+						auto name = path.stem().string();
+						data->mId = utils::hash_id(name);
+						data->mPath = name;
+
+						mAIDefinitions.try_emplace(data->mId, data);
+					}
+				} else {
+					std::cout << "NounDatabase: Could not load '" << path << "'." << std::endl;
+					failed++;
+				}
+			}
+		}
+
+		if (mAIDefinitions.empty()) {
+			std::cout << " failed." << std::endl;
+			return false;
+		} else {
+			std::cout << " done. (loaded: " << mAIDefinitions.size() << ", failed: " << failed << ")" << std::endl;
 			return true;
 		}
 	}

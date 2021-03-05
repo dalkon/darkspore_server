@@ -1319,7 +1319,7 @@ namespace Game {
 				response.set(boost::beast::http::field::set_cookie, "token=" + user->get_auth_token());
 			}
 		} else {
-			// Ignore
+			std::cout << "User not found" << std::endl;
 		}
 
 		/*
@@ -1768,9 +1768,9 @@ namespace Game {
 		const auto& user = session.get_user();
 		if (user) {
 			auto templateId = request.uri.parameter<uint32_t>("template_id");
-			user->UnlockCreature(templateId);
+			auto creatureId = user->UnlockCreature(templateId);
 
-			utils::xml_add_text_node(docResponse, "creature_id", templateId);
+			utils::xml_add_text_node(docResponse, "creature_id", creatureId);
 		} else {
 			// Send some error
 		}

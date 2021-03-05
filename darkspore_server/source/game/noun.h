@@ -214,6 +214,62 @@ namespace Game {
 			friend class NounDatabase;
 	};
 
+	// AINode
+	class AINode {
+		public:
+			void Read(pugi::xml_node node);
+
+		private:
+			std::vector<int32_t> mOutput;
+
+			std::string mPhaseData;
+			std::string mConditionData;
+
+			int32_t mX;
+			int32_t mY;
+	};
+
+	// AIDefinition
+	class AIDefinition {
+		public:
+			void Read(pugi::xml_node node);
+
+			const std::string& GetPassiveAbility() const;
+
+		private:
+			std::vector<AINode> mNodes;
+
+			std::string mPath;
+			std::string mDeathAbility;
+			std::string mDeathCondition;
+			std::string mFirstAggroAbility;
+			std::string mSecondaryFirstAggroAbility;
+			std::string mFirstAlertAbility;
+			std::string mSubsequentAggroAbility;
+			std::string mPassiveAbility;
+			std::string mCombatIdle;
+			std::string mSecondaryCombatIdle;
+			std::string mSecondaryCombatIdleCondition;
+			std::string mPassiveIdle;
+			std::string mPreAggroIdle;
+			std::string mSecondaryPreAggroIdle;
+			std::string mTargetTooFar;
+
+			uint32_t mId = 0;
+			uint32_t mAggroType = 0;
+			uint32_t mCombatIdleCooldown = 0;
+			uint32_t mSecondaryCombatIdleCooldown = 0;
+			uint32_t mTargetTooFarCooldown = 0;
+
+			float mUseSecondaryStart = 0;
+
+			bool mFaceTarget = false;
+			bool mAlwaysRun = false;
+			bool mRandomizeCooldowns = false;
+
+			friend class NounDatabase;
+	};
+
 	// NounType
 	enum class NounType : uint32_t {
 		None					= 0x00000000,
@@ -293,6 +349,7 @@ namespace Game {
 
 			const std::shared_ptr<NonPlayerClass>& GetNonPlayerClassData() const;
 			const std::shared_ptr<PlayerClass>& GetPlayerClassData() const;
+			const std::shared_ptr<AIDefinition>& GetAIDefinition() const;
 
 			const std::string& GetName() const;
 
@@ -310,6 +367,7 @@ namespace Game {
 
 			std::shared_ptr<NonPlayerClass> mNpcClassData;
 			std::shared_ptr<PlayerClass> mPlayerClassData;
+			std::shared_ptr<AIDefinition> mAIDefinition;
 
 			std::vector<uint64_t> mEliteAssetIds;
 
@@ -345,6 +403,7 @@ namespace Game {
 			std::shared_ptr<PlayerClass> GetPlayerClass(uint32_t id) const;
 			std::shared_ptr<NpcAffix> GetNpcAffix(uint32_t id) const;
 			std::shared_ptr<ClassAttributes> GetClassAttributes(uint32_t id) const;
+			std::shared_ptr<AIDefinition> GetAIDefinition(uint32_t id) const;
 
 		private:
 			bool LoadNouns();
@@ -352,6 +411,7 @@ namespace Game {
 			bool LoadPlayerClasses();
 			bool LoadNpcAffixes();
 			bool LoadClassAttributes();
+			bool LoadAIDefinitions();
 
 		private:
 			std::unordered_map<uint32_t, NounPtr> mNouns;
@@ -359,6 +419,7 @@ namespace Game {
 			std::unordered_map<uint32_t, std::shared_ptr<PlayerClass>> mPlayerClasses;
 			std::unordered_map<uint32_t, std::shared_ptr<NpcAffix>> mNpcAffixes;
 			std::unordered_map<uint32_t, std::shared_ptr<ClassAttributes>> mClassAttributes;
+			std::unordered_map<uint32_t, std::shared_ptr<AIDefinition>> mAIDefinitions;
 
 			bool mLoaded = false;
 	};

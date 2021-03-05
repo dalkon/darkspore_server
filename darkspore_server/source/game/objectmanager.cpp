@@ -5,13 +5,12 @@
 #include "lua.h"
 
 #include "utils/functions.h"
+#include "utils/log.h"
 
 // Game
 namespace Game {
 	// TriggerVolume
-	TriggerVolume::TriggerVolume(ObjectManager& manager, uint32_t id, const glm::vec3& position, float radius, sol::function&& onEnter, sol::function&& onExit, sol::function&& onStay) :
-		Object(manager, id, utils::hash_id("SecurityTeleporter.noun")), mOnEnter(std::move(onEnter)), mOnExit(std::move(onExit)), mOnStay(std::move(onStay))
-	{
+	TriggerVolume::TriggerVolume(ObjectManager& manager, uint32_t id, const glm::vec3& position, float radius) : Object(manager, id, utils::hash_id("SecurityTeleporter.noun")) {
 		SetScale(0); // hide the object, effects will still show.
 		SetHasCollision(false);
 		SetPosition(position);
@@ -19,30 +18,55 @@ namespace Game {
 		mBoundingBox.mExtent = glm::vec3(radius);
 		// mBoundingBox.mExtent.z = NAN;
 
-		sol::state_view state = mOnEnter.lua_state();
-		mEnvironment = sol::environment(state, sol::create, state.globals());
+		if (mNoun) {
+			const auto& aidefinition = mNoun->GetAIDefinition();
+			if (aidefinition) {
+				SetPassiveAbility(mManager.GetGame().GetLua().GetAbility(aidefinition->GetPassiveAbility()));
+			}
+		}
+	}
+
+	void TriggerVolume::OnActivate() {
+		if (mPassiveAbility == sol::nil) {
+			return;
+		}
+
+		sol::object value = mPassiveAbility["activate"];
+		if (value.is<sol::protected_function>()) {
+			value.as<sol::protected_function>().call<void>(mPassiveAbility, std::static_pointer_cast<TriggerVolume>(shared_from_this()));
+		}
+	}
+
+	void TriggerVolume::OnDeactivate() {
+		if (mPassiveAbility == sol::nil) {
+			return;
+		}
+
+		sol::object value = mPassiveAbility["deactivate"];
+		if (value.is<sol::protected_function>()) {
+			value.as<sol::protected_function>().call<void>(mPassiveAbility, std::static_pointer_cast<TriggerVolume>(shared_from_this()));
+		}
 	}
 
 	void TriggerVolume::OnTick() {
 		Object::OnTick();
-		if (!mObjectStates.empty()) {
-			auto& lua = mManager.GetGame().GetLua();
-			auto radius = mBoundingBox.mExtent.x;
-			for (auto it = mObjectStates.begin(); it != mObjectStates.end(); ++it) {
-				ObjectPtr object = it->first;
+		if (mObjectStates.empty()) {
+			return;
+		}
 
-				bool isInRadius = glm::distance(object->GetPosition(), GetPosition()) <= radius;
-				if (it->second == 0) {
-					if (isInRadius) {
-						lua.CreateThread(mOnEnter, mEnvironment, shared_from_this(), std::move(object));
-						it->second = 1;
-					}
-				} else if (isInRadius) {
-					lua.CreateThread(mOnStay, mEnvironment, shared_from_this(), std::move(object));
-				} else {
-					lua.CreateThread(mOnExit, mEnvironment, shared_from_this(), std::move(object));
-					it = mObjectStates.erase(it);
+		auto radius = mBoundingBox.mExtent.x;
+		for (auto it = mObjectStates.begin(); it != mObjectStates.end(); ++it) {
+			bool isInRadius = glm::distance(it->first->GetPosition(), GetPosition()) <= radius;
+			if (it->second == 0) {
+				if (isInRadius) {
+					OnEnter(it->first);
+					it->second = 1;
 				}
+			} else if (isInRadius) {
+				OnStay(it->first);
+			} else {
+				OnExit(it->first);
+				it = mObjectStates.erase(it);
 			}
 		}
 	}
@@ -69,6 +93,48 @@ namespace Game {
 		const auto& [it, inserted] = mObjectStates.try_emplace(object);
 		if (inserted) {
 			it->second = 0;
+		}
+	}
+
+	void TriggerVolume::SetOnEnterCallback(sol::protected_function callback) {
+		mOnEnter = std::move(callback);
+		if (!mEnvironment && mOnEnter) {
+			sol::state_view state = mOnEnter.lua_state();
+			mEnvironment = sol::environment(state, sol::create, state.globals());
+		}
+	}
+
+	void TriggerVolume::SetOnExitCallback(sol::protected_function callback) {
+		mOnExit = std::move(callback);
+		if (!mEnvironment && mOnExit) {
+			sol::state_view state = mOnExit.lua_state();
+			mEnvironment = sol::environment(state, sol::create, state.globals());
+		}
+	}
+
+	void TriggerVolume::SetOnStayCallback(sol::protected_function callback) {
+		mOnStay = std::move(callback);
+		if (!mEnvironment && mOnStay) {
+			sol::state_view state = mOnStay.lua_state();
+			mEnvironment = sol::environment(state, sol::create, state.globals());
+		}
+	}
+
+	void TriggerVolume::OnEnter(ObjectPtr object) const {
+		if (mOnEnter) {
+			mManager.GetGame().GetLua().CreateThread(mOnEnter, mEnvironment, shared_from_this(), std::move(object));
+		}
+	}
+
+	void TriggerVolume::OnExit(ObjectPtr object) const {
+		if (mOnExit) {
+			mManager.GetGame().GetLua().CreateThread(mOnExit, mEnvironment, shared_from_this(), std::move(object));
+		}
+	}
+
+	void TriggerVolume::OnStay(ObjectPtr object) const {
+		if (mOnStay) {
+			mManager.GetGame().GetLua().CreateThread(mOnStay, mEnvironment, shared_from_this(), std::move(object));
 		}
 	}
 
@@ -121,7 +187,9 @@ namespace Game {
 		if (const auto& teleporterData = marker->GetTeleporterData()) {
 			const auto& triggerVolumeData = teleporterData->GetTriggerVolumeData();
 			if (triggerVolumeData) {
-				// object = CreateTrigger(marker->GetPosition(), triggerVolumeData->GetBoundingBox().mExtent.x);
+				object = CreateTrigger(marker->GetPosition(), triggerVolumeData->GetBoundingBox().mExtent.x);
+			} else {
+				object = CreateTrigger(marker->GetPosition(), 1.f);
 			}
 		} else {
 			object = Create(marker->GetNoun());
@@ -135,8 +203,11 @@ namespace Game {
 
 			object->SetPosition(marker->GetPosition());
 			object->SetOrientation(marker->GetRotation());
-			object->SetScale(marker->GetScale());
 			object->SetMarkerId(marker->GetId());
+
+			if (!object->IsTrigger()) {
+				object->SetScale(marker->GetScale());
+			}
 
 			const auto& interactableData = marker->GetInteractableData();
 			if (interactableData) {
@@ -146,6 +217,8 @@ namespace Game {
 				data.mNumTimesUsed = 0;
 				object->SetInteractableData(data);
 			}
+
+			object->OnActivate();
 		}
 
 		return object;
@@ -160,7 +233,7 @@ namespace Game {
 		return nullptr;
 	}
 
-	TriggerVolumePtr ObjectManager::CreateTrigger(const glm::vec3& position, float radius, sol::function&& onEnter, sol::function&& onExit, sol::function&& onStay) {
+	TriggerVolumePtr ObjectManager::CreateTrigger(const glm::vec3& position, float radius) {
 		uint32_t id = GetNextObjectId();
 		if (id == 0) {
 			return nullptr;
@@ -168,7 +241,7 @@ namespace Game {
 
 		const auto& [it, inserted] = mObjects.try_emplace(id);
 		if (inserted) {
-			auto object = TriggerVolumePtr(new TriggerVolume(*this, id, position, radius, std::move(onEnter), std::move(onExit), std::move(onStay)));
+			auto object = TriggerVolumePtr(new TriggerVolume(*this, id, position, radius));
 			it->second = object;
 
 			mOctTree->Enqueue(object);

@@ -1079,8 +1079,28 @@ OnActionCommandMsgs(4)
 				actionResponse.cooldown = 5000;
 				actionResponse.userData = 0x1234;
 
+				// skipByte[1] > 0 seems to be "not in range"
 				object->SetOrientation(orientation);
-				mGame.UseAbility(object, combatData);
+				if (skipByte[1] > 0) {
+					mGame.UseAbility(object, combatData);
+				} else {
+					LocomotionData data;
+					data.mPartialGoalPosition = currentPosition;
+					data.mGoalPosition = combatData.cursorPosition;
+					if (teleportMovement) {
+						data.mGoalFlags = 0x020;
+					} else {
+						data.mGoalFlags = 0x001 | 0x800;
+					}
+
+					data.mFacing = glm::eulerAngles(orientation);
+					data.mAllowedStopDistance = 0;
+					data.mDesiredStopDistance = 0;
+					data.mTargetObjectId = combatData.targetId;
+					data.reflectedLastUpdate = 0xFFFF;
+
+					mGame.MoveObject(object, data);
+				}
 
 				break;
 			}

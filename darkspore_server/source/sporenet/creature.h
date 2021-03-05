@@ -236,7 +236,7 @@ namespace SporeNet {
 			int64_t mCreatorId = 0;
 
 			float mGearScore = 0;
-			float mItemPoints = 0;
+			float mItemPoints = 300;
 
 			uint32_t mId = 0;
 			uint32_t mVersion = 0;
@@ -259,7 +259,7 @@ namespace SporeNet {
 			void Write(pugi::xml_node& node) const;
 			void WriteApi(pugi::xml_node& node) const;
 
-			void Add(uint32_t templateId);
+			uint32_t Add(uint32_t templateId);
 
 			CreaturePtr Get(size_t creatureId) const;
 

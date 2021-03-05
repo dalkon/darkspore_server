@@ -18,10 +18,12 @@ namespace Game {
 	// TriggerVolume
 	class TriggerVolume : public Object {
 		public:
-			TriggerVolume(ObjectManager& manager, uint32_t id, const glm::vec3& position, float radius, sol::function&& onEnter, sol::function&& onExit, sol::function&& onStay);
+			TriggerVolume(ObjectManager& manager, uint32_t id, const glm::vec3& position, float radius);
 
 			bool IsTrigger() const override { return true; }
 
+			void OnActivate() override;
+			void OnDeactivate() override;
 			void OnTick() override;
 
 			const ObjectPtr& GetOwnerObject() const;
@@ -31,15 +33,24 @@ namespace Game {
 
 			void AddObject(const ObjectPtr& object);
 
+			void SetOnEnterCallback(sol::protected_function callback);
+			void SetOnExitCallback(sol::protected_function callback);
+			void SetOnStayCallback(sol::protected_function callback);
+
+		private:
+			void OnEnter(ObjectPtr object) const;
+			void OnExit(ObjectPtr object) const;
+			void OnStay(ObjectPtr object) const;
+
 		private:
 			std::map<ObjectPtr, uint8_t> mObjectStates;
 
 			ObjectPtr mOwnerObject = nullptr;
 
 			sol::environment mEnvironment;
-			sol::function mOnEnter;
-			sol::function mOnExit;
-			sol::function mOnStay;
+			sol::protected_function mOnEnter;
+			sol::protected_function mOnExit;
+			sol::protected_function mOnStay;
 	};
 
 	using TriggerVolumePtr = std::shared_ptr<TriggerVolume>;
@@ -57,7 +68,7 @@ namespace Game {
 			ObjectPtr Create(const MarkerPtr& marker);
 
 			TriggerVolumePtr GetTrigger(uint32_t id) const;
-			TriggerVolumePtr CreateTrigger(const glm::vec3& position, float radius, sol::function&& onEnter, sol::function&& onExit, sol::function&& onStay);
+			TriggerVolumePtr CreateTrigger(const glm::vec3& position, float radius);
 
 			std::vector<ObjectPtr> GetObjectsInRadius(const glm::vec3& position, float radius, const std::vector<NounType>& types) const;
 

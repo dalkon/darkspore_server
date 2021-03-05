@@ -117,7 +117,7 @@ namespace Game {
 		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1E4));
-		Write<float>(stream, mPartAttributes.GetValue(Attribute::ImmuneToSleep));
+		Write<float>(stream, mPartAttributes.GetValue(AttributeType::ImmuneToSleep));
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1EC));
 		for (uint8_t i = 0x4B; i <= 0x61; ++i) {

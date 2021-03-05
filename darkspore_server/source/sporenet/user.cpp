@@ -217,11 +217,12 @@ namespace SporeNet {
 		return nullptr;
 	}
 
-	void User::UnlockCreature(uint32_t templateId) {
+	uint32_t User::UnlockCreature(uint32_t templateId) {
 		if (mAccount.creatureRewards > 0) {
-			mCreatures.Add(templateId);
 			mAccount.creatureRewards--;
+			return mCreatures.Add(templateId);
 		}
+		return 0;
 	}
 
 	const std::vector<SquadPtr>& User::GetSquads() const {
@@ -245,7 +246,8 @@ namespace SporeNet {
 		}
 
 		auto creatureIds = utils::explode_string(creatureStringList, ',');
-		auto it = mCreatures.begin();
+
+		uint8_t creatureIndex = 0;
 		for (const auto& idString : creatureIds) {
 			auto id = utils::to_number<uint32_t>(idString);
 			if (id == 0) {
@@ -254,11 +256,16 @@ namespace SporeNet {
 
 			auto creature = mCreatures.Get(id);
 			if (creature) {
-				*it++ = creature;
-				if (it == mCreatures.end()) {
-					break;
+				squad->SetCreatureId(creatureIndex++, creature->GetId());
+			}
+			/*
+			else {
+				auto templateCreature = SporeNet::Get().GetTemplateDatabase().Get(id);
+				if (templateCreature) {
+
 				}
 			}
+			*/
 		}
 	}
 
@@ -413,7 +420,7 @@ namespace SporeNet {
 	// Storage
 	void User::Logout() {
 		SporeNet::Get().GetUserManager().RemoveUser(mUsername);
-		// Save();
+		Save();
 	}
 
 	bool User::Load() {

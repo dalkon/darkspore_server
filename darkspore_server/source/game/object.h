@@ -85,6 +85,7 @@ namespace Game {
 			virtual void OnTick();
 
 			void SetTickOverride(sol::protected_function func);
+			void SetPassiveAbility(sol::table ability);
 
 			const std::unique_ptr<RakNet::cInteractableData>& GetInteractableData() const;
 			void SetInteractableData(const RakNet::cInteractableData& data);
@@ -123,6 +124,9 @@ namespace Game {
 
 			const BoundingBox& GetBoundingBox() const;
 
+			const glm::vec3& GetExtent() const;
+			void SetExtent(const glm::vec3& extent);
+
 			float GetFootprintRadius() const;
 
 			// Effects
@@ -132,7 +136,9 @@ namespace Game {
 
 			// Properties
 			float GetAttributeValue(uint8_t idx) const;
+			float GetAttributeValue(AttributeType type) const;
 			void SetAttributeValue(uint8_t idx, float value);
+			void SetAttributeValue(AttributeType type, float value);
 
 			float GetHealth() const;
 			float GetMaxHealth() const;
@@ -178,7 +184,7 @@ namespace Game {
 			std::tuple<bool, float, bool> TakeDamage(
 				const AttributesPtr& attackerAttributes,
 				const std::tuple<float, float>& damageRange,
-				int32_t damageType, int32_t damageSource, float damageCoefficient,
+				DamageType damageType, DamageSource damageSource, float damageCoefficient,
 				int32_t descriptors, float damageMultiplier, const glm::vec3& direction
 			);
 			std::tuple<float, bool> Heal();
@@ -214,7 +220,8 @@ namespace Game {
 		protected:
 			ObjectManager& mManager;
 
-			sol::protected_function mTickOverride;
+			sol::protected_function mTickOverride = sol::nil;
+			sol::table mPassiveAbility = sol::nil;
 
 			BoundingBox mBoundingBox;
 

@@ -57,6 +57,12 @@ namespace SporeNet {
 		return mCreatureIds;
 	}
 
+	void Squad::SetCreatureId(uint8_t index, uint32_t id) {
+		if (index < mCreatureIds.size()) {
+			mCreatureIds[index] = id;
+		}
+	}
+
 	const std::string Squad::GetName() const {
 		return mName;
 	}

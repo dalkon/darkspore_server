@@ -499,20 +499,23 @@ stats_ability_keyvalues = 868969257!minDamage,4;868969257!maxDamage,12;402296303
 		}
 	}
 
-	void Creatures::Add(uint32_t templateId) {
+	uint32_t Creatures::Add(uint32_t templateId) {
 		// TODO: create unique ids for all creatures
 		auto templateCreature = SporeNet::Get().GetTemplateDatabase().Get(templateId);
 		if (templateCreature) {
 			// TODO: global ids (need a database first)
 			auto creature = std::make_shared<Creature>(templateCreature);
+			creature->SetVersion(1);
 			if (mCreatures.empty()) {
 				creature->SetId(1);
 			} else {
 				creature->SetId(mCreatures.back()->GetId() + 1);
 			}
-			creature->SetVersion(2);
+
 			mCreatures.push_back(std::move(creature));
+			return mCreatures.back()->GetId();
 		}
+		return 0;
 	}
 
 	CreaturePtr Creatures::Get(size_t creatureId) const {

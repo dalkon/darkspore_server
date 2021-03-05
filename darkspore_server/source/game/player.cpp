@@ -213,7 +213,7 @@ namespace Game {
 			// mDeckScore = mSquad->GetScore();
 
 			uint32_t creatureIndex = 0;
-			for (uint32_t creatureId : squad->GetCreatureIds()) {
+			for (uint32_t creatureId : mSquad->GetCreatureIds()) {
 				Character character;
 
 				// TODO: save/calculate health and "power"
@@ -271,13 +271,13 @@ namespace Game {
 		}
 
 		if (characterObject) {
-			characterRef.mAssetId = characterObject->GetId();
-			// characterRef.mAssetId = characterObject->GetAssetId();
+			// characterRef.mAssetId = characterObject->GetId();
+			characterRef.mAssetId = characterObject->GetAssetId();
 			characterRef.mAbilityPoints = 10;
 			characterRef.mAbilityRanks.fill(1);
 
-			characterObject->SetAttributeValue(Attribute::MaxHealth, characterRef.GetMaxHealth());
-			characterObject->SetAttributeValue(Attribute::MaxMana, characterRef.GetMaxMana());
+			characterObject->SetAttributeValue(AttributeType::MaxHealth, characterRef.GetMaxHealth());
+			characterObject->SetAttributeValue(AttributeType::MaxMana, characterRef.GetMaxMana());
 			characterObject->SetHealth(characterRef.GetHealth());
 			characterObject->SetMana(characterRef.GetMana());
 

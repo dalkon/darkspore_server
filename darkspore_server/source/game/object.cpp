@@ -30,6 +30,9 @@ constexpr std::array<float, 19> magicNumbers {
 	0.8f // ResistPercentCap
 };
 
+// difficulty tuning
+
+
 // Game
 namespace Game {
 	// EffectList
@@ -104,25 +107,27 @@ namespace Game {
 				if (attributes) {
 					auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
 					if (health > 0) {
-						SetAttributeValue(Attribute::MaxHealth, health);
+						SetAttributeValue(AttributeType::MaxHealth, health);
 						SetHealth(GetMaxHealth());
 					}
 
 					auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
 					if (mana > 0) {
-						SetAttributeValue(Attribute::MaxMana, mana);
+						SetAttributeValue(AttributeType::MaxMana, mana);
 						SetMana(GetMaxMana());
 					}
 
 					auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
 					if (nonCombatSpeed > 0) {
-						SetAttributeValue(Attribute::NonCombatSpeed, nonCombatSpeed);
+						SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
 					}
 
 					auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
 					if (combatSpeed > 0) {
-						SetAttributeValue(Attribute::CombatSpeed, combatSpeed);
+						SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
 					}
+
+					mAttributes->SetWeaponDamage(1, 5);
 				}
 			} else {
 				const auto& data = mNoun->GetNonPlayerClassData();
@@ -134,26 +139,26 @@ namespace Game {
 
 				const auto& attributes = data->GetAttributes();
 				if (attributes) {
-					auto health = attributes->GetBaseAttribute(ClassAttribute::Health) * 10;
+					auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
 					if (health > 0) {
-						SetAttributeValue(Attribute::MaxHealth, health);
+						SetAttributeValue(AttributeType::MaxHealth, health);
 						SetHealth(GetMaxHealth());
 					}
 
 					auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
 					if (mana > 0) {
-						SetAttributeValue(Attribute::MaxMana, mana);
+						SetAttributeValue(AttributeType::MaxMana, mana);
 						SetMana(GetMaxMana());
 					}
 
 					auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
 					if (nonCombatSpeed > 0) {
-						// SetAttributeValue(Attribute::NonCombatSpeed, nonCombatSpeed);
+						// SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
 					}
 
 					auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
 					if (combatSpeed > 0) {
-						// SetAttributeValue(Attribute::CombatSpeed, combatSpeed);
+						// SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
 					}
 				}
 			}
@@ -161,21 +166,48 @@ namespace Game {
 	}
 
 	void Object::OnActivate() {
-		// nothing yet
+		if (mPassiveAbility == sol::nil) {
+			return;
+		}
+
+		sol::object value = mPassiveAbility["activate"];
+		if (value.is<sol::protected_function>()) {
+			value.as<sol::protected_function>().call<void>(mPassiveAbility, shared_from_this());
+		}
 	}
 
 	void Object::OnDeactivate() {
-		// nothing yet
+		if (mPassiveAbility == sol::nil) {
+			return;
+		}
+
+		sol::object value = mPassiveAbility["deactivate"];
+		if (value.is<sol::protected_function>()) {
+			value.as<sol::protected_function>().call<void>(mPassiveAbility, shared_from_this());
+		}
 	}
 
 	void Object::OnTick() {
-		if (mTickOverride) {
-			mTickOverride.call<void>(shared_from_this());
+		if (mTickOverride != sol::nil) {
+			mTickOverride.call<void>(mPassiveAbility, shared_from_this());
 		}
 	}
 
 	void Object::SetTickOverride(sol::protected_function func) {
 		mTickOverride = func;
+		mPassiveAbility = sol::nil;
+	}
+
+	void Object::SetPassiveAbility(sol::table ability) {
+		if (ability == sol::nil) {
+			return;
+		}
+
+		sol::object value = ability["tick"];
+		if (value.is<sol::protected_function>()) {
+			mTickOverride = value;
+			mPassiveAbility = ability;
+		}
 	}
 
 	const std::unique_ptr<RakNet::cInteractableData>& Object::GetInteractableData() const {
@@ -293,6 +325,18 @@ namespace Game {
 		return mBoundingBox;
 	}
 
+	const glm::vec3& Object::GetExtent() const {
+		return mBoundingBox.mExtent;
+	}
+
+	void Object::SetExtent(const glm::vec3& extent) {
+		bool dirty = extent != mBoundingBox.mCenter;
+		mBoundingBox.mExtent = glm::abs(extent);
+		if (dirty) {
+			SetDirty(true);
+		}
+	}
+
 	float Object::GetFootprintRadius() const {
 		constexpr std::array<std::tuple<glm::vec3, float>, 17> objectExtents {
 			// Critter
@@ -384,6 +428,10 @@ namespace Game {
 		return 0.f;
 	}
 
+	float Object::GetAttributeValue(AttributeType type) const {
+		return GetAttributeValue(static_cast<uint8_t>(type));
+	}
+
 	void Object::SetAttributeValue(uint8_t idx, float value) {
 		if (!mAttributes) {
 			mAttributes = std::make_unique<Attributes>();
@@ -392,13 +440,17 @@ namespace Game {
 		SetFlags(GetFlags() | Flags::UpdateAttributes);
 	}
 
+	void Object::SetAttributeValue(AttributeType type, float value) {
+		SetAttributeValue(static_cast<uint8_t>(type), value);
+	}
+
 	float Object::GetHealth() const {
 		return mCombatantData.mHitPoints;
 	}
 
 	float Object::GetMaxHealth() const {
 		if (mAttributes) {
-			return mAttributes->GetValue(Attribute::MaxHealth);
+			return mAttributes->GetValue(AttributeType::MaxHealth);
 		}
 		return 100.f;
 	}
@@ -414,7 +466,7 @@ namespace Game {
 
 	float Object::GetMaxMana() const {
 		if (mAttributes) {
-			return mAttributes->GetValue(Attribute::MaxMana);
+			return mAttributes->GetValue(AttributeType::MaxMana);
 		}
 		return 100.f;
 	}
@@ -527,28 +579,42 @@ namespace Game {
 	std::tuple<bool, float, bool> Object::TakeDamage(
 		const AttributesPtr& attackerAttributes,
 		const std::tuple<float, float>& damageRange,
-		int32_t damageType, int32_t damageSource, float damageCoefficient,
+		DamageType damageType, DamageSource damageSource, float damageCoefficient,
 		int32_t descriptors, float damageMultiplier, const glm::vec3& direction
 	) {
 		// calculate damage stuff
 		float damage = 0;
 		bool critical = false;
 		if (damage <= 0) {
-			damage = utils::random::get<float>(1, 10);
-			if (utils::random::get<uint32_t>(0, 1)) {
+			damage = utils::random::get<float>(std::get<0>(damageRange), std::get<1>(damageRange));
+
+			if (attackerAttributes->GetValue(AttributeType::AutoCrit) > 0) {
 				critical = true;
+			} else {
+				// calculate critical hit
+				if (utils::random::get<uint32_t>(0, 1)) {
+					critical = true;
+				}
+			}
+
+			if (critical) {
+				auto criticalIncrease = attackerAttributes->GetValue(AttributeType::CriticalDamageIncrease);
+				damage *= criticalIncrease + 1;
 			}
 		}
-
-		SetHealth(GetHealth() - damage);
-		if (GetHealth() <= 0) {
-			mManager.GetGame().SendObjectGfxState(shared_from_this(), utils::hash_id("dead"));
+		
+		if (damage > 0) {
+			SetHealth(GetHealth() - damage);
+			if (GetHealth() <= 0) {
+				mManager.GetGame().SendObjectGfxState(shared_from_this(), utils::hash_id("dead"));
+			}
 		}
 
 		return { true, damage, critical };
 	}
 
 	std::tuple<float, bool> Object::Heal() {
+		float healingReduction = GetAttributeValue(AttributeType::HealingReduction) - 1.f;
 		return { 0.f, false };
 	}
 
