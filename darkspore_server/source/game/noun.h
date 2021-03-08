@@ -3,8 +3,11 @@
 #define _GAME_NOUN_HEADER
 
 // Include
-#include "raknet/types.h"
-#include <pugixml.hpp>
+#include "utils/functions.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 #include <array>
 #include <memory>
 #include <unordered_map>
@@ -270,6 +273,67 @@ namespace Game {
 			friend class NounDatabase;
 	};
 
+	// CharacterAnimationType
+	enum class CharacterAnimationType : uint8_t {
+		PreAggro = 0,
+		Idle,
+		LobbyIdle,
+		SpecialIdle,
+		WalkStop,
+		VictoryIdle,
+		CombatIdle,
+		Move,
+		CombatMove,
+		Death,
+		Aggro,
+		SubsequentAggro,
+		EnterPassiveIdle,
+		Dance,
+		Taunt,
+		MeleeDeath,
+		MeleeCriticalDeath,
+		MeleeCriticalKnockbackDeath,
+		CyberCriticalDeath,
+		CyberCriticalKnockbackDeath,
+		PlasmaCriticalDeath,
+		PlasmaCriticalKnockbackDeath,
+		BioCriticalDeath,
+		BioCriticalKnockbackDeath,
+		NecroCriticalDeath,
+		NecroCriticalKnockbackDeath,
+		SpacetimeCriticalDeath,
+		SpacetimeCriticalKnockbackDeath,
+		BodyFade,
+
+		// Ability states
+		RandomAbility1,
+		RandomAbility2,
+		RandomAbility3,
+		Overlay1,
+		Overlay2,
+		Overlay3,
+
+		//
+		Count
+	};
+
+	// CharacterAnimation
+	class CharacterAnimation {
+		public:
+			void Read(pugi::xml_node node);
+
+			std::tuple<uint32_t, float> GetAnimationData(CharacterAnimationType type) const;
+
+		private:
+			std::array<std::tuple<uint32_t, float>, utils::to_underlying(CharacterAnimationType::Count)> mAnimationData;
+
+			std::string mPath;
+
+			uint32_t mId = 0;
+
+			friend class NounDatabase;
+	};
+
 	// NounType
 	enum class NounType : uint32_t {
 		None					= 0x00000000,
@@ -350,6 +414,7 @@ namespace Game {
 			const std::shared_ptr<NonPlayerClass>& GetNonPlayerClassData() const;
 			const std::shared_ptr<PlayerClass>& GetPlayerClassData() const;
 			const std::shared_ptr<AIDefinition>& GetAIDefinition() const;
+			const std::shared_ptr<CharacterAnimation>& GetCharacterAnimation() const;
 
 			const std::string& GetName() const;
 
@@ -368,10 +433,10 @@ namespace Game {
 			std::shared_ptr<NonPlayerClass> mNpcClassData;
 			std::shared_ptr<PlayerClass> mPlayerClassData;
 			std::shared_ptr<AIDefinition> mAIDefinition;
+			std::shared_ptr<CharacterAnimation> mCharacterAnimation;
 
 			std::vector<uint64_t> mEliteAssetIds;
 
-			std::string mCharacterAnimationData;
 			std::string mName;
 
 			uint64_t mAssetId = 0;
@@ -404,6 +469,7 @@ namespace Game {
 			std::shared_ptr<NpcAffix> GetNpcAffix(uint32_t id) const;
 			std::shared_ptr<ClassAttributes> GetClassAttributes(uint32_t id) const;
 			std::shared_ptr<AIDefinition> GetAIDefinition(uint32_t id) const;
+			std::shared_ptr<CharacterAnimation> GetCharacterAnimation(uint32_t id) const;
 
 		private:
 			bool LoadNouns();
@@ -412,6 +478,7 @@ namespace Game {
 			bool LoadNpcAffixes();
 			bool LoadClassAttributes();
 			bool LoadAIDefinitions();
+			bool LoadCharacterAnimations();
 
 		private:
 			std::unordered_map<uint32_t, NounPtr> mNouns;
@@ -420,6 +487,7 @@ namespace Game {
 			std::unordered_map<uint32_t, std::shared_ptr<NpcAffix>> mNpcAffixes;
 			std::unordered_map<uint32_t, std::shared_ptr<ClassAttributes>> mClassAttributes;
 			std::unordered_map<uint32_t, std::shared_ptr<AIDefinition>> mAIDefinitions;
+			std::unordered_map<uint32_t, std::shared_ptr<CharacterAnimation>> mCharacterAnimations;
 
 			bool mLoaded = false;
 	};

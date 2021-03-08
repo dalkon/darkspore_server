@@ -17,6 +17,11 @@
 
 // Helpers
 namespace {
+	auto& LuaGetGame(sol::this_state L) {
+		Game::Instance& game = sol::state_view(L)["Game"]["Instance"];
+		return game;
+	}
+
 	auto LuaGetPlayer(const Game::Instance& instance, sol::object& value) {
 		if (value.is<Game::PlayerPtr>()) {
 			return value.as<Game::PlayerPtr>();
@@ -79,9 +84,7 @@ namespace {
 namespace LuaFunction {
 	// global functions
 	auto AddEvent(sol::this_state L, sol::protected_function callback, uint32_t delay, sol::variadic_args args) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		if (delay > 0) {
 			game.AddTask(delay, [&game, callback = std::move(callback), args = std::vector<sol::object>(args.begin(), args.end())](uint32_t id) mutable {
 				game.AddServerTask([&game, id, callback = std::move(callback), args = std::move(args)]() mutable {
@@ -95,10 +98,7 @@ namespace LuaFunction {
 	}
 
 	auto StopEvent(sol::this_state L, uint32_t id) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
-		game.CancelTask(id);
+		LuaGetGame(L).CancelTask(id);
 	}
 
 	// os
@@ -117,9 +117,7 @@ namespace LuaFunction {
 
 	// nThread
 	auto nThread_WaitForXSeconds(sol::this_state L, double seconds) {
-		sol::state_view state(L);
-		
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::LuaThread* thread = game.GetLua().GetThread(L);
 		if (!thread) {
 			return;
@@ -135,16 +133,11 @@ namespace LuaFunction {
 
 	// Game
 	auto Game_GetPlayer(sol::this_state L, uint8_t index) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
-		return game.GetPlayerByIndex(index);
+		return LuaGetGame(L).GetPlayerByIndex(index);
 	}
 
 	auto Game_Notify(sol::this_state L, sol::table serverEventTable) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::ServerEvent serverEvent = LuaGetServerEvent(game.GetObjectManager(), serverEventTable);
 
 		game.SendServerEvent(serverEvent);
@@ -152,16 +145,12 @@ namespace LuaFunction {
 
 	// nObjectManager
 	auto nObjectManager_GetObject(sol::this_state L, uint32_t id) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		return game.GetObjectManager().Get(id);
 	}
 
 	auto nObjectManager_CreateObject(sol::this_state L, uint32_t noun, glm::vec3 position) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 
 		auto object = game.GetObjectManager().Create(noun);
 		if (object) {
@@ -173,16 +162,12 @@ namespace LuaFunction {
 	}
 
 	auto nObjectManager_GetTrigger(sol::this_state L, uint32_t id) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		return game.GetObjectManager().GetTrigger(id);
 	}
 
 	auto nObjectManager_CreateTriggerVolume(sol::this_state L, glm::vec3 position, float radius) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 
 		auto object = game.GetObjectManager().CreateTrigger(position, radius);
 		if (object) {
@@ -193,9 +178,7 @@ namespace LuaFunction {
 	}
 
 	auto nObjectManager_GetObjectsInRadius(sol::this_state L, glm::vec3 position, float radius, sol::table objectTypes) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 
 		std::vector<Game::NounType> types;
 		for (const auto& entry : objectTypes) {
@@ -205,7 +188,7 @@ namespace LuaFunction {
 		auto objects = game.GetObjectManager().GetObjectsInRadius(position, radius, types);
 		auto objectCount = static_cast<int>(objects.size());
 
-		auto result = state.create_table(objectCount, 0);
+		auto result = sol::state_view(L).create_table(objectCount, 0);
 		for (int i = 0; i < objectCount; ++i) {
 			result[i + 1] = objects[i];
 		}
@@ -215,9 +198,7 @@ namespace LuaFunction {
 
 	// Player
 	auto Player_Notify(sol::this_state L, sol::object playerValue, sol::table serverEventTable) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::PlayerPtr player = LuaGetPlayer(game, playerValue);
 		if (player) {
 			Game::ServerEvent serverEvent = LuaGetServerEvent(game.GetObjectManager(), serverEventTable);
@@ -227,65 +208,48 @@ namespace LuaFunction {
 
 	// Object
 	auto Object_GetFacing(sol::this_state L, sol::object objectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
-		const auto& objectManager = game.GetObjectManager();
-
-		Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
-		if (object) {
-			return object->GetLocomotionData().mFacing;
-		} else {
-			return glm::zero<glm::vec3>();
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+		if (object && object->HasLocomotionData()) {
+			return object->GetLocomotionData()->GetFacing();
 		}
+		return glm::zero<glm::vec3>();
 	}
 
 	auto Object_GetFootprintRadius(sol::this_state L, sol::object objectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 		if (object) {
 			return object->GetFootprintRadius();
 		}
-
 		return 0.f;
 	}
 
 	auto Object_Move(sol::this_state L, sol::object objectValue, glm::vec3 position, bool teleport) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
-		if (object) {
-			RakNet::LocomotionData data {};
-			data.SetGoalPosition(position);
+		if (object && object->HasLocomotionData()) {
+			const auto& locomotionData = object->GetLocomotionData();
+			locomotionData->SetGoalPosition(position);
 			if (teleport) {
-				data.mGoalFlags |= 0x020;
+				locomotionData->SetGoalFlags(locomotionData->GetGoalFlags() | 0x020);
 			}
-
-			game.MoveObject(object, data);
+			game.MoveObject(object, *locomotionData);
 		}
 	}
 
-	auto Object_SetAnimationState(sol::this_state L, sol::object objectValue, uint32_t animationState, sol::optional<bool> overlay) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
-		game.SendAnimationState(LuaGetObject(game.GetObjectManager(), objectValue), animationState, overlay.value_or(false));
+	auto Object_SetAnimationState(sol::this_state L, sol::object objectValue, uint32_t animationState, sol::optional<bool> overlay, sol::optional<float> scale) {
+		Game::Instance& game = LuaGetGame(L);
+		game.SendAnimationState(LuaGetObject(game.GetObjectManager(), objectValue), animationState, overlay.value_or(false), scale.value_or(1.f));
 	}
 
 	auto Object_SetGraphicsState(sol::this_state L, sol::object objectValue, uint32_t graphicsState) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		game.SendObjectGfxState(LuaGetObject(game.GetObjectManager(), objectValue), graphicsState);
 	}
 
 	auto Object_GetAttributesSnapshot(sol::this_state L, sol::object objectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 
 		Game::AttributesPtr attributes;
@@ -297,12 +261,10 @@ namespace LuaFunction {
 	}
 
 	auto Object_GetWeaponDamage(sol::this_state L, sol::object objectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 
-		sol::table damageRange = state.create_table(2);
+		sol::table damageRange = sol::state_view(L).create_table(2);
 		if (object && object->HasAttributeData()) {
 			const auto& weaponDamage = object->GetAttributeData()->GetWeaponDamage();
 			damageRange[1] = std::get<0>(weaponDamage);
@@ -313,9 +275,7 @@ namespace LuaFunction {
 	}
 
 	auto Object_AddCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, int64_t milliseconds) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 		if (object) {
 			game.SendCooldownUpdate(object, abilityId, milliseconds);
@@ -335,9 +295,7 @@ namespace LuaFunction {
 		Game::DamageType damageType, Game::DamageSource damageSource, float damageCoefficient,
 		int32_t descriptors, float damageMultiplier, glm::vec3 direction
 	) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
 
 		Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
@@ -379,9 +337,7 @@ namespace LuaFunction {
 	}
 
 	auto Object_AddEffect(sol::this_state L, sol::object objectValue, std::string serverEventDef, sol::optional<sol::object> secondaryObjectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
 
 		Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
@@ -415,9 +371,7 @@ namespace LuaFunction {
 	}
 
 	auto Object_RemoveEffectIndex(sol::this_state L, sol::object objectValue, uint8_t index, sol::optional<bool> hardStop) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
 
 		Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
@@ -437,9 +391,7 @@ namespace LuaFunction {
 	}
 
 	auto Object_DropLoot(sol::this_state L, sol::object objectValue, sol::object targetObjectValue, Game::DropType dropType) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
 
 		Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
@@ -450,9 +402,7 @@ namespace LuaFunction {
 	}
 
 	auto Object_GetTeleporterDestination(sol::this_state L, sol::object objectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 
 		glm::vec3 destination {};
@@ -474,9 +424,7 @@ namespace LuaFunction {
 
 	// Trigger
 	auto Trigger_Attach(sol::this_state L, sol::object triggerValue, sol::object objectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
 
 		Game::TriggerVolumePtr trigger = LuaGetTrigger(objectManager, triggerValue);
@@ -487,9 +435,7 @@ namespace LuaFunction {
 	}
 
 	auto Trigger_Detach(sol::this_state L, sol::object triggerValue, sol::object objectValue) {
-		sol::state_view state(L);
-
-		Game::Instance& game = state["Game"]["Instance"];
+		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
 
 		Game::TriggerVolumePtr trigger = LuaGetTrigger(objectManager, triggerValue);
@@ -507,6 +453,29 @@ namespace LuaFunction {
 
 // Game
 namespace Game {
+	// Ability
+	Ability::Ability(sol::table&& self) : mSelf(std::move(self)) {
+		if (mSelf == sol::nil) {
+			throw std::exception("Ability::Ability: self is nil");
+		}
+
+		if (sol::object value = mSelf["activate"]; value.is<sol::protected_function>()) {
+			mHasActivate = true;
+		}
+
+		if (sol::object value = mSelf["deactivate"]; value.is<sol::protected_function>()) {
+			mHasDeactivate = true;
+		}
+
+		if (sol::object value = mSelf["tick"]; value.is<sol::protected_function>()) {
+			mHasTick = true;
+		}
+	}
+
+	void Ability::Reload() {
+
+	}
+
 	// LuaBase
 	LuaBase::~LuaBase() {
 		mState.collect_garbage();
@@ -765,7 +734,9 @@ namespace Game {
 			if (entry.is_regular_file() && path.extension() == ".lua") {
 				auto result = mState.load_file(path.string());
 				if (!result.valid()) {
-					failed++;
+					if (failed++ == 0) {
+						std::cout << std::endl;
+					}
 					std::cout << "GlobalLua: Could not load '" << path << "'." << std::endl;
 					continue;
 				}
@@ -797,7 +768,6 @@ namespace Game {
 
 	void Lua::Initialize() {
 		LuaBase::Initialize();
-		mEventTable = mState.create_table();
 
 		RegisterEnums();
 		RegisterFunctions();
@@ -806,35 +776,37 @@ namespace Game {
 	}
 
 	void Lua::Reload() {
-		mEventTable = mState.create_table();
 		LuaBase::Reload();
 		GlobalLua::Instance().Reload();
+
+		// reload abilities
 	}
 
 	void Lua::PreloadAbilities() {
 		// TODO:
 	}
 
-	sol::table Lua::GetAbility(const std::string& abilityName) {
+	AbilityPtr Lua::GetAbility(const std::string& abilityName) {
 		return GetAbility(utils::hash_id(abilityName));
 	}
 
-	sol::table Lua::GetAbility(uint32_t abilityId) {
-		sol::table ability = mEventTable.raw_get_or<sol::table>(abilityId, sol::nil);
-		if (ability == sol::nil) {
-			auto abilityCode = GlobalLua::Instance().GetAbility(abilityId);
+	AbilityPtr Lua::GetAbility(uint32_t abilityId) {
+		auto it = mAbilities.find(abilityId);
+		if (it == mAbilities.end()) {
+			const auto& abilityCode = GlobalLua::Instance().GetAbility(abilityId);
 			if (abilityCode.empty()) {
-				return sol::nil;
+				return nullptr;
 			}
 
 			mState.safe_script(abilityCode.as_string_view());
+			it = mAbilities.find(abilityId);
 
-			ability = mEventTable.raw_get_or<sol::table>(abilityId, sol::nil);
-			if (ability == sol::nil) {
+			if (it == mAbilities.end()) {
 				std::cout << "Did you forget to call RegisterAbility?" << std::endl;
+				return nullptr;
 			}
 		}
-		return ability;
+		return it->second;
 	}
 
 	LuaThread* Lua::GetThread(lua_State* L) const {
@@ -1075,7 +1047,10 @@ namespace Game {
 		mState["AddEvent"] = &LuaFunction::AddEvent;
 		mState["StopEvent"] = &LuaFunction::StopEvent;
 		mState["RegisterAbility"] = [this](std::string abilityName, sol::table abilityTable) {
-			mEventTable.raw_set(utils::hash_id(abilityName), abilityTable);
+			auto id = utils::hash_id(abilityName);
+			if (auto [it, inserted] = mAbilities.try_emplace(id); inserted) {
+				it->second = std::make_shared<Ability>(std::move(abilityTable));
+			}
 		};
 
 		// nThread

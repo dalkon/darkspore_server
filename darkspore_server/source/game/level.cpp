@@ -126,8 +126,8 @@ namespace Game {
 		return mDeferTriggerCreation;
 	}
 
-	// InteractableData
-	void InteractableData::Read(pugi::xml_node node) {
+	// MarkerInteractableData
+	void MarkerInteractableData::Read(pugi::xml_node node) {
 		mAbility = utils::xml_get_text_node(node, "interactableAbility");
 		mStartInteractEvent = utils::xml_get_text_node(node, "startInteractEvent");
 		mEndInteractEvent = utils::xml_get_text_node(node, "endInteractEvent");
@@ -137,27 +137,27 @@ namespace Game {
 		mChallengeValue = utils::xml_get_text_node<int32_t>(node, "challengeValue");
 	}
 
-	const std::string& InteractableData::GetAbility() const {
+	const std::string& MarkerInteractableData::GetAbility() const {
 		return mAbility;
 	}
 
-	const std::string& InteractableData::GetStartInteractEvent() const {
+	const std::string& MarkerInteractableData::GetStartInteractEvent() const {
 		return mStartInteractEvent;
 	}
 
-	const std::string& InteractableData::GetEndInteractEvent() const {
+	const std::string& MarkerInteractableData::GetEndInteractEvent() const {
 		return mEndInteractEvent;
 	}
 
-	const std::string& InteractableData::GetOptionalInteractEvent() const {
+	const std::string& MarkerInteractableData::GetOptionalInteractEvent() const {
 		return mOptionalInteractEvent;
 	}
 
-	int32_t InteractableData::GetUsesAllowed() const {
+	int32_t MarkerInteractableData::GetUsesAllowed() const {
 		return mUsesAllowed;
 	}
 
-	int32_t InteractableData::GetChallengeValue() const {
+	int32_t MarkerInteractableData::GetChallengeValue() const {
 		return mChallengeValue;
 	}
 
@@ -185,7 +185,7 @@ namespace Game {
 			}
 
 			if (auto interactableNode = componentDataNode.child("interactable")) {
-				mInteractableData = std::make_unique<InteractableData>();
+				mInteractableData = std::make_unique<MarkerInteractableData>();
 				mInteractableData->Read(interactableNode);
 			}
 			/*
@@ -204,7 +204,7 @@ namespace Game {
 		return mTeleporterData;
 	}
 
-	const std::unique_ptr<InteractableData>& Marker::GetInteractableData() const {
+	const std::unique_ptr<MarkerInteractableData>& Marker::GetInteractableData() const {
 		return mInteractableData;
 	}
 

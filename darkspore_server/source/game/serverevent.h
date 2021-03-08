@@ -14,12 +14,10 @@ namespace SporeNet {
 	class Part;
 }
 
-namespace RakNet {
-	struct cLootData;
-}
-
 // Game
 namespace Game {
+	class LootData;
+
 	// ServerEvent & ClientEvent (same thing really)
 	enum class ClientEventID : uint32_t {
 		None = 0,
@@ -108,7 +106,7 @@ namespace Game {
 	class ClientEvent : public ServerEventBase {
 		public:
 			void SetLootPickup(uint8_t playerId, const SporeNet::Part& part);
-			void SetLootPickup(uint8_t playerId, const RakNet::cLootData& lootData);
+			void SetLootPickup(uint8_t playerId, const LootData& lootData);
 			void SetCatalystPickup(uint8_t playerId);
 			void SetPlayerDropLoot(uint8_t playerId, uint64_t lootInstanceId);
 

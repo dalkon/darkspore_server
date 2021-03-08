@@ -15,6 +15,11 @@ namespace Game {
 	class ServerEventBase;
 	class CombatEvent;
 	class Attributes;
+	class CombatantData;
+	class InteractableData;
+	class LootData;
+	class AgentBlackboard;
+	class Locomotion;
 
 	// shared_ptrs
 	using InstancePtr = std::shared_ptr<Instance>;

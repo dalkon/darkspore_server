@@ -12,6 +12,48 @@ namespace Game {
 	class Instance;
 	class LuaThread;
 
+	// Ability
+	class Ability {
+		public:
+			Ability(sol::table&& self);
+
+			void Reload();
+
+			template<typename... Args>
+			void Activate(Args&&... args) const {
+				if (mHasActivate) {
+					sol::protected_function fn = mSelf["activate"];
+					fn.call<void>(mSelf, std::forward<Args>(args)...);
+				}
+			}
+
+			template<typename... Args>
+			void Deactivate(Args&&... args) const {
+				if (mHasDeactivate) {
+					sol::protected_function fn = mSelf["deactivate"];
+					fn.call<void>(mSelf, std::forward<Args>(args)...);
+				}
+			}
+
+			template<typename... Args>
+			void Tick(Args&&... args) const {
+				if (mHasTick) {
+					sol::protected_function fn = mSelf["tick"];
+					fn.call<void>(mSelf, std::forward<Args>(args)...);
+				}
+			}
+
+		private:
+			sol::table mSelf;
+			// sol::environment mEnvironment;
+
+			bool mHasActivate = false;
+			bool mHasDeactivate = false;
+			bool mHasTick = false;
+	};
+
+	using AbilityPtr = std::shared_ptr<Ability>;
+
 	// LuaBase
 	class LuaBase {
 		public:
@@ -68,8 +110,8 @@ namespace Game {
 			void Reload() override;
 			void PreloadAbilities();
 
-			sol::table GetAbility(const std::string& abilityName);
-			sol::table GetAbility(uint32_t abilityId);
+			AbilityPtr GetAbility(const std::string& abilityName);
+			AbilityPtr GetAbility(uint32_t abilityId);
 
 			LuaThread* GetThread(lua_State* L) const;
 
@@ -88,9 +130,8 @@ namespace Game {
 		private:
 			Instance& mGame;
 
-			sol::table mEventTable;
-
 			std::unordered_map<lua_State*, LuaThread*> mThreads;
+			std::unordered_map<uint32_t, AbilityPtr> mAbilities;
 	};
 
 	// LuaThread

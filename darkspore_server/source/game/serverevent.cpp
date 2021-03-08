@@ -1,10 +1,11 @@
 
 // Include
 #include "serverevent.h"
-
-#include "raknet/types.h"
+#include "object.h"
 
 #include "sporenet/part.h"
+
+#include "raknet/types.h"
 
 #include "utils/functions.h"
 
@@ -98,16 +99,16 @@ namespace Game {
 		mLootCreationTime = part.GetTimestamp();
 	}
 
-	void ClientEvent::SetLootPickup(uint8_t playerId, const RakNet::cLootData& lootData) {
+	void ClientEvent::SetLootPickup(uint8_t playerId, const LootData& lootData) {
 		mEventId = ClientEventID::LootPickup;
 		mTextValue = playerId;
 		mLootReferenceId = 0;
-		mLootRigblockId = lootData.mRigblockAsset;
-		mLootSuffixAssetId = lootData.mSuffixAssetId;
-		mLootPrefixAssetId1 = lootData.mPrefixAssetId1;
-		mLootPrefixAssetId2 = lootData.mPrefixAssetId2;
-		mLootItemLevel = lootData.mItemLevel;
-		mLootRarity = lootData.mRarity;
+		mLootRigblockId = lootData.GetRigblockAsset();
+		mLootSuffixAssetId = lootData.GetSuffixAsset();
+		mLootPrefixAssetId1 = lootData.GetPrefixAsset();
+		mLootPrefixAssetId2 = lootData.GetPrefixSecondaryAsset();
+		mLootItemLevel = lootData.GetLevel();
+		mLootRarity = lootData.GetRarity();
 		mLootCreationTime = utils::get_milliseconds();
 	}
 

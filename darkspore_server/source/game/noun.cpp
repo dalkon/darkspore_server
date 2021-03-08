@@ -29,6 +29,14 @@ namespace Game {
 		}
 	}
 
+	glm::vec3 ReadVec3(pugi::xml_node node) {
+		glm::vec3 data;
+		data.x = utils::xml_get_text_node<float>(node, "x");
+		data.y = utils::xml_get_text_node<float>(node, "y");
+		data.z = utils::xml_get_text_node<float>(node, "z");
+		return data;
+	}
+
 	// BoundingBox
 	BoundingBox::BoundingBox() {
 		mCenter = glm::zero<glm::vec3>();
@@ -313,16 +321,175 @@ namespace Game {
 		return mPassiveAbility;
 	}
 
+	// CharacterAnimation
+	void CharacterAnimation::Read(pugi::xml_node node) {
+		// TODO: Change this into constexpr data + loop
+		/*
+			CharacterAnimation->add("gaitOverlay", uint32_t_type, 0x050);
+			CharacterAnimation->add("overrideGait", char_type, std::tuple(0x000, 0x50));
+			CharacterAnimation->add("ignoreGait", bool_type, 0x054);
+			CharacterAnimation->add("morphology", key_type, 0x064);
+		*/
+		if (auto value = utils::xml_get_text_node(node, "preAggroIdleAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::PreAggro)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "idleAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Idle)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "lobbyIdleAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::LobbyIdle)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "specialIdleAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::SpecialIdle)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "walkStopState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::WalkStop)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "victoryIdleAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::VictoryIdle)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "combatIdleAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::CombatIdle)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "moveAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Move)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "combatMoveAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::CombatMove)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "deathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Death)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "aggroAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Aggro)] = std::make_tuple(
+				utils::hash_id(value),
+				utils::xml_get_text_node<float>(node, "aggroAnimDuration")
+			);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "subsequentAggroAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::SubsequentAggro)] = std::make_tuple(
+				utils::hash_id(value),
+				utils::xml_get_text_node<float>(node, "subsequentAggroAnimDuration")
+			);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "enterPassiveIdleAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::EnterPassiveIdle)] = std::make_tuple(
+				utils::hash_id(value),
+				utils::xml_get_text_node<float>(node, "enterPassiveIdleAnimDuration")
+			);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "danceEmoteAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Dance)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "tauntEmoteAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Taunt)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "meleeDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::MeleeDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "meleeCritDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::MeleeCriticalDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "meleeCritKnockbackDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::MeleeCriticalKnockbackDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "cyberCritDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::CyberCriticalDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "cyberCritKnockbackDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::CyberCriticalKnockbackDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "plasmaCritDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::PlasmaCriticalDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "plasmaCritKnockbackDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::PlasmaCriticalKnockbackDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "bioCritDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::BioCriticalDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "bioCritKnockbackDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::BioCriticalKnockbackDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "necroCritDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::NecroCriticalDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "necroCritKnockbackDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::NecroCriticalKnockbackDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "spacetimeCritDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::SpacetimeCriticalDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "spacetimeCritKnockbackDeathAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::SpacetimeCriticalKnockbackDeath)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "bodyFadeAnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::BodyFade)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "randomAbility1AnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::RandomAbility1)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "randomAbility2AnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::RandomAbility2)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "randomAbility3AnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::RandomAbility3)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "overlay1AnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Overlay1)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "overlay2AnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Overlay2)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+
+		if (auto value = utils::xml_get_text_node(node, "overlay3AnimState"); !value.empty()) {
+			mAnimationData[utils::to_underlying(CharacterAnimationType::Overlay3)] = std::make_tuple(utils::hash_id(value), 0.f);
+		}
+	}
+
+	std::tuple<uint32_t, float> CharacterAnimation::GetAnimationData(CharacterAnimationType type) const {
+		auto index = utils::to_underlying(type);
+		if (index < mAnimationData.size()) {
+			return mAnimationData[index];
+		}
+		return std::make_tuple(0, 0.f);
+	}
+
 	// Noun
 	void Noun::Read(pugi::xml_node node) {
-		auto get_vec3 = [](pugi::xml_node node) {
-			glm::vec3 data;
-			data.x = utils::xml_get_text_node<float>(node, "x");
-			data.y = utils::xml_get_text_node<float>(node, "y");
-			data.z = utils::xml_get_text_node<float>(node, "z");
-			return data;
-		};
-
 		const auto& database = NounDatabase::Instance();
 		if (node.child("nounType")) {
 			// Directly parsed from .Noun files
@@ -331,8 +498,8 @@ namespace Game {
 
 			if (auto bboxNode = node.child("bbox")) {
 				mBoundingBox = BoundingBox(
-					get_vec3(bboxNode.child("min")),
-					get_vec3(bboxNode.child("max"))
+					ReadVec3(bboxNode.child("min")),
+					ReadVec3(bboxNode.child("max"))
 				);
 			}
 
@@ -351,7 +518,10 @@ namespace Game {
 				mAIDefinition = database.GetAIDefinition(utils::hash_id(aidefinitionName));
 			}
 
-			mCharacterAnimationData = utils::xml_get_text_node(node, "characterAnimationData");
+			auto characterAnimationName = utils::xml_get_text_node(node, "characterAnimationData");
+			if (!characterAnimationName.empty()) {
+				mCharacterAnimation = database.GetCharacterAnimation(utils::hash_id(characterAnimationName));
+			}
 
 			mAssetId = utils::xml_get_text_node<uint64_t>(node, "assetId");
 			ReadListNode(node, "eliteAssetIds", mEliteAssetIds);
@@ -380,6 +550,10 @@ namespace Game {
 
 	const std::shared_ptr<AIDefinition>& Noun::GetAIDefinition() const {
 		return mAIDefinition;
+	}
+
+	const std::shared_ptr<CharacterAnimation>& Noun::GetCharacterAnimation() const {
+		return mCharacterAnimation;
 	}
 
 	const std::string& Noun::GetName() const {
@@ -421,6 +595,7 @@ namespace Game {
 
 	bool NounDatabase::Load() {
 		mLoaded = true;
+		if (!LoadCharacterAnimations()) { return false; }
 		if (!LoadAIDefinitions()) { return false; }
 		if (!LoadClassAttributes()) { return false; }
 		if (!LoadNpcAffixes()) { return false; }
@@ -467,6 +642,13 @@ namespace Game {
 
 	std::shared_ptr<AIDefinition> NounDatabase::GetAIDefinition(uint32_t id) const {
 		if (auto it = mAIDefinitions.find(id); it != mAIDefinitions.end()) {
+			return it->second;
+		}
+		return nullptr;
+	}
+
+	std::shared_ptr<CharacterAnimation> NounDatabase::GetCharacterAnimation(uint32_t id) const {
+		if (auto it = mCharacterAnimations.find(id); it != mCharacterAnimations.end()) {
 			return it->second;
 		}
 		return nullptr;
@@ -694,6 +876,43 @@ namespace Game {
 			return false;
 		} else {
 			std::cout << " done. (loaded: " << mAIDefinitions.size() << ", failed: " << failed << ")" << std::endl;
+			return true;
+		}
+	}
+
+	bool NounDatabase::LoadCharacterAnimations() {
+		std::cout << "Loading animations...";
+
+		size_t failed = 0;
+
+		const auto& dataPath = "data/animation/";
+		for (const auto& entry : std::filesystem::directory_iterator(dataPath)) {
+			const auto& path = entry.path();
+			if (entry.is_regular_file() && path.extension() == ".xml") {
+				pugi::xml_document document;
+				if (auto parse_result = document.load_file(path.c_str())) {
+					auto data = std::make_shared<CharacterAnimation>();
+					if (auto rootNode = document.child("characteranimation")) {
+						data->Read(rootNode);
+
+						auto name = path.stem().string();
+						data->mId = utils::hash_id(name);
+						data->mPath = name;
+
+						mCharacterAnimations.try_emplace(data->mId, data);
+					}
+				} else {
+					std::cout << "NounDatabase: Could not load '" << path << "'." << std::endl;
+					failed++;
+				}
+			}
+		}
+
+		if (mCharacterAnimations.empty()) {
+			std::cout << " failed." << std::endl;
+			return false;
+		} else {
+			std::cout << " done. (loaded: " << mCharacterAnimations.size() << ", failed: " << failed << ")" << std::endl;
 			return true;
 		}
 	}

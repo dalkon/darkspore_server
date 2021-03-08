@@ -140,7 +140,7 @@ namespace Game {
 			bool ServerUpdate() const;
 			bool Update();
 
-			void MoveObject(const ObjectPtr& object, RakNet::LocomotionData& locomotionData);
+			void MoveObject(const ObjectPtr& object, const Locomotion& locomotionData);
 
 			// Abilities / Combat / Etc
 			void UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
@@ -162,7 +162,7 @@ namespace Game {
 			void SendObjectDelete(const ObjectPtr& object);
 			void SendObjectDelete(const std::vector<ObjectPtr>& objects);
 			void SendObjectUpdate(const ObjectPtr& object);
-			void SendAnimationState(const ObjectPtr& object, uint32_t state, bool overlay);
+			void SendAnimationState(const ObjectPtr& object, uint32_t state, bool overlay = false, float scale = 1.f);
 			void SendObjectGfxState(const ObjectPtr& object, uint32_t state);
 			void SendServerEvent(const ServerEventBase& serverEvent);
 			void SendServerEvent(const PlayerPtr& player, const ServerEventBase& serverEvent);

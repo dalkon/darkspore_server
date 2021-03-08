@@ -68,221 +68,6 @@
 		lf_shroomtempest_basic_b
 */
 
-/*
-
-Spaceship state:
-	[19:23:30.818] cTransport: registered message handler for kGmsConnected(130)[cb=0x26AAB298]
-	[19:23:30.819] cTransport: registered message handler for kGmsHelloPlayer(128)[cb=0x26AAC6B8]
-	[19:23:30.823] cTransport: registered message handler for kGmsPlayerJoined(132)[cb=0x26BFC968]
-	[19:23:30.824] cTransport: registered message handler for kGmsPlayerDeparted(134)[cb=0x26BB23E0]
-
-	[19:23:30.826] cClientSession: state kSessionStateIdle => kSessionStateConnecting
-	[19:23:30.827] cTransport: registered message handler for kGmsGameState(138)[cb=0x1122620]
-	[19:23:30.828] cTransport: registered message handler for kGmsDirectorState(139)[cb=0x1122620]
-	[19:23:30.831] cTransport: registered message handler for kGmsObjectCreate(140)[cb=0x1122620]
-	[19:23:30.833] cTransport: registered message handler for kGmsObjectUpdate(141)[cb=0x1122620]
-	[19:23:30.835] cTransport: registered message handler for kGmsObjectDelete(142)[cb=0x1122620]
-	[19:23:30.837] cTransport: registered message handler for kGmsObjectJump(143)[cb=0x1122620]
-	[19:23:30.838] cTransport: registered message handler for kGmsObjectTeleport(144)[cb=0x1122620]
-	[19:23:30.841] cTransport: registered message handler for kGmsObjectPlayerMove(145)[cb=0x1122620]
-	[19:23:30.843] cTransport: registered message handler for kGmsForcePhysicsUpdate(146)[cb=0x1122620]
-	[19:23:30.845] cTransport: registered message handler for kGmsPhysicsChanged(147)[cb=0x1122620]
-	[19:23:30.847] cTransport: registered message handler for kGmsLocomotionDataUpdate(148)[cb=0x1122620]
-	[19:23:30.849] cTransport: registered message handler for kGmsLocomotionDataUnreliableUpdate(149)[cb=0x1122620]
-	[19:23:30.852] cTransport: registered message handler for kGmsAttributeDataUpdate(150)[cb=0x1122620]
-	[19:23:30.854] cTransport: registered message handler for kGmsCombatantDataUpdate(151)[cb=0x1122620]
-	[19:23:30.856] cTransport: registered message handler for kGmsInteractableDataUpdate(152)[cb=0x1122620]
-	[19:23:30.858] cTransport: registered message handler for kGmsAgentBlackboardUpdate(153)[cb=0x1122620]
-	[19:23:30.861] cTransport: registered message handler for kGmsLootDataUpdate(154)[cb=0x1122620]
-	[19:23:30.863] cTransport: registered message handler for kGmsLabsPlayerUpdate(161)[cb=0x1122620]
-	[19:23:30.865] cTransport: registered message handler for kGmsServerEvent(155)[cb=0x1122620]
-	[19:23:30.867] cTransport: registered message handler for kGmsModifierCreated(162)[cb=0x1122620]
-	[19:23:30.869] cTransport: registered message handler for kGmsModifierUpdated(163)[cb=0x1122620]
-	[19:23:30.872] cTransport: registered message handler for kGmsModifierDeleted(164)[cb=0x1122620]
-	[19:23:30.874] cTransport: registered message handler for kGmsGamePrepareForStart(176)[cb=0x1122620]
-	[19:23:07.302] cTransport: registered message handler for kGmsGameStart(177)[cb=0x1122620]
-	[19:23:30.879] cTransport: registered message handler for kGmsSetAnimationState(165)[cb=0x1122620]
-	[19:23:30.883] cTransport: registered message handler for kGmsSetObjectGfxState(166)[cb=0x1122620]
-	[19:23:30.885] cTransport: registered message handler for kGmsPlayerCharacterDeploy(167)[cb=0x1122620]
-	[19:23:30.886] cTransport: registered message handler for kGmsActionCommandResponse(168)[cb=0x1122620]
-	[19:23:30.888] cTransport: registered message handler for kGmsObjectivesInitForLevel(183)[cb=0x1122620]
-	[19:23:30.892] cTransport: registered message handler for kGmsObjectiveUpdated(184)[cb=0x1122620]
-	[19:23:30.893] cTransport: registered message handler for kGmsObjectivesComplete(185)[cb=0x1122620]
-	[19:23:30.895] cTransport: registered message handler for kGmsObjectiveAdd(202)[cb=0x1122620]
-	[19:23:30.897] cTransport: registered message handler for kGmsCombatEvent(186)[cb=0x1122620]
-	[19:23:30.899] cTransport: registered message handler for kGmsReloadLevel(191)[cb=0x1122620]
-	[19:23:30.902] cTransport: registered message handler for kGmsGravityForceUpdate(192)[cb=0x1122620]
-	[19:23:30.904] cTransport: registered message handler for kGmsCooldownUpdate(193)[cb=0x1122620]
-	[19:23:30.906] cTransport: registered message handler for kGmsCrystalMessage(195)[cb=0x1122620]
-	[19:23:30.907] cTransport: registered message handler for kGmsVoteKickStarted(135)[cb=0x1122620]
-	[19:23:30.910] cTransport: registered message handler for kGmsPartyMergeComplete(133)[cb=0x1122620]
-	[19:23:30.913] cTransport: registered message handler for kGmsDebugPing(204)[cb=0x1122620]
-
-ChainVote state:
-	[19:23:31.501] cTransport: registered message handler for kGmsChainVoteGMSMsgs(169)[cb=0x11B507D8]
-
-PreDungeon state:
-	[19:23:31.577] cTransport: registered message handler for kGmsArenaGameGMSMsgs(181)[cb=0x11B55DE8]
-
-Dungeon state:
-	[19:23:35.119] cTransport: registered message handler for kGmsChainGameGMSMsgs(173)[cb=0x11B64DC8]
-	[19:23:35.121] cTransport: registered message handler for kGmsQuickGameGMSMsgs(175)[cb=0x11B73238]
-	[19:23:35.123] cTransport: registered message handler for kGmsTutorialGameGMSMsgs(200)[cb=0x11B3B368]
-	[19:23:35.124] cTransport: registered message handler for kGmsArenaGameGMSMsgs(181)[cb=0x11B65598]
-	[19:23:35.126] cTransport: registered message handler for kGmsJuggernautGameGMSMsgs(189)[cb=0x11B47308]
-	[19:23:35.129] cTransport: registered message handler for kGmsKillRaceGameGMSMsgs(198)[cb=0x11DEE328]
-	[19:23:35.130] cTransport: registered message handler for kGmsCinematicGMSMsgs(201)[cb=0x11BEAC40]
-*/
-
-/*
-	C2S or C2C
-		???
-
-	S2C or C2C
-		ID_CONNECTION_REQUEST,
-		ID_CONNECTION_REQUEST_ACCEPTED,
-		ID_CONNECTION_ATTEMPT_FAILED,
-		ID_ALREADY_CONNECTED, (should never happen?)
-		ID_NEW_INCOMING_CONNECTION,
-		ID_DISCONNECTION_NOTIFICATION,
-		ID_CONNECTION_LOST,
-		ID_MODIFIED_PACKET, (should never happen?)
-		ID_REMOTE_DISCONNECTION_NOTIFICATION, (unexpected in client)
-		ID_REMOTE_CONNECTION_LOST, (unexpected in client)
-		ID_REMOTE_NEW_INCOMING_CONNECTION (unexpected in client)
-
-	Client packet reliability
-		UNRELIABLE
-		UNRELIABLE_SEQUENCED
-		RELIABLE
-		RELIABLE_ORDERED
-
-	Client packet priority
-		HIGH_PRIORITY
-		MEDIUM_PRIORITY (default)
-		LOW_PRIORITY
-*/
-
-// Abilities
-/*
-namespace Ability {
-	enum : uint32_t {
-		Strength = 0,
-		Dexterity,
-		Mind,
-		MaxHealthIncrease,
-		MaxHealth,
-		MaxMana,
-		DamageReduction,
-		PhysicalDefense,
-		PhysicalDamageReduction,
-		EnergyDefense,
-		CriticalRating,
-		NonCombatSpeed,
-		CombatSpeed,
-		DamageBuff,
-		Silence,
-		Immobilized,
-		DefenseBoostBasicDamage,
-		PhysicalDamageIncrease,
-		PhysicalDamageIncreaseFlat,
-		AutoCrit,
-		BehindDirectDamageIncrease,
-		BehindOrSideDirectDamageIncrease,
-		CriticalDamageIncrease,
-		AttackSpeedScale,
-		CooldownScale,
-		Frozen,
-		ProjectileSpeedIncrease,
-		AoeResistance,
-		EnergyDamageBuff,
-		Intangible,
-		HealingReduction,
-		EnergyDamageIncrease,
-		EnergyDamageIncreaseFlat,
-		Immune,
-		StealthDetection,
-		LifeSteal,
-		RejectModifier,
-		AoeDamage,
-		TechnologyTypeDamage,
-		SpacetimeTypeDamage,
-		LifeTypeDamage,
-		ElementsTypeDamage,
-		SupernaturalTypeDamage,
-		TechnologyTypeResistance,
-		SpacetimeTypeResistance,
-		LifeTypeResistance,
-		ElementsTypeResistance,
-		SupernaturalTypeResistance,
-		MovementSpeedBuff,
-		ImmuneToDebuffs,
-		BuffDuration,
-		DebuffDuration,
-		ManaSteal,
-		DebuffDurationIncrease,
-		EnergyDamageReduction,
-		Incorporeal,
-		DotDamageIncrease,
-		MindControlled,
-		SwapDisabled,
-		ImmuneToRandomTeleport,
-		ImmuneToBanish,
-		ImmuneToKnockback,
-		AoeRadius,
-		PetDamage,
-		PetHealth,
-		CrystalFind,
-		DNADropped,
-		RangeIncrease,
-		OrbEffectiveness,
-		OverdriveBuildup,
-		OverdriveDuration,
-		LootFind,
-		Surefooted,
-		ImmuneToStunned,
-		ImmuneToSleep,
-		ImmuneToTerrified,
-		ImmuneToSilence,
-		ImmuneToCursed,
-		ImmuneToPoisonOrDisease,
-		ImmuneToBurning,
-		ImmuneToRooted,
-		ImmuneToSlow,
-		ImmuneToPull,
-		DotDamageDoneIncrease,
-		AggroIncrease,
-		AggroDecrease,
-		PhysicalDamageDoneIncrease,
-		PhysicalDamageDoneByAbilityIncrease,
-		EnergyDamageDoneIncrease,
-		EnergyDamageDoneByAbilityIncrease,
-		ChannelTimeDecrease,
-		CrowdControlDurationDecrease,
-		DotDurationDecrease,
-		AoeDurationIncrease,
-		HealIncrease,
-		OnLockdown,
-		HoTDoneIncrease,
-		ProjectileDamageIncrease,
-		DeployBonusInvincibilityTime,
-		PhysicalDamageDecreaseFlat,
-		EnergyDamageDecreaseFlat,
-		MinWeaponDamage,
-		MaxWeaponDamage,
-		MinWeaponDamagePercent,
-		MaxWeaponDamagePercent,
-		DirectAttackDamage,
-		DirectAttackDamagePercent,
-		GetHitAnimDisabled,
-		XPBoost,
-		InvisibleToSecurityTeleporters,
-		BodyScale,
-		Count
-	};
-}
-*/
-
 // TEMPORARY VARIABLES, TESTING ONLY!
 static bool teleportMovement = true;
 
@@ -568,21 +353,6 @@ namespace RakNet {
 					director.mbBossSpawned = true;
 
 					SendDirectorState(client, director);
-					break;
-				}
-
-				case PacketID::AgentBlackboardUpdate: {
-					cAgentBlackboard data;
-					data.mbInCombat = false;
-					data.mNumAttackers = 0;
-					data.mbTargetable = true;
-					data.mStealthType = 0;
-					data.targetId = 0;
-
-					for (int i = 0; i < 3; ++i) {
-						auto object = player->GetCharacterObject(i);
-						SendAgentBlackboardUpdate(client, object, data);
-					}
 					break;
 				}
 
@@ -943,8 +713,13 @@ namespace RakNet {
 		switch (type) {
 			// Movement
 			case 3: {
-				LocomotionData data;
-				Read(mInStream, data.mPartialGoalPosition);
+				const auto& locomotionData = object->GetLocomotionData();
+				if (!locomotionData) {
+					return;
+				}
+
+				glm::vec3 partialGoalPosition;
+				Read(mInStream, partialGoalPosition);
 
 				glm::quat orientation;
 				Read(mInStream, orientation);
@@ -952,54 +727,42 @@ namespace RakNet {
 				uint32_t unk;
 				Read<uint32_t>(mInStream, unk);
 
-				Read(mInStream, data.mGoalPosition);
-				Read<uint32_t>(mInStream, data.mGoalFlags);
+				glm::vec3 goalPosition;
+				Read(mInStream, goalPosition);
+
+				uint32_t goalFlags;
+				Read<uint32_t>(mInStream, goalFlags);
 
 				uint32_t a0;
 				Read<uint32_t>(mInStream, a0);
 
-				/*
-					Goal flags
-						0x001 = move?
-						0x002 = used with 0x100 in "TurnToFaceTargetObject" (stand still?)
-						0x004 = used with some jump functions and slide
-						0x008 = apply external velocity?
-						0x020 = stop?
-						0x040 = has target object (ignored if flag 0x001 is set)
-						0x100 = face object when moving?
-						0x400 = something
-						0x800 = start rotating towards facing direction?
-				*/
-
-				// data.mGoalFlags = 0x001 | 0x800;
+				// goalFlags = 0x001 | 0x800;
 				if (teleportMovement) {
-					data.mGoalFlags = 0x020;
+					goalFlags = 0x020;
 				}
-
+				/*
 				data.mFacing = glm::eulerAngles(orientation);
 				data.mAllowedStopDistance = 0;
 				data.mDesiredStopDistance = 0;
 				data.mTargetObjectId = 0;
 				data.reflectedLastUpdate = 0xFFFF;
+				*/
 
-				mGame.MoveObject(object, data);
-				mGame.SendObjectUpdate(object);
+				locomotionData->SetGoalPosition(goalPosition);
+				locomotionData->SetPartialGoalPosition(partialGoalPosition);
+				locomotionData->SetGoalFlags(locomotionData->GetGoalFlags() | goalFlags);
 
-				// SendObjectUpdate(client, object);
+				mGame.MoveObject(object, *locomotionData);
 				break;
 			}
 
 			// Stop moving
 			case 4: {
-				/*
-				0x0, 0xbe, 0x11, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc8, 0x42, 0x0, 0x0, 0xc8, 0x42, 0x0, 0x0, 0xc8, 0x42, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0xe8, 0x62, 0x21, 0x12, 0x60, 0x62, 0x21, 0x12, 0x53, 0x2b, 0x9c, 0x0, 0x70, 0xfc, 0x19, 0x0, 0x80, 0xfc, 0x19, 0x0
-
-
-OnActionCommandMsgs
-Cinematic?
-OnActionCommandMsgs(4)
-0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xf0, 0x0, 0x0, 0x9a, 0x19, 0x72, 0x42, 0xcb, 0x4c, 0x4, 0xc2, 0x3e, 0x8d, 0xa0, 0x41, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xbe, 0xbe, 0x42, 0xbf, 0xe4, 0x29, 0x26, 0x3f, 0x1, 0x0, 0x0, 0x0, 0x28, 0xd9, 0x87, 0x13, 0xa0, 0xd8, 0x87, 0x13, 0x53, 0x2b, 0x9c, 0x0, 0x6c, 0xfc, 0x19, 0x0, 0x7c, 0xfc, 0x19, 0x0
-				*/
+				const auto& locomotionData = object->GetLocomotionData();
+				if (!locomotionData) {
+					// Object cannot move anyways.
+					return;
+				}
 
 				glm::vec3 position;
 				Read(mInStream, position);
@@ -1028,13 +791,8 @@ OnActionCommandMsgs(4)
 				std::cout << a0 << ", " << a1 << std::endl;
 				std::cout << std::dec;
 
-				if (!teleportMovement) {
-					LocomotionData data;
-					data.Stop();
-
-					SendObjectPlayerMove(client, object, data);
-				}
-
+				// TODO: properly use the data received
+				locomotionData->Stop();
 				break;
 			}
 
@@ -1083,23 +841,11 @@ OnActionCommandMsgs(4)
 				object->SetOrientation(orientation);
 				if (skipByte[1] > 0) {
 					mGame.UseAbility(object, combatData);
-				} else {
-					LocomotionData data;
-					data.mPartialGoalPosition = currentPosition;
-					data.mGoalPosition = combatData.cursorPosition;
-					if (teleportMovement) {
-						data.mGoalFlags = 0x020;
-					} else {
-						data.mGoalFlags = 0x001 | 0x800;
-					}
+				} else if (object->HasLocomotionData()) {
+					const auto& locomotionData = object->GetLocomotionData();
+					locomotionData->MoveToPointWhileFacingTarget(combatData.cursorPosition, mGame.GetObjectManager().Get(combatData.targetId));
 
-					data.mFacing = glm::eulerAngles(orientation);
-					data.mAllowedStopDistance = 0;
-					data.mDesiredStopDistance = 0;
-					data.mTargetObjectId = combatData.targetId;
-					data.reflectedLastUpdate = 0xFFFF;
-
-					mGame.MoveObject(object, data);
+					mGame.MoveObject(object, *locomotionData);
 				}
 
 				break;
@@ -1918,21 +1664,21 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendObjectPlayerMove(const ClientPtr& client, const Game::ObjectPtr& object, const LocomotionData& locomotionData) {
+	void Server::SendObjectPlayerMove(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Locomotion& locomotionData) {
 		// 100%
 		BitStream outStream(8);
 		outStream.Write(PacketID::ObjectPlayerMove);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, locomotionData.mGoalFlags);
-		Write(outStream, locomotionData.mGoalPosition);
-		Write(outStream, locomotionData.mFacing);
-		Write(outStream, locomotionData.mExternalLinearVelocity);
-		Write(outStream, locomotionData.mExternalForce);
-		Write<float>(outStream, locomotionData.mAllowedStopDistance);
-		Write<float>(outStream, locomotionData.mDesiredStopDistance);
-		Write(outStream, locomotionData.mTargetPosition);
-		Write<uint32_t>(outStream, locomotionData.mTargetObjectId);
+		Write<uint32_t>(outStream, locomotionData.GetGoalFlags());
+		Write(outStream, locomotionData.GetGoalPosition());
+		Write(outStream, locomotionData.GetFacing());
+		Write(outStream, locomotionData.GetExternalLinearVelocity());
+		Write(outStream, locomotionData.GetExternalForce());
+		Write<float>(outStream, locomotionData.GetAllowedStopDistance());
+		Write<float>(outStream, locomotionData.GetDesiredStopDistance());
+		Write(outStream, locomotionData.GetTargetPosition());
+		Write<uint32_t>(outStream, locomotionData.GetTargetId());
 
 		Send(outStream, client);
 	}
@@ -1953,7 +1699,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const LocomotionData& locomotionData) {
+	void Server::SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Locomotion& locomotionData) {
 		// 100%
 		if (!object) {
 			return;
@@ -1998,7 +1744,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendCombatantDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cCombatantData& combatantData) {
+	void Server::SendCombatantDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::CombatantData& combatantData) {
 		// 100%
 		if (!object) {
 			return;
@@ -2013,7 +1759,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendInteractableDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cInteractableData& interactableData) {
+	void Server::SendInteractableDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::InteractableData& interactableData) {
 		// 100%
 		if (!object) {
 			return;
@@ -2028,7 +1774,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cAgentBlackboard& agentBlackboard) {
+	void Server::SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::AgentBlackboard& agentBlackboard) {
 		// 100%
 		if (!object) {
 			return;
@@ -2043,7 +1789,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const cLootData& lootData) {
+	void Server::SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::LootData& lootData) {
 		// 100%
 		if (!object) {
 			return;
@@ -2152,7 +1898,7 @@ OnActionCommandMsgs(4)
 		Send(outStream, client);
 	}
 
-	void Server::SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp, bool overlay) {
+	void Server::SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp, bool overlay, float scale) {
 		BitStream outStream(8);
 		outStream.Write(PacketID::SetAnimationState);
 
@@ -2160,7 +1906,7 @@ OnActionCommandMsgs(4)
 		Write<uint32_t>(outStream, state);
 		Write<uint64_t>(outStream, timestamp);
 		Write<bool>(outStream, overlay);
-		Write<float>(outStream, 1.f);
+		Write<float>(outStream, scale);
 		Write<uint32_t>(outStream, state); // some client data?
 
 		Send(outStream, client);

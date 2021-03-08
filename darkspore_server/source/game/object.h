@@ -5,11 +5,17 @@
 // Include
 #include "noun.h"
 #include "attributes.h"
+#include "locomotion.h"
 #include "lua.h"
 #include <map>
 
+// Predefined
+namespace SporeNet { class Part; }
+namespace RakNet { struct labsCrystal; }
+
 // Game
 namespace Game {
+	class Object;
 	class ObjectManager;
 	
 	// EffectList
@@ -24,6 +30,125 @@ namespace Game {
 
 			std::vector<uint8_t> mOpenIndexes;
 			std::vector<uint8_t> mUsedIndexes;
+	};
+
+	// CombatantData
+	class CombatantData {
+		public:
+			void WriteTo(RakNet::BitStream& stream) const;
+			void WriteReflection(RakNet::BitStream& stream) const;
+
+		private:
+			float mHitPoints = 0;
+			float mManaPoints = 0;
+
+			friend class Object;
+	};
+
+	// InteractableData
+	class InteractableData {
+		public:
+			InteractableData(Object& object);
+
+			uint32_t GetAbility() const;
+			void SetAbility(uint32_t ability);
+
+			int32_t GetTimesUsed() const;
+			void SetTimesUsed(int32_t timesUsed);
+
+			int32_t GetUsesAllowed() const;
+			void SetUsesAllowed(int32_t usesAllowed);
+
+			void WriteTo(RakNet::BitStream& stream) const;
+			void WriteReflection(RakNet::BitStream& stream) const;
+
+		private:
+			Object& mObject;
+
+			uint32_t mAbility = 0;
+
+			int32_t mTimesUsed = 0;
+			int32_t mUsesAllowed = 0;
+
+			friend class Object;
+	};
+
+	// LootData
+	class LootData {
+		public:
+			LootData(Object& object);
+
+			uint32_t GetRigblockAsset() const;
+			uint32_t GetPrefixAsset() const;
+			uint32_t GetPrefixSecondaryAsset() const;
+			uint32_t GetSuffixAsset() const;
+
+			int32_t GetLevel() const;
+			int32_t GetRarity() const;
+
+			void SetId(uint64_t id);
+			void SetInstanceId(uint64_t id);
+
+			void SetPart(const SporeNet::Part& part);
+			void SetDNAAmount(float amount);
+			void SetCrystal(const RakNet::labsCrystal& crystal);
+
+			void WriteTo(RakNet::BitStream& stream) const;
+			void WriteReflection(RakNet::BitStream& stream) const;
+
+		private:
+			Object& mObject;
+
+			uint64_t mId = 0;
+			uint64_t mInstanceId = 0;
+
+			uint32_t mRigblockAsset = 0;
+			uint32_t mSuffixAssetId = 0;
+			uint32_t mPrefixAssetId = 0;
+			uint32_t mSecondaryPrefixAssetId = 0;
+
+			int32_t mItemLevel = 0;
+			int32_t mCrystalLevel = 0;
+			int32_t mRarity = 0;
+
+			float mDNAAmount = 0;
+
+			friend class Object;
+	};
+
+	// AgentBlackboard
+	class AgentBlackboard {
+		public:
+			AgentBlackboard(Object& object);
+
+			uint32_t GetTargetId() const;
+			void SetTargetId(uint32_t id);
+
+			uint32_t GetNumAttackers() const;
+			void SetNumAttackers(uint32_t attackers);
+
+			uint8_t GetStealthType() const;
+			void SetStealthType(uint8_t stealthType);
+
+			bool IsInCombat() const;
+			void SetInCombat(bool inCombat);
+
+			bool IsTargetable() const;
+			void SetTargetable(bool targetable);
+
+			void WriteTo(RakNet::BitStream& stream) const;
+			void WriteReflection(RakNet::BitStream& stream) const;
+
+		private:
+			Object& mObject;
+
+			uint32_t mTargetId = 0;
+			uint32_t mNumAttackers = 0;
+
+			uint8_t mStealthType = 0;
+
+			bool mInCombat = false;
+			bool mTargetable = false;
 	};
 
 	// ObjectDataBits
@@ -68,8 +193,9 @@ namespace Game {
 				UpdateLootData					= 1 << 4,
 				UpdateAgentBlackboardData		= 1 << 5,
 				UpdateInteractableData			= 1 << 6,
+				UpdateLocomotion				= 1 << 7,
 
-				UpdateFlags = UpdateCombatant | UpdateAttributes | UpdateLootData | UpdateAgentBlackboardData | UpdateInteractableData
+				UpdateFlags = UpdateCombatant | UpdateAttributes | UpdateLootData | UpdateAgentBlackboardData | UpdateInteractableData | UpdateLocomotion
 			};
 
 		protected:
@@ -85,26 +211,29 @@ namespace Game {
 			virtual void OnTick();
 
 			void SetTickOverride(sol::protected_function func);
-			void SetPassiveAbility(sol::table ability);
+			void SetPassiveAbility(const AbilityPtr& ability);
 
-			const std::unique_ptr<RakNet::cInteractableData>& GetInteractableData() const;
-			void SetInteractableData(const RakNet::cInteractableData& data);
+			CombatantData& GetCombatantData();
+			const CombatantData& GetCombatantData() const;
 
-			RakNet::cCombatantData& GetCombatantData();
-			const RakNet::cCombatantData& GetCombatantData() const;
+			bool HasInteractableData() const;
+			const std::unique_ptr<InteractableData>& CreateInteractableData();
+			const std::unique_ptr<InteractableData>& GetInteractableData() const;
 
 			bool HasAttributeData() const;
 			const std::unique_ptr<Attributes>& GetAttributeData() const;
 
 			bool HasLootData() const;
-			const RakNet::cLootData& GetLootData() const;
-			void SetLootData(RakNet::cLootData&& lootData);
+			const std::unique_ptr<LootData>& CreateLootData();
+			const std::unique_ptr<LootData>& GetLootData() const;
 
 			bool HasLocomotionData() const;
-			const RakNet::LocomotionData& GetLocomotionData() const;
+			const std::unique_ptr<Locomotion>& CreateLocomotionData();
+			const std::unique_ptr<Locomotion>& GetLocomotionData() const;
 
 			bool HasAgentBlackboardData() const;
-			const RakNet::cAgentBlackboard& GetAgentBlackboardData() const;
+			const std::unique_ptr<AgentBlackboard>& CreateAgentBlackboardData();
+			const std::unique_ptr<AgentBlackboard>& GetAgentBlackboardData() const;
 
 			uint64_t GetAssetId() const;
 			void SetAssetId(uint64_t assetId);
@@ -221,18 +350,18 @@ namespace Game {
 			ObjectManager& mManager;
 
 			sol::protected_function mTickOverride = sol::nil;
-			sol::table mPassiveAbility = sol::nil;
+			AbilityPtr mPassiveAbility;
 
 			BoundingBox mBoundingBox;
 
-			RakNet::cCombatantData mCombatantData;
+			CombatantData mCombatantData;
 
 			std::unique_ptr<EffectList> mEffects;
 			std::unique_ptr<Attributes> mAttributes;
-			std::unique_ptr<RakNet::cInteractableData> mInteractableData;
-			std::unique_ptr<RakNet::cLootData> mLootData;
-			std::unique_ptr<RakNet::LocomotionData> mLocomotionData;
-			std::unique_ptr<RakNet::cAgentBlackboard> mAgentBlackboardData;
+			std::unique_ptr<InteractableData> mInteractableData;
+			std::unique_ptr<LootData> mLootData;
+			std::unique_ptr<Locomotion> mLocomotionData;
+			std::unique_ptr<AgentBlackboard> mAgentBlackboardData;
 
 			NounPtr mNoun;
 
@@ -276,6 +405,10 @@ namespace Game {
 
 			friend class Instance;
 			friend class ObjectManager;
+			friend class InteractableData;
+			friend class LootData;
+			friend class AgentBlackboard;
+			friend class Locomotion;
 	};
 
 	using ObjectPtr = std::shared_ptr<Object>;

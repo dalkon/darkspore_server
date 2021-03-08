@@ -318,19 +318,19 @@ namespace Game {
 		return false;
 	}
 
-	void Instance::MoveObject(const ObjectPtr& object, RakNet::LocomotionData& locomotionData) {
+	void Instance::MoveObject(const ObjectPtr& object, const Locomotion& locomotionData) {
 		if (!object) {
 			return;
 		}
 
-		bool teleport = locomotionData.mGoalFlags & 0x020;
+		bool teleport = locomotionData.GetGoalFlags() & 0x020;
 		if (teleport) {
-			object->SetPosition(locomotionData.mGoalPosition);
+			object->SetPosition(locomotionData.GetGoalPosition());
 			for (const auto& [_, client] : mServer->GetClients()) {
-				mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotionData.mFacing);
+				mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotionData.GetFacing());
 			}
 		} else {
-			object->SetPosition(locomotionData.mPartialGoalPosition);
+			object->SetPosition(locomotionData.GetPartialGoalPosition());
 			for (const auto& [_, client] : mServer->GetClients()) {
 				mServer->SendObjectPlayerMove(client, object, locomotionData);
 			}
@@ -342,31 +342,10 @@ namespace Game {
 			return;
 		}
 
-		auto ability = mLua->GetAbility(combatData.abilityId);
-		if (ability != sol::nil) {
-			sol::object value = ability["tick"];
-			if (value.is<sol::protected_function>()) {
-				value.as<sol::protected_function>().call<void>(ability, ObjectPtr(object), mObjectManager->Get(combatData.targetId), combatData.cursorPosition);
-			}
+		const auto& ability = mLua->GetAbility(combatData.abilityId);
+		if (ability) {
+			ability->Tick(ObjectPtr(object), mObjectManager->Get(combatData.targetId), combatData.cursorPosition);
 		}
-
-		// mLua->LoadFile("ability_test.lua");
-
-		/*
-		RakNet::CombatEvent combatEvent;
-		combatEvent.flags = RakNet::CombatEventFlags::None;
-		combatEvent.deltaHealth = -500;
-		combatEvent.absorbedAmount = 0;
-		combatEvent.targetID = combatData.targetId;
-		combatEvent.sourceID = object->GetId();
-		combatEvent.abilityID = combatData.abilityId;
-		combatEvent.damageDirection = glm::zero<glm::vec3>();
-		combatEvent.integerHpChange = -500;
-		
-		for (const auto& [_, client] : mServer->GetClients()) {
-			mServer->SendCombatEvent(client, combatEvent);
-		}
-		*/
 	}
 
 	void Instance::SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex) {
@@ -456,20 +435,8 @@ namespace Game {
 			auto part = SporeNet::Part(i);
 			part.SetRarity(static_cast<SporeNet::PartRarity>(i));
 
-			RakNet::cLootData lootData;
-			lootData.mId = ++lootId;
-			lootData.mLootInstanceId = lootId;
-			lootData.mDNAAmount = 0;
-			lootData.crystalLevel = 0;
-			lootData.mRigblockAsset = part.GetRigblockAssetHash();
-			lootData.mSuffixAssetId = part.GetSuffixAssetHash();
-			lootData.mPrefixAssetId1 = part.GetPrefixAssetHash();
-			lootData.mPrefixAssetId2 = part.GetPrefixSecondaryAssetHash();
-			lootData.mItemLevel = part.GetLevel();
-			lootData.mRarity = static_cast<int32_t>(part.GetRarity());
-
 			//
-			auto containerType = lootData.mRarity;
+			auto containerType = static_cast<int32_t>(part.GetRarity());
 			if (containerType >= dropRarityNouns.size()) {
 				containerType = 0;
 			}
@@ -479,17 +446,21 @@ namespace Game {
 			object->SetTeam(0);
 			object->SetMovementType(6);
 			object->SetInteractableState(0);
-			object->SetLootData(std::move(lootData));
+			
+			const auto& lootData = object->CreateLootData();
+			lootData->SetId(++lootId);
+			lootData->SetInstanceId(lootId);
+			lootData->SetPart(part);
 
-			RakNet::cInteractableData interactableData;
-			interactableData.mNumUsesAllowed = 1;
-			interactableData.mNumTimesUsed = 0;
-			interactableData.mInteractableAbility = utils::hash_id("PickUpLoot");
+			const auto& interactableData = object->CreateInteractableData();
+			interactableData->SetUsesAllowed(1);
+			interactableData->SetTimesUsed(0);
+			interactableData->SetAbility(utils::hash_id("PickUpLoot"));
 
 			for (const auto& [_, client] : clients) {
 				mServer->SendObjectCreate(client, object);
-				mServer->SendLootDataUpdate(client, object, object->GetLootData());
-				mServer->SendInteractableDataUpdate(client, object, interactableData);
+				mServer->SendLootDataUpdate(client, object, *lootData);
+				mServer->SendInteractableDataUpdate(client, object, *interactableData);
 			}
 
 			mObjects.push_back(std::move(object));
@@ -600,26 +571,25 @@ namespace Game {
 		for (uint32_t i = 0; i < 4; ++i) {
 			RakNet::labsCrystal catalyst(static_cast<RakNet::labsCrystal::Type>(i), i % 3, i & 1);
 
-			RakNet::cLootData lootData;
-			lootData.mId = ++lootId;
-			lootData.crystalLevel = catalyst.level;
-
 			auto object = mObjectManager->Create(catalyst.crystalNoun);
 			object->SetPosition(position);
 			object->SetTeam(0);
 			object->SetMovementType(6);
 			object->SetInteractableState(0);
-			object->SetLootData(std::move(lootData));
 
-			RakNet::cInteractableData interactableData;
-			interactableData.mNumUsesAllowed = 1;
-			interactableData.mNumTimesUsed = 0;
-			interactableData.mInteractableAbility = utils::hash_id("PickUpLoot");
+			const auto& lootData = object->CreateLootData();
+			lootData->SetId(++lootId);
+			lootData->SetCrystal(catalyst);
+
+			const auto& interactableData = object->CreateInteractableData();
+			interactableData->SetUsesAllowed(1);
+			interactableData->SetTimesUsed(0);
+			interactableData->SetAbility(utils::hash_id("PickUpLoot"));
 
 			for (const auto& [_, client] : clients) {
 				mServer->SendObjectCreate(client, object);
-				mServer->SendLootDataUpdate(client, object, object->GetLootData());
-				mServer->SendInteractableDataUpdate(client, object, interactableData);
+				mServer->SendLootDataUpdate(client, object, *lootData);
+				mServer->SendInteractableDataUpdate(client, object, *interactableData);
 			}
 
 			mObjects.push_back(std::move(object));
@@ -684,18 +654,32 @@ namespace Game {
 			}
 
 			if (flags & Object::UpdateLootData) {
-				mServer->SendLootDataUpdate(client, object, object->GetLootData());
+				mServer->SendLootDataUpdate(client, object, *object->GetLootData());
 				newFlags &= ~Object::UpdateLootData;
 			}
 
 			if (flags & Object::UpdateAgentBlackboardData) {
-				mServer->SendAgentBlackboardUpdate(client, object, object->GetAgentBlackboardData());
+				mServer->SendAgentBlackboardUpdate(client, object, *object->GetAgentBlackboardData());
 				newFlags &= ~Object::UpdateAgentBlackboardData;
 			}
 
 			if (flags & Object::UpdateInteractableData) {
 				mServer->SendInteractableDataUpdate(client, object, *object->GetInteractableData());
 				newFlags &= ~Object::UpdateInteractableData;
+			}
+
+			if (flags & Object::UpdateLocomotion) {
+				const auto& locomotionData = object->GetLocomotionData();
+				if (object->IsPlayerControlled()) {
+					mServer->SendObjectPlayerMove(client, object, *locomotionData);
+				} else {
+#if 0 // If unreliable update
+					mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotionData->GetGoalPosition());
+#else
+					mServer->SendLocomotionDataUpdate(client, object, *locomotionData);
+#endif
+				}
+				newFlags &= ~Object::UpdateLocomotion;
 			}
 			
 			if (object->mDataBits.any()) {
@@ -707,7 +691,7 @@ namespace Game {
 		object->ResetUpdateBits();
 	}
 
-	void Instance::SendAnimationState(const ObjectPtr& object, uint32_t state, bool overlay) {
+	void Instance::SendAnimationState(const ObjectPtr& object, uint32_t state, bool overlay, float scale) {
 		if (!object) {
 			return;
 		}
@@ -719,7 +703,7 @@ namespace Game {
 		}
 
 		for (const auto& [_, client] : mServer->GetClients()) {
-			mServer->SendAnimationState(client, object, state, timestamp, overlay);
+			mServer->SendAnimationState(client, object, state, timestamp, overlay, scale);
 		}
 	}
 
@@ -793,7 +777,7 @@ namespace Game {
 		}
 
 		ClientEvent lootEvent;
-		lootEvent.SetLootPickup(player->GetId(), object->GetLootData());
+		lootEvent.SetLootPickup(player->GetId(), *object->GetLootData());
 
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendServerEvent(client, lootEvent);

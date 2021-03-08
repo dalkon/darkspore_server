@@ -27,24 +27,14 @@ namespace Game {
 	}
 
 	void TriggerVolume::OnActivate() {
-		if (mPassiveAbility == sol::nil) {
-			return;
-		}
-
-		sol::object value = mPassiveAbility["activate"];
-		if (value.is<sol::protected_function>()) {
-			value.as<sol::protected_function>().call<void>(mPassiveAbility, std::static_pointer_cast<TriggerVolume>(shared_from_this()));
+		if (mPassiveAbility) {
+			mPassiveAbility->Activate(std::static_pointer_cast<TriggerVolume>(shared_from_this()));
 		}
 	}
 
 	void TriggerVolume::OnDeactivate() {
-		if (mPassiveAbility == sol::nil) {
-			return;
-		}
-
-		sol::object value = mPassiveAbility["deactivate"];
-		if (value.is<sol::protected_function>()) {
-			value.as<sol::protected_function>().call<void>(mPassiveAbility, std::static_pointer_cast<TriggerVolume>(shared_from_this()));
+		if (mPassiveAbility) {
+			mPassiveAbility->Deactivate(std::static_pointer_cast<TriggerVolume>(shared_from_this()));
 		}
 	}
 
@@ -209,13 +199,12 @@ namespace Game {
 				object->SetScale(marker->GetScale());
 			}
 
-			const auto& interactableData = marker->GetInteractableData();
-			if (interactableData) {
-				RakNet::cInteractableData data;
-				data.mInteractableAbility = utils::hash_id(interactableData->GetAbility());
-				data.mNumUsesAllowed = interactableData->GetUsesAllowed();
-				data.mNumTimesUsed = 0;
-				object->SetInteractableData(data);
+			const auto& markerInteractableData = marker->GetInteractableData();
+			if (markerInteractableData) {
+				const auto& interactableData = object->CreateInteractableData();
+				interactableData->SetAbility(utils::hash_id(markerInteractableData->GetAbility()));
+				interactableData->SetUsesAllowed(markerInteractableData->GetUsesAllowed());
+				interactableData->SetTimesUsed(0);
 			}
 
 			object->OnActivate();

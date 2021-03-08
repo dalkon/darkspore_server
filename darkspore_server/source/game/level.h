@@ -94,8 +94,8 @@ namespace Game {
 			bool mDeferTriggerCreation = false;
 	};
 
-	// InteractableData
-	class InteractableData {
+	// MarkerInteractableData
+	class MarkerInteractableData {
 		public:
 			void Read(pugi::xml_node node);
 
@@ -123,7 +123,7 @@ namespace Game {
 			void Read(pugi::xml_node node);
 
 			const std::unique_ptr<TeleporterData>& GetTeleporterData() const;
-			const std::unique_ptr<InteractableData>& GetInteractableData() const;
+			const std::unique_ptr<MarkerInteractableData>& GetInteractableData() const;
 
 			const glm::vec3& GetPosition() const;
 			const glm::vec3& GetRotation() const;
@@ -138,7 +138,7 @@ namespace Game {
 
 		private:
 			std::unique_ptr<TeleporterData> mTeleporterData;
-			std::unique_ptr<InteractableData> mInteractableData;
+			std::unique_ptr<MarkerInteractableData> mInteractableData;
 
 			glm::vec3 mPosition;
 			glm::vec3 mRotation;

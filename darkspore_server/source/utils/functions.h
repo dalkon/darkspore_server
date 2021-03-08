@@ -195,13 +195,18 @@ namespace utils {
 	};
 
 	template<typename T, typename U = std::underlying_type_t<T>> requires std::is_enum_v<T>
+	constexpr U to_underlying(T value) noexcept {
+		return static_cast<U>(value);
+	}
+
+	template<typename T, typename U = std::underlying_type_t<T>> requires std::is_enum_v<T>
 	struct enum_helper {
-		static T band(T value) { return value; }
-		static T bor(T value) { return value; }
-		static T bxor(T value) { return value; }
+		static constexpr T band(T value) noexcept { return value; }
+		static constexpr T bor(T value) noexcept { return value; }
+		static constexpr T bxor(T value) noexcept { return value; }
 
 		template<typename... Ts>
-		static T band(T lhs, T rhs, Ts&&... args) {
+		static constexpr T band(T lhs, T rhs, Ts&&... args) noexcept {
 			lhs = static_cast<T>(static_cast<U>(lhs) & static_cast<U>(rhs));
 			if constexpr (sizeof...(args) == 0) {
 				return lhs;
@@ -211,7 +216,7 @@ namespace utils {
 		}
 
 		template<typename... Ts>
-		static T bor(T lhs, T rhs, Ts&&... args) {
+		static constexpr T bor(T lhs, T rhs, Ts&&... args) noexcept {
 			lhs = static_cast<T>(static_cast<U>(lhs) | static_cast<U>(rhs));
 			if constexpr (sizeof...(args) == 0) {
 				return lhs;
@@ -221,7 +226,7 @@ namespace utils {
 		}
 
 		template<typename... Ts>
-		static T bxor(T lhs, T rhs, Ts&&... args) {
+		static constexpr T bxor(T lhs, T rhs, Ts&&... args) noexcept {
 			lhs = static_cast<T>(static_cast<U>(lhs) ^ static_cast<U>(rhs));
 			if constexpr (sizeof...(args) == 0) {
 				return lhs;
@@ -231,12 +236,16 @@ namespace utils {
 		}
 
 		template<typename... Ts>
-		static bool test(T value, Ts&&... args) {
+		static constexpr bool test(T value, Ts&&... args) noexcept {
 			if constexpr (sizeof...(args) == 0) {
 				return static_cast<U>(value) != 0;
 			} else {
 				return static_cast<U>(band(value, bor(std::forward<Ts>(args)...))) != 0;
 			}
+		}
+
+		static constexpr T next(T value, U n) noexcept {
+			value = static_cast<T>(static_cast<U>(value) + n);
 		}
 	};
 }

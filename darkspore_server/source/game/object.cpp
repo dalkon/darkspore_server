@@ -4,6 +4,8 @@
 #include "objectmanager.h"
 #include "instance.h"
 
+#include "sporenet/part.h"
+
 #include "utils/functions.h"
 #include "utils/log.h"
 
@@ -84,6 +86,270 @@ namespace Game {
 		return false;
 	}
 
+	// CombatantData
+	void CombatantData::WriteTo(RakNet::BitStream& stream) const {
+		using RakNet::bytes_to_bits;
+		using RakNet::ReallocateStream;
+
+		constexpr auto size = bytes_to_bits(0x70);
+
+		auto writeOffset = ReallocateStream(stream, size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x40));
+		Write(stream, mHitPoints);
+		Write(stream, mManaPoints);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void CombatantData::WriteReflection(RakNet::BitStream& stream) const {
+		RakNet::reflection_serializer<2> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mHitPoints);
+		reflector.write<1>(mManaPoints);
+		reflector.end();
+	}
+
+	// InteractableData
+	InteractableData::InteractableData(Object& object) : mObject(object) {}
+
+	uint32_t InteractableData::GetAbility() const {
+		return mAbility;
+	}
+
+	void InteractableData::SetAbility(uint32_t ability) {
+		mAbility = ability;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateInteractableData);
+	}
+
+	int32_t InteractableData::GetTimesUsed() const {
+		return mTimesUsed;
+	}
+
+	void InteractableData::SetTimesUsed(int32_t timesUsed) {
+		mTimesUsed = timesUsed;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateInteractableData);
+	}
+
+	int32_t InteractableData::GetUsesAllowed() const {
+		return mUsesAllowed;
+	}
+
+	void InteractableData::SetUsesAllowed(int32_t usesAllowed) {
+		mUsesAllowed = usesAllowed;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateInteractableData);
+	}
+
+	void InteractableData::WriteTo(RakNet::BitStream& stream) const {
+		using RakNet::bytes_to_bits;
+		using RakNet::ReallocateStream;
+
+		constexpr auto size = bytes_to_bits(0x34);
+
+		auto writeOffset = ReallocateStream(stream, size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
+		Write(stream, mTimesUsed);
+		Write(stream, mUsesAllowed);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x14));
+		Write(stream, mAbility);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void InteractableData::WriteReflection(RakNet::BitStream& stream) const {
+		RakNet::reflection_serializer<3> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mTimesUsed);
+		reflector.write<1>(mUsesAllowed);
+		reflector.write<2>(mAbility);
+		reflector.end();
+	}
+
+	// LootData
+	LootData::LootData(Object& object) : mObject(object) {}
+
+	uint32_t LootData::GetRigblockAsset() const {
+		return mRigblockAsset;
+	}
+
+	uint32_t LootData::GetPrefixAsset() const {
+		return mPrefixAssetId;
+	}
+
+	uint32_t LootData::GetPrefixSecondaryAsset() const {
+		return mSecondaryPrefixAssetId;
+	}
+
+	uint32_t LootData::GetSuffixAsset() const {
+		return mSuffixAssetId;
+	}
+
+	int32_t LootData::GetLevel() const {
+		return mItemLevel;
+	}
+
+	int32_t LootData::GetRarity() const {
+		return mRarity;
+	}
+
+	void LootData::SetId(uint64_t id) {
+		mId = id;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+	}
+
+	void LootData::SetInstanceId(uint64_t id) {
+		mInstanceId = id;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+	}
+
+	void LootData::SetPart(const SporeNet::Part& part) {
+		mRigblockAsset = part.GetRigblockAssetHash();
+		mSuffixAssetId = part.GetSuffixAssetHash();
+		mPrefixAssetId = part.GetPrefixAssetHash();
+		mSecondaryPrefixAssetId = part.GetPrefixSecondaryAssetHash();
+		mItemLevel = part.GetLevel();
+		mRarity = static_cast<int32_t>(part.GetRarity());
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+	}
+
+	void LootData::SetDNAAmount(float amount) {
+		mDNAAmount = amount;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+	}
+
+	void LootData::SetCrystal(const RakNet::labsCrystal& crystal) {
+		mCrystalLevel = crystal.level;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+	}
+
+	void LootData::WriteTo(RakNet::BitStream& stream) const {
+		using RakNet::bytes_to_bits;
+		using RakNet::ReallocateStream;
+
+		constexpr auto size = bytes_to_bits(0x80);
+
+		auto writeOffset = ReallocateStream(stream, size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
+		Write(stream, mCrystalLevel);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x10));
+		Write(stream, mId);
+		Write(stream, mRigblockAsset);
+		Write(stream, mSuffixAssetId);
+		Write(stream, mPrefixAssetId);
+		Write(stream, mSecondaryPrefixAssetId);
+		Write(stream, mItemLevel);
+		Write(stream, mRarity);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x40));
+		Write(stream, mInstanceId);
+		Write(stream, mDNAAmount);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void LootData::WriteReflection(RakNet::BitStream& stream) const {
+		RakNet::reflection_serializer<10> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mCrystalLevel);
+		reflector.write<1>(mId);
+		reflector.write<2>(mRigblockAsset);
+		reflector.write<3>(mSuffixAssetId);
+		reflector.write<4>(mPrefixAssetId);
+		reflector.write<5>(mSecondaryPrefixAssetId);
+		reflector.write<6>(mItemLevel);
+		reflector.write<7>(mRarity);
+		reflector.write<8>(mInstanceId);
+		reflector.write<9>(mDNAAmount);
+		reflector.end();
+	}
+
+	// AgentBlackboard
+	AgentBlackboard::AgentBlackboard(Object& object) : mObject(object) {}
+
+	uint32_t AgentBlackboard::GetTargetId() const {
+		return mTargetId;
+	}
+
+	void AgentBlackboard::SetTargetId(uint32_t id) {
+		mTargetId = id;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+	}
+
+	uint32_t AgentBlackboard::GetNumAttackers() const {
+		return mNumAttackers;
+	}
+
+	void AgentBlackboard::SetNumAttackers(uint32_t attackers) {
+		mNumAttackers = attackers;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+	}
+
+	uint8_t AgentBlackboard::GetStealthType() const {
+		return mStealthType;
+	}
+
+	void AgentBlackboard::SetStealthType(uint8_t stealthType) {
+		mStealthType = stealthType;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+	}
+
+	bool AgentBlackboard::IsInCombat() const {
+		return mInCombat;
+	}
+
+	void AgentBlackboard::SetInCombat(bool inCombat) {
+		mInCombat = inCombat;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+	}
+
+	bool AgentBlackboard::IsTargetable() const {
+		return mTargetable;
+	}
+
+	void AgentBlackboard::SetTargetable(bool targetable) {
+		mTargetable = targetable;
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+	}
+
+	void AgentBlackboard::WriteTo(RakNet::BitStream& stream) const {
+		using RakNet::bytes_to_bits;
+		using RakNet::ReallocateStream;
+
+		constexpr auto size = bytes_to_bits(0x598);
+
+		auto writeOffset = ReallocateStream(stream, size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x550));
+		Write(stream, mTargetId);
+		Write(stream, mInCombat);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x556));
+		Write(stream, mStealthType);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x578));
+		Write(stream, mTargetable);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x57C));
+		Write(stream, mNumAttackers);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
+	void AgentBlackboard::WriteReflection(RakNet::BitStream& stream) const {
+		RakNet::reflection_serializer<5> reflector(stream);
+		reflector.begin();
+		reflector.write<0>(mTargetId);
+		reflector.write<1>(mInCombat);
+		reflector.write<2>(mStealthType);
+		reflector.write<3>(mTargetable);
+		reflector.write<4>(mNumAttackers);
+		reflector.end();
+	}
+
 	// Object
 	Object::Object(ObjectManager& manager, uint32_t id, uint32_t noun) : mManager(manager), mId(id), mNounId(noun) {
 		mNoun = NounDatabase::Instance().Get(mNounId);
@@ -94,7 +360,8 @@ namespace Game {
 		if (mNoun) {
 			mAssetId = mNoun->GetAssetId();
 			if (mNoun->IsCreature()) {
-				mAgentBlackboardData = std::make_unique<RakNet::cAgentBlackboard>();
+				CreateAgentBlackboardData();
+				CreateLocomotionData();
 			}
 
 			if (mNoun->IsPlayer()) {
@@ -166,24 +433,14 @@ namespace Game {
 	}
 
 	void Object::OnActivate() {
-		if (mPassiveAbility == sol::nil) {
-			return;
-		}
-
-		sol::object value = mPassiveAbility["activate"];
-		if (value.is<sol::protected_function>()) {
-			value.as<sol::protected_function>().call<void>(mPassiveAbility, shared_from_this());
+		if (mPassiveAbility) {
+			mPassiveAbility->Activate(shared_from_this());
 		}
 	}
 
 	void Object::OnDeactivate() {
-		if (mPassiveAbility == sol::nil) {
-			return;
-		}
-
-		sol::object value = mPassiveAbility["deactivate"];
-		if (value.is<sol::protected_function>()) {
-			value.as<sol::protected_function>().call<void>(mPassiveAbility, shared_from_this());
+		if (mPassiveAbility) {
+			mPassiveAbility->Deactivate(shared_from_this());
 		}
 	}
 
@@ -195,36 +452,38 @@ namespace Game {
 
 	void Object::SetTickOverride(sol::protected_function func) {
 		mTickOverride = func;
-		mPassiveAbility = sol::nil;
+		mPassiveAbility = nullptr;
 	}
 
-	void Object::SetPassiveAbility(sol::table ability) {
-		if (ability == sol::nil) {
-			return;
-		}
-
-		sol::object value = ability["tick"];
-		if (value.is<sol::protected_function>()) {
-			mTickOverride = value;
-			mPassiveAbility = ability;
+	void Object::SetPassiveAbility(const AbilityPtr& ability) {
+		mPassiveAbility = ability;
+		if (mPassiveAbility) {
+			mTickOverride = sol::nil;
 		}
 	}
 
-	const std::unique_ptr<RakNet::cInteractableData>& Object::GetInteractableData() const {
+	CombatantData& Object::GetCombatantData() {
+		return mCombatantData;
+	}
+
+	const CombatantData& Object::GetCombatantData() const {
+		return mCombatantData;
+	}
+
+	bool Object::HasInteractableData() const {
+		return static_cast<bool>(mInteractableData);
+	}
+
+	const std::unique_ptr<InteractableData>& Object::CreateInteractableData() {
+		if (!mInteractableData) {
+			mInteractableData = std::make_unique<InteractableData>(*this);
+			SetFlags(GetFlags() | Flags::UpdateInteractableData);
+		}
+		return GetInteractableData();
+	}
+
+	const std::unique_ptr<InteractableData>& Object::GetInteractableData() const {
 		return mInteractableData;
-	}
-
-	void Object::SetInteractableData(const RakNet::cInteractableData& data) {
-		mInteractableData = std::make_unique<RakNet::cInteractableData>(data);
-		SetFlags(GetFlags() | Flags::UpdateInteractableData);
-	}
-
-	RakNet::cCombatantData& Object::GetCombatantData() {
-		return mCombatantData;
-	}
-
-	const RakNet::cCombatantData& Object::GetCombatantData() const {
-		return mCombatantData;
 	}
 
 	bool Object::HasAttributeData() const {
@@ -239,40 +498,48 @@ namespace Game {
 		return static_cast<bool>(mLootData);
 	}
 
-	const RakNet::cLootData& Object::GetLootData() const {
-		if (!HasLootData()) {
-			static RakNet::cLootData _data {};
-			return _data;
+	const std::unique_ptr<LootData>& Object::CreateLootData() {
+		if (!mLootData) {
+			mLootData = std::make_unique<LootData>(*this);
+			SetFlags(GetFlags() | Flags::UpdateLootData);
 		}
-		return *mLootData;
+		return GetLootData();
 	}
 
-	void Object::SetLootData(RakNet::cLootData&& lootData) {
-		mLootData = std::make_unique<RakNet::cLootData>(std::move(lootData));
+	const std::unique_ptr<LootData>& Object::GetLootData() const {
+		return mLootData;
 	}
 
 	bool Object::HasLocomotionData() const {
 		return static_cast<bool>(mLocomotionData);
 	}
 
-	const RakNet::LocomotionData& Object::GetLocomotionData() const {
-		if (!HasLocomotionData()) {
-			static RakNet::LocomotionData _data {};
-			return _data;
+	const std::unique_ptr<Locomotion>& Object::CreateLocomotionData() {
+		if (!mLocomotionData) {
+			mLocomotionData = std::make_unique<Locomotion>(*this);
+			SetFlags(GetFlags() | Flags::UpdateLocomotion);
 		}
-		return *mLocomotionData;
+		return GetLocomotionData();
+	}
+
+	const std::unique_ptr<Locomotion>& Object::GetLocomotionData() const {
+		return mLocomotionData;
 	}
 
 	bool Object::HasAgentBlackboardData() const {
 		return static_cast<bool>(mAgentBlackboardData);
 	}
 
-	const RakNet::cAgentBlackboard& Object::GetAgentBlackboardData() const {
-		if (!HasAgentBlackboardData()) {
-			static RakNet::cAgentBlackboard _data;
-			return _data;
+	const std::unique_ptr<AgentBlackboard>& Object::CreateAgentBlackboardData() {
+		if (!mAgentBlackboardData) {
+			mAgentBlackboardData = std::make_unique<AgentBlackboard>(*this);
+			SetFlags(GetFlags() | Flags::UpdateAgentBlackboardData);
 		}
-		return *mAgentBlackboardData;
+		return GetAgentBlackboardData();
+	}
+
+	const std::unique_ptr<AgentBlackboard>& Object::GetAgentBlackboardData() const {
+		return mAgentBlackboardData;
 	}
 
 	uint64_t Object::GetAssetId() const {
@@ -630,46 +897,42 @@ namespace Game {
 
 	// Agent Blackboard
 	uint32_t Object::GetTargetId() const {
-		return GetAgentBlackboardData().targetId;
+		return HasAgentBlackboardData() ? mAgentBlackboardData->GetTargetId() : 0;
 	}
 
 	void Object::SetTargetId(uint32_t id) {
-		if (mAgentBlackboardData) {
-			mAgentBlackboardData->targetId = id;
-			SetFlags(GetFlags() | Flags::UpdateAgentBlackboardData);
+		if (HasAgentBlackboardData()) {
+			mAgentBlackboardData->SetTargetId(id);
 		}
 	}
 
 	uint8_t Object::GetStealthType() const {
-		return GetAgentBlackboardData().mStealthType;
+		return HasAgentBlackboardData() ? mAgentBlackboardData->GetStealthType() : 0;
 	}
 
 	void Object::SetStealthType(uint8_t stealthType) {
-		if (mAgentBlackboardData) {
-			mAgentBlackboardData->mStealthType = stealthType;
-			SetFlags(GetFlags() | Flags::UpdateAgentBlackboardData);
+		if (HasAgentBlackboardData()) {
+			mAgentBlackboardData->SetStealthType(stealthType);
 		}
 	}
 
 	bool Object::IsInCombat() const {
-		return GetAgentBlackboardData().mbInCombat;
+		return HasAgentBlackboardData() ? mAgentBlackboardData->IsInCombat() : 0;
 	}
 
 	void Object::SetInCombat(bool inCombat) {
-		if (mAgentBlackboardData) {
-			mAgentBlackboardData->mbInCombat = inCombat;
-			SetFlags(GetFlags() | Flags::UpdateAgentBlackboardData);
+		if (HasAgentBlackboardData()) {
+			mAgentBlackboardData->SetInCombat(inCombat);
 		}
 	}
 
 	bool Object::IsTargetable() const {
-		return GetAgentBlackboardData().mbTargetable;
+		return HasAgentBlackboardData() ? mAgentBlackboardData->IsTargetable() : 0;
 	}
 
 	void Object::SetTargetable(bool targetable) {
-		if (mAgentBlackboardData) {
-			mAgentBlackboardData->mbTargetable = targetable;
-			SetFlags(GetFlags() | Flags::UpdateAgentBlackboardData);
+		if (HasAgentBlackboardData()) {
+			mAgentBlackboardData->SetTargetable(targetable);
 		}
 	}
 
