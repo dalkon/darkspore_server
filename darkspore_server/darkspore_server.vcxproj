@@ -149,6 +149,7 @@
     <ClInclude Include="source\databuffer.h" />
     <ClInclude Include="source\game\api.h" />
     <ClInclude Include="source\game\attributes.h" />
+    <ClInclude Include="source\game\catalyst.h" />
     <ClInclude Include="source\game\character.h" />
     <ClInclude Include="source\game\config.h" />
     <ClInclude Include="source\game\creature.h" />
@@ -207,6 +208,7 @@
     <ClCompile Include="source\databuffer.cpp" />
     <ClCompile Include="source\game\api.cpp" />
     <ClCompile Include="source\game\attributes.cpp" />
+    <ClCompile Include="source\game\catalyst.cpp" />
     <ClCompile Include="source\game\character.cpp" />
     <ClCompile Include="source\game\config.cpp" />
     <ClCompile Include="source\game\creature.cpp" />

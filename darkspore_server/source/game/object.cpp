@@ -3,6 +3,7 @@
 #include "object.h"
 #include "objectmanager.h"
 #include "instance.h"
+#include "catalyst.h"
 
 #include "sporenet/part.h"
 
@@ -39,41 +40,39 @@ constexpr std::array<float, 19> magicNumbers {
 namespace Game {
 	// EffectList
 	uint8_t EffectList::Add(uint32_t effect) {
-		uint8_t index;
-		if (mOpenIndexes.empty()) {
-			if (mUsedIndexes.size() < 0xFF) {
-				mUsedIndexes.push_back(1);
-				index = mUsedIndexes.back();
-			} else {
-				index = 0xFF;
-			}
-		} else {
-			index = mOpenIndexes.back();
-			mOpenIndexes.pop_back();
-		}
-
-		if (index != 0xFF) {
+		uint8_t index = GetOpenIndex();
+		if (index != 0) {
 			mIndexByEffect[effect] = index;
 		}
-
 		return index;
 	}
 
-	bool EffectList::Remove(uint32_t effect) {
+	uint8_t EffectList::Remove(uint32_t effect) {
 		auto mapEnd = mIndexByEffect.end();
 		auto mapIt = mIndexByEffect.find(effect);
 		if (mapIt != mapEnd) {
+			uint8_t index = mapIt->second;
+
+			auto end = mUsedIndexes.end();
+			auto it = std::find(mUsedIndexes.begin(), end, index);
+			if (it != end) {
+				std::swap(*it, mUsedIndexes.back());
+				mUsedIndexes.pop_back();
+				mOpenIndexes.push_back(index);
+			}
+
 			mIndexByEffect.erase(mapIt);
-			return true;
+			return index;
 		}
-		return false;
+		return 0;
 	}
 
 	bool EffectList::RemoveByIndex(uint8_t index) {
 		auto end = mUsedIndexes.end();
 		auto it = std::find(mUsedIndexes.begin(), end, index);
 		if (it != end) {
-			mUsedIndexes.erase(it);
+			std::swap(*it, mUsedIndexes.back());
+			mUsedIndexes.pop_back();
 			mOpenIndexes.push_back(index);
 
 			auto mapEnd = mIndexByEffect.end();
@@ -84,6 +83,23 @@ namespace Game {
 			return true;
 		}
 		return false;
+	}
+
+	uint8_t EffectList::GetOpenIndex() {
+		uint8_t index;
+		if (mOpenIndexes.empty()) {
+			if (mUsedIndexes.size() < 0xFF) {
+				mUsedIndexes.push_back(static_cast<uint8_t>(mUsedIndexes.size()) + 1);
+				index = mUsedIndexes.back();
+			} else {
+				index = 0;
+			}
+		} else {
+			index = mOpenIndexes.back();
+			mOpenIndexes.pop_back();
+			mUsedIndexes.push_back(index);
+		}
+		return index;
 	}
 
 	// CombatantData
@@ -219,8 +235,8 @@ namespace Game {
 		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
 	}
 
-	void LootData::SetCrystal(const RakNet::labsCrystal& crystal) {
-		mCrystalLevel = crystal.level;
+	void LootData::SetCrystal(const Catalyst& catalyst) {
+		mCrystalLevel = catalyst.GetLevel();
 		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
 	}
 
@@ -288,11 +304,11 @@ namespace Game {
 		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
 	}
 
-	uint8_t AgentBlackboard::GetStealthType() const {
+	StealthType AgentBlackboard::GetStealthType() const {
 		return mStealthType;
 	}
 
-	void AgentBlackboard::SetStealthType(uint8_t stealthType) {
+	void AgentBlackboard::SetStealthType(StealthType stealthType) {
 		mStealthType = stealthType;
 		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
 	}
@@ -350,6 +366,153 @@ namespace Game {
 		reflector.end();
 	}
 
+	// Modifier
+	Modifier::Modifier(Object& object, uint32_t id) : mObject(object), mId(id) {
+		// 
+	}
+
+	uint32_t Modifier::GetDuration() const {
+		return mDuration;
+	}
+
+	void Modifier::SetDuration(uint32_t duration) {
+		mDuration = duration;
+	}
+
+	void Modifier::ResetDuration() {
+		mTimestamp = mObject.GetGame().GetTime();
+		mDirty = true;
+	}
+
+	uint8_t Modifier::GetStackCount() const {
+		return mStackCount;
+	}
+
+	void Modifier::SetStackCount(uint8_t count) {
+		mStackCount = count;
+		mDirty = true;
+	}
+
+	// AI
+	AI::AI(Object& object) : mObject(object) {
+		// TODO: Make some booleans to determine if certain variables are accessable
+	}
+
+	void AI::OnTick() {
+		if (!SearchForTarget()) {
+			return;
+		}
+
+		const auto& aidefinition = mObject.GetNoun()->GetAIDefinition();
+		if (!aidefinition) {
+			return;
+		}
+
+		// First time we see a target.
+		if (!mFirstAggro) {
+			UseAbility(aidefinition->GetFirstAggroAbility());
+			mFirstAggro = true;
+		}
+
+		UseAbility();
+
+		if (aidefinition->FaceTarget()) {
+			mObject.GetLocomotionData()->SetFacing(mTargetObject->GetPosition());
+		}
+	}
+
+	bool AI::SearchForTarget() {
+		if (mTargetObject) {
+			return true;
+		}
+
+		const auto& data = mObject.GetNoun()->GetNonPlayerClassData();
+		if (!data) {
+			// If we don't have class data then we cannot have a target.
+			return false;
+		}
+
+		const auto searchRadius = data->GetAggroRange();
+		const auto& objects = mObject.GetObjectManager().GetObjectsInRadius(mObject.GetPosition(), searchRadius, { NounType::Creature });
+		for (const auto& possibleTarget : objects) {
+			if (possibleTarget->IsPlayerControlled()) {
+				mTargetObject = possibleTarget;
+				break;
+			}
+		}
+
+		if (mTargetObject) {
+			return true;
+		}
+
+		return false;
+	}
+
+	bool AI::UseAbility(uint32_t id) {
+		if (!mObject.HasCooldown(id)) {
+			const auto& ability = mObject.GetGame().GetLua().GetAbility(id);
+			if (ability) {
+				ability->Tick(mObject.shared_from_this(), mTargetObject);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void AI::UseAbility() {
+		const auto& aidefinition = mObject.GetNoun()->GetAIDefinition();
+		const auto& nodes = aidefinition->GetNodes();
+		if (nodes.empty()) {
+			// No nodes, no AI.
+			return;
+		}
+
+		if (mNode >= nodes.size()) {
+			// Reset data
+			mNode = 0;
+			mGambit = 0;
+		}
+
+		const auto& node = nodes[mNode];
+		const auto& condition = node.GetConditionData();
+		if (condition) {
+			// test some stuff, if false return
+		}
+
+		const auto& phase = node.GetPhaseData();
+		if (phase) {
+			const auto& gambit = phase->GetGambit();
+			switch (phase->GetType()) {
+				case PhaseType::PrioritizedList: {
+					for (const auto& gambitData : gambit) {
+						if (UseAbility(gambitData.GetAbility())) {
+							break;
+						}
+					}
+					break;
+				}
+
+				case PhaseType::Sequential: {
+					const auto& gambitData = gambit[mGambit];
+					if (UseAbility(gambitData.GetAbility())) {
+						mGambit++;
+						mGambit = mGambit == gambit.size() ? 0 : mGambit;
+					}
+					break;
+				}
+
+				case PhaseType::Random: {
+					mGambit = utils::random::get<uint8_t>(0, static_cast<uint8_t>(gambit.size() - 1));
+
+					const auto& gambitData = gambit[mGambit];
+					UseAbility(gambitData.GetAbility());
+
+					break;
+				}
+			}
+		}
+	}
+
 	// Object
 	Object::Object(ObjectManager& manager, uint32_t id, uint32_t noun) : mManager(manager), mId(id), mNounId(noun) {
 		mNoun = NounDatabase::Instance().Get(mNounId);
@@ -369,6 +532,9 @@ namespace Game {
 				if (!data) {
 					return;
 				}
+
+				// Otherwise enemies can't use any abilities on you.
+				SetTargetable(true);
 
 				const auto& attributes = data->GetAttributes();
 				if (attributes) {
@@ -397,6 +563,9 @@ namespace Game {
 					mAttributes->SetWeaponDamage(1, 5);
 				}
 			} else {
+				// All nonplayer objects should have an AI object
+				mAI = std::make_unique<AI>(*this);
+
 				const auto& data = mNoun->GetNonPlayerClassData();
 				if (!data) {
 					return;
@@ -432,6 +601,10 @@ namespace Game {
 		}
 	}
 
+	bool Object::IsCreature() const {
+		return mNoun ? mNoun->IsCreature() : false;
+	}
+
 	void Object::OnActivate() {
 		if (mPassiveAbility) {
 			mPassiveAbility->Activate(shared_from_this());
@@ -447,6 +620,12 @@ namespace Game {
 	void Object::OnTick() {
 		if (mTickOverride != sol::nil) {
 			mTickOverride.call<void>(mPassiveAbility, shared_from_this());
+		} else if (mPassiveAbility) {
+			mPassiveAbility->Tick(shared_from_this());
+		}
+
+		if (mAI) {
+			mAI->OnTick();
 		}
 	}
 
@@ -460,6 +639,22 @@ namespace Game {
 		if (mPassiveAbility) {
 			mTickOverride = sol::nil;
 		}
+	}
+
+	ObjectManager& Object::GetObjectManager() {
+		return mManager;
+	}
+
+	const ObjectManager& Object::GetObjectManager() const {
+		return mManager;
+	}
+
+	Instance& Object::GetGame() {
+		return mManager.GetGame();
+	}
+
+	const Instance& Object::GetGame() const {
+		return mManager.GetGame();
 	}
 
 	CombatantData& Object::GetCombatantData() {
@@ -667,6 +862,10 @@ namespace Game {
 
 	// Effects
 	uint8_t Object::AddEffect(uint32_t effect) {
+		if (effect == 0) {
+			return 0;
+		}
+
 		if (!mEffects) {
 			mEffects = std::make_unique<EffectList>();
 		}
@@ -685,6 +884,49 @@ namespace Game {
 			return mEffects->RemoveByIndex(index);
 		}
 		return false;
+	}
+
+	// Cooldown
+	bool Object::HasCooldown(uint32_t abilityId) const {
+		// TODO: check if ability has global cooldown
+		if (auto it = mCooldowns.find(abilityId); it != mCooldowns.end()) {
+			return std::get<0>(it->second) > GetGame().GetTime();
+		}
+		return false;
+	}
+
+	Cooldown Object::AddCooldown(uint32_t abilityId, uint32_t milliseconds) {
+		const auto time = GetGame().GetTime();
+		const auto& [it, inserted] = mCooldowns.try_emplace(abilityId);
+		if (inserted || time > std::get<0>(it->second)) {
+			it->second = std::make_tuple(time + milliseconds, milliseconds);
+		} else {
+			const auto& [end, duration] = it->second;
+			const auto newDuration = static_cast<uint32_t>(end - time + milliseconds);
+			it->second = std::make_tuple(end - duration + newDuration, newDuration);
+		}
+		return it->second;
+	}
+
+	Cooldown Object::RemoveCooldown(uint32_t abilityId, uint32_t milliseconds) {
+		Cooldown cooldown;
+		if (auto it = mCooldowns.find(abilityId); it != mCooldowns.end()) {
+			const auto time = GetGame().GetTime();
+			
+			auto& [end, duration] = it->second;
+			if (milliseconds >= duration) {
+				mCooldowns.erase(it);
+			} else {
+				end -= milliseconds;
+				duration -= milliseconds;
+				cooldown = it->second;
+			}
+		}
+		return cooldown;
+	}
+
+	Cooldown Object::ScaleCooldown(uint32_t abilityId, float scale) {
+		return Cooldown {};
 	}
 
 	// Properties
@@ -849,6 +1091,8 @@ namespace Game {
 		DamageType damageType, DamageSource damageSource, float damageCoefficient,
 		int32_t descriptors, float damageMultiplier, const glm::vec3& direction
 	) {
+		// Move this to Instance?
+
 		// calculate damage stuff
 		float damage = 0;
 		bool critical = false;
@@ -873,7 +1117,7 @@ namespace Game {
 		if (damage > 0) {
 			SetHealth(GetHealth() - damage);
 			if (GetHealth() <= 0) {
-				mManager.GetGame().SendObjectGfxState(shared_from_this(), utils::hash_id("dead"));
+				GetGame().OnObjectDeath(shared_from_this(), critical, false);
 			}
 		}
 
@@ -906,11 +1150,11 @@ namespace Game {
 		}
 	}
 
-	uint8_t Object::GetStealthType() const {
-		return HasAgentBlackboardData() ? mAgentBlackboardData->GetStealthType() : 0;
+	StealthType Object::GetStealthType() const {
+		return HasAgentBlackboardData() ? mAgentBlackboardData->GetStealthType() : StealthType::None;
 	}
 
-	void Object::SetStealthType(uint8_t stealthType) {
+	void Object::SetStealthType(StealthType stealthType) {
 		if (HasAgentBlackboardData()) {
 			mAgentBlackboardData->SetStealthType(stealthType);
 		}

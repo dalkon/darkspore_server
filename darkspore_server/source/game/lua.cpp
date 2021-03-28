@@ -15,6 +15,66 @@
 #include <algorithm>
 #include <filesystem>
 
+/*
+	Darkspore "docs"
+		attribute snapshot (
+			attribute value = 0x1C + (value * 4)
+		)
+
+		ability layout (
+			0x000: char namespace[50];
+			0x05A: bool requiresAgent;
+			0x05C: int allowsMovement;
+			0x130: int maxStackCount[8];
+			0x150: bool noGlobalCooldown;
+			0x151: bool shouldPursue;
+			0x153: bool alwaysUseCursorPos;
+			0x154: bool channelled;
+			0x155: bool showChannelBar;
+			0x158: uint32_t minimumChannelTimeMs;
+			0x15C: bool faceTargetOnCreate;
+			0x152: bool finishOnDeath;
+			0x160: uint32_t descriptors;
+			0x164: uint32_t debuffDescriptors;
+			0x168: uint32_t damageType;
+			0x16C: uint32_t damageSource;
+			0x170: float damageCoefficient;
+			0x174: float healingCoefficient;
+			0x178: int modifierPriority;
+			0x17C: bool deactivateOnInterrupt;
+			0x180: guid statusAnimation;
+			0x184: asset statusHeadEffect;
+			0x188: asset statusBodyEffect;
+			0x18C: asset statusFootEffect;
+			0x190: int activationType;
+			0x194: int deactivationType;
+			0x198: int interfaceType;
+			0x19C: int cooldownType;
+			0x1A0: int targetType;
+			0x074: guid reticleEffect;
+			0x078: guid icon;
+			0x07C: guid localizedGroup;
+			0x080: guid localizedName;
+			0x0AC: guid lootGroup;
+			0x0B0: guid lootDescription[8];
+			0x084: guid localizedDescription[8];
+			0x0A8: guid localizedOverdriveDescription;
+			0x0D0: float cooldown[8];
+			0x0F0: float cooldownVariance{8];
+			0x110: float range[8];
+			0x1A4: int handledEvents;
+			0x1A8: tAssetPropertyVector properties;
+			0x1B8: int scalingAttribute;
+			0x1BC: int primaryAttributeStat;
+			0x1C0: guid primaryAttributeStatDelegate;
+			0x1C4: float manaCoefficient;
+			0x1E4: bool saveOnDehydrate;
+			0x1E5: bool rejectable;
+			0x0A4: guid localizedShortDescription;
+
+		)
+*/
+
 // Helpers
 namespace {
 	auto& LuaGetGame(sol::this_state L) {
@@ -84,9 +144,9 @@ namespace {
 namespace LuaFunction {
 	// global functions
 	auto AddEvent(sol::this_state L, sol::protected_function callback, uint32_t delay, sol::variadic_args args) {
-		Game::Instance& game = LuaGetGame(L);
 		if (delay > 0) {
-			game.AddTask(delay, [&game, callback = std::move(callback), args = std::vector<sol::object>(args.begin(), args.end())](uint32_t id) mutable {
+			Game::Instance& game = LuaGetGame(L);
+			return game.AddTask(delay, [&game, callback = std::move(callback), args = std::vector<sol::object>(args.begin(), args.end())](uint32_t id) mutable {
 				game.AddServerTask([&game, id, callback = std::move(callback), args = std::move(args)]() mutable {
 					game.CancelTask(id);
 					callback.call<void>(sol::as_args(args));
@@ -94,6 +154,7 @@ namespace LuaFunction {
 			});
 		} else {
 			callback.call<void>(args);
+			return static_cast<uint32_t>(0);
 		}
 	}
 
@@ -155,7 +216,6 @@ namespace LuaFunction {
 		auto object = game.GetObjectManager().Create(noun);
 		if (object) {
 			object->SetPosition(position);
-			game.SendObjectCreate(object);
 		}
 
 		return object;
@@ -168,13 +228,7 @@ namespace LuaFunction {
 
 	auto nObjectManager_CreateTriggerVolume(sol::this_state L, glm::vec3 position, float radius) {
 		Game::Instance& game = LuaGetGame(L);
-
-		auto object = game.GetObjectManager().CreateTrigger(position, radius);
-		if (object) {
-			game.SendObjectCreate(object);
-		}
-
-		return object;
+		return game.GetObjectManager().CreateTrigger(position, radius);
 	}
 
 	auto nObjectManager_GetObjectsInRadius(sol::this_state L, glm::vec3 position, float radius, sol::table objectTypes) {
@@ -196,6 +250,58 @@ namespace LuaFunction {
 		return result;
 	}
 
+	auto nObjectManager_GetObjectsInRadius_SortedByDistance(sol::this_state L, glm::vec3 position, float radius, sol::table objectTypes) {
+		Game::Instance& game = LuaGetGame(L);
+
+		std::vector<Game::NounType> types;
+		for (const auto& entry : objectTypes) {
+			types.push_back(static_cast<Game::NounType>(entry.second.as<uint32_t>()));
+		}
+
+		auto objects = game.GetObjectManager().GetObjectsInRadius(position, radius, types);
+		auto objectCount = static_cast<int>(objects.size());
+		std::sort(objects.begin(), objects.end(), [&position](const auto& lhs, const auto& rhs) {
+			return glm::distance(position, lhs->GetPosition()) < glm::distance(position, rhs->GetPosition());
+		});
+
+		auto result = sol::state_view(L).create_table(objectCount, 0);
+		for (int i = 0; i < objectCount; ++i) {
+			result[i + 1] = objects[i];
+		}
+
+		return result;
+	}
+
+	// Locomotion
+	auto Locomotion_TeleportObject(sol::this_state L, sol::object objectValue, glm::vec3 position, sol::optional<bool> keepFacing) {
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+		if (object && object->HasLocomotionData()) {
+			const auto& locomotion = object->GetLocomotionData();
+			locomotion->Stop();
+
+			const auto& direction = position - object->GetPosition();
+			object->SetPosition(position);
+
+			if (keepFacing.value_or(false)) {
+				locomotion->SetFacing(direction + object->GetPosition());
+			}
+		}
+	}
+
+	auto Locomotion_Stop(sol::this_state L, sol::object objectValue) {
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+		if (object && object->HasLocomotionData()) {
+			object->GetLocomotionData()->Stop();
+		}
+	}
+
+	auto Locomotion_GetClosestPosition(sol::this_state L, glm::vec3 position) {
+		// TODO: add Locomotion::GetClosestPosition (not sure how the fuck I'm gonna do that without getting navmesh data)
+		return position;
+	}
+
 	// Player
 	auto Player_Notify(sol::this_state L, sol::object playerValue, sol::table serverEventTable) {
 		Game::Instance& game = LuaGetGame(L);
@@ -207,6 +313,15 @@ namespace LuaFunction {
 	}
 
 	// Object
+	auto Object_GetPrivateTable(sol::this_state L, sol::object objectValue) {
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+		if (object) {
+			return game.GetLua().CreatePrivateTable(object->GetId());
+		}
+		return sol::table(sol::nil);
+	}
+
 	auto Object_GetFacing(sol::this_state L, sol::object objectValue) {
 		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
@@ -239,16 +354,58 @@ namespace LuaFunction {
 	}
 
 	auto Object_SetAnimationState(sol::this_state L, sol::object objectValue, uint32_t animationState, sol::optional<bool> overlay, sol::optional<float> scale) {
+		if (animationState == 0) {
+			return;
+		}
+
 		Game::Instance& game = LuaGetGame(L);
 		game.SendAnimationState(LuaGetObject(game.GetObjectManager(), objectValue), animationState, overlay.value_or(false), scale.value_or(1.f));
 	}
 
+	auto Object_SetAnimationStateToDeath(sol::this_state L, sol::object objectValue) {
+		// TODO: 
+	}
+
+	auto Object_SetAnimationStateToAggro(sol::this_state L, sol::object objectValue, sol::optional<bool> subsequent) {
+		float duration = 0;
+
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+		if (!object) {
+			return duration;
+		}
+
+		const auto& noun = object->GetNoun();
+		if (!noun) {
+			return duration;
+		}
+
+		const auto& animations = noun->GetCharacterAnimation();
+		if (!animations) {
+			return duration;
+		}
+
+		uint32_t state;
+		if (subsequent.value_or(false)) {
+			std::tie(state, duration) = animations->GetAnimationData(Game::CharacterAnimationType::SubsequentAggro);
+		} else {
+			std::tie(state, duration) = animations->GetAnimationData(Game::CharacterAnimationType::Aggro);
+		}
+
+		game.SendAnimationState(object, state);
+		return duration;
+	}
+
 	auto Object_SetGraphicsState(sol::this_state L, sol::object objectValue, uint32_t graphicsState) {
+		if (graphicsState == 0) {
+			return;
+		}
+
 		Game::Instance& game = LuaGetGame(L);
 		game.SendObjectGfxState(LuaGetObject(game.GetObjectManager(), objectValue), graphicsState);
 	}
 
-	auto Object_GetAttributesSnapshot(sol::this_state L, sol::object objectValue) {
+	auto Object_GetAttributeSnapshot(sol::this_state L, sol::object objectValue) {
 		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 
@@ -274,15 +431,22 @@ namespace LuaFunction {
 		return damageRange;
 	}
 
-	auto Object_AddCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, int64_t milliseconds) {
+	auto Object_AddCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, uint32_t milliseconds) {
 		Game::Instance& game = LuaGetGame(L);
 		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 		if (object) {
-			game.SendCooldownUpdate(object, abilityId, milliseconds);
+			const auto& [end, duration] = object->AddCooldown(abilityId, milliseconds);
+			game.SendCooldownUpdate(object, abilityId, end - duration, duration);
 		}
 	}
 
-	auto Object_RemoveCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, int64_t milliseconds) {
+	auto Object_RemoveCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, uint32_t milliseconds) {
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+		if (object) {
+			const auto& [end, duration] = object->RemoveCooldown(abilityId, milliseconds);
+			game.SendCooldownUpdate(object, abilityId, end - duration, duration);
+		}
 	}
 
 	auto Object_ScaleCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, float scale) {
@@ -290,10 +454,16 @@ namespace LuaFunction {
 	}
 
 	auto Object_TakeDamage(sol::this_state L,
-		sol::object objectValue, sol::object attackerValue, sol::object attributesSnapshotValue,
+		sol::object objectValue,
+		sol::object attackerValue,
+		sol::object attributesSnapshotValue,
 		sol::table damageRange,
-		Game::DamageType damageType, Game::DamageSource damageSource, float damageCoefficient,
-		int32_t descriptors, float damageMultiplier, glm::vec3 direction
+		Game::DamageType damageType,
+		Game::DamageSource damageSource,
+		float damageCoefficient,
+		int32_t descriptors,
+		sol::optional<float> damageMultiplier,
+		sol::optional<glm::vec3> direction
 	) {
 		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
@@ -306,19 +476,22 @@ namespace LuaFunction {
 				attributes = attributesSnapshotValue.as<Game::AttributesPtr>();
 			}
 
+			Game::CombatEvent combatEvent;
+			combatEvent.mTargetId = object->GetId();
+			combatEvent.mDirection = direction.value_or(glm::zero<glm::vec3>());
+
 			const auto& result = object->TakeDamage(
 				attributes,
 				std::make_tuple(damageRange.raw_get_or(1, 0.f), damageRange.raw_get_or(2, 0.f)),
-				damageType, damageSource, damageCoefficient,
-				descriptors, damageMultiplier, direction
+				damageType,
+				damageSource,
+				damageCoefficient,
+				descriptors,
+				damageMultiplier.value_or(1.0f),
+				combatEvent.mDirection
 			);
 
-			Game::CombatEvent combatEvent;
-			combatEvent.mTargetId = object->GetId();
-			combatEvent.mDirection = direction;
 			combatEvent.mDeltaHealth = std::get<1>(result);
-
-			// I dunno, add some confusion effect maybe for this to be of any use
 			combatEvent.mIntegerHpChange = static_cast<int32_t>(combatEvent.mDeltaHealth);
 
 			if (std::get<2>(result)) {
@@ -336,15 +509,23 @@ namespace LuaFunction {
 		return std::make_tuple(0.f, false);
 	}
 
-	auto Object_AddEffect(sol::this_state L, sol::object objectValue, std::string serverEventDef, sol::optional<sol::object> secondaryObjectValue) {
+	auto Object_AddEffect(sol::this_state L, sol::object objectValue, sol::object serverEventDef, sol::optional<sol::object> secondaryObjectValue, sol::optional<glm::vec3> targetPointValue) {
 		Game::Instance& game = LuaGetGame(L);
 		const auto& objectManager = game.GetObjectManager();
 
 		Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
 		if (object) {
-			auto effect = utils::hash_id(serverEventDef);
+			uint32_t effect;
+			if (serverEventDef.is<uint32_t>()) {
+				effect = serverEventDef.as<uint32_t>();
+			} else if (serverEventDef.is<std::string>()) {
+				effect = utils::hash_id(serverEventDef.as<std::string>());
+			} else {
+				effect = 0;
+			}
+
 			auto index = object->AddEffect(effect);
-			if (index == 0xFF) {
+			if (index == 0) {
 				return index;
 			}
 
@@ -353,9 +534,14 @@ namespace LuaFunction {
 			serverEvent.mEffectIndex = index;
 			serverEvent.mForceAttach = true;
 			serverEvent.mObjectId = object->GetId();
-			serverEvent.mTargetPoint = object->GetPosition();
-			// serverEvent.SetIgnoredPlayerBits(ignoredPlayerBits);
 
+			if (targetPointValue.has_value()) {
+				serverEvent.mTargetPoint = targetPointValue.value();
+			} else {
+				serverEvent.mTargetPoint = object->GetPosition();
+			}
+
+			// serverEvent.SetIgnoredPlayerBits(ignoredPlayerBits);
 			if (secondaryObjectValue) {
 				Game::ObjectPtr secondaryObject = LuaGetObject(objectManager, *secondaryObjectValue);
 				if (secondaryObject) {
@@ -367,14 +553,43 @@ namespace LuaFunction {
 			return serverEvent.mEffectIndex;
 		}
 
-		return static_cast<decltype(Game::ServerEvent::mEffectIndex)>(0);
+		return static_cast<uint8_t>(0);
+	}
+
+	auto Object_RemoveEffect(sol::this_state L, sol::object objectValue, sol::object effectValue, sol::optional<bool> hardStop) {
+		uint32_t effect;
+		if (effectValue.is<uint32_t>()) {
+			effect = effectValue.as<uint32_t>();
+		} else if (effectValue.is<std::string>()) {
+			effect = utils::hash_id(effectValue.as<std::string>());
+		} else {
+			return;
+		}
+
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
+		if (object) {
+			auto index = object->RemoveEffect(effect);
+			if (index != 0) {
+				Game::ServerEvent serverEvent;
+				serverEvent.mObjectId = object->GetId();
+				serverEvent.mEffectIndex = index;
+				serverEvent.mRemove = true;
+				serverEvent.mHardStop = hardStop.value_or(true);
+				// serverEvent.SetIgnoredPlayerBits(ignoredPlayerBits);
+
+				game.SendServerEvent(serverEvent);
+			}
+		}
 	}
 
 	auto Object_RemoveEffectIndex(sol::this_state L, sol::object objectValue, uint8_t index, sol::optional<bool> hardStop) {
-		Game::Instance& game = LuaGetGame(L);
-		const auto& objectManager = game.GetObjectManager();
+		if (index == 0) {
+			return;
+		}
 
-		Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
+		Game::Instance& game = LuaGetGame(L);
+		Game::ObjectPtr object = LuaGetObject(game.GetObjectManager(), objectValue);
 		if (object) {
 			auto removed = object->RemoveEffectByIndex(index);
 			if (removed) {
@@ -386,6 +601,21 @@ namespace LuaFunction {
 				// serverEvent.SetIgnoredPlayerBits(ignoredPlayerBits);
 
 				game.SendServerEvent(serverEvent);
+			}
+		}
+	}
+
+	auto Object_UseAbility(sol::this_state L, sol::object objectValue, uint32_t abilityId, sol::object targetObjectValue, glm::vec3 targetPosition) {
+		Game::Instance& game = LuaGetGame(L);
+
+		const auto& ability = game.GetLua().GetAbility(abilityId);
+		if (ability) {
+			const auto& objectManager = game.GetObjectManager();
+
+			Game::ObjectPtr object = LuaGetObject(objectManager, objectValue);
+			if (object) {
+				Game::ObjectPtr targetObject = LuaGetObject(objectManager, targetObjectValue);
+				ability->Tick(object, targetObject, targetPosition);
 			}
 		}
 	}
@@ -459,15 +689,21 @@ namespace Game {
 			throw std::exception("Ability::Ability: self is nil");
 		}
 
+		sol::state_view state = mSelf.lua_state();
+		mEnvironment = sol::environment(state, sol::create, state.globals());
+
 		if (sol::object value = mSelf["activate"]; value.is<sol::protected_function>()) {
+			mEnvironment.set_on(value);
 			mHasActivate = true;
 		}
 
 		if (sol::object value = mSelf["deactivate"]; value.is<sol::protected_function>()) {
+			mEnvironment.set_on(value);
 			mHasDeactivate = true;
 		}
 
 		if (sol::object value = mSelf["tick"]; value.is<sol::protected_function>()) {
+			mEnvironment.set_on(value);
 			mHasTick = true;
 		}
 	}
@@ -478,8 +714,7 @@ namespace Game {
 
 	// LuaBase
 	LuaBase::~LuaBase() {
-		mState.collect_garbage();
-		mState.collect_garbage();
+		CollectGarbage();
 	}
 
 	void LuaBase::Initialize() {
@@ -521,10 +756,19 @@ namespace Game {
 
 		LoadBuffer(R"(package.path = package.path .. ";./data/lua/?.lua")");
 		RegisterFunctions();
+
+		// Get default packages
+		sol::table packagesLoaded = mState["package"]["loaded"];
+		mDefaultPackages = mState.create_table();
+
+		for (const auto& [k, v] : packagesLoaded) {
+			mDefaultPackages[k] = v;
+		}
 	}
 
 	void LuaBase::Reload() {
-		// TODO:
+		mState["package"]["loaded"] = mDefaultPackages;
+		CollectGarbage();
 	}
 
 	sol::protected_function_result LuaBase::ReportError(lua_State* L, sol::protected_function_result pfr) {
@@ -582,6 +826,11 @@ namespace Game {
 		return mState;
 	}
 
+	void LuaBase::CollectGarbage() {
+		mState.collect_garbage();
+		mState.collect_garbage();
+	}
+
 	void LuaBase::RegisterFunctions() {
 		// os
 		auto osTable = mState.create_named_table("os");
@@ -590,7 +839,7 @@ namespace Game {
 		// glm
 		{
 			mState.new_usertype<glm::vec3>("vec3",
-				sol::constructors<glm::vec3(float, float, float)>(),
+				sol::constructors<glm::vec3(), glm::vec3(float, float, float)>(),
 
 				sol::meta_function::to_string, [](const glm::vec3& v) {
 					return "vec3<" + std::to_string(v.x) + ", " + std::to_string(v.y) + ", " + std::to_string(v.z) + ">";
@@ -809,9 +1058,27 @@ namespace Game {
 		return it->second;
 	}
 
+	sol::table Lua::GetPrivateTable(uint32_t id) const {
+		if (auto it = mPrivateTables.find(id); it != mPrivateTables.end()) {
+			return it->second;
+		}
+		return sol::nil;
+	}
+
+	sol::table Lua::CreatePrivateTable(uint32_t id) {
+		auto [it, inserted] = mPrivateTables.try_emplace(id);
+		if (inserted) {
+			it->second = mState.create_table();
+		}
+		return it->second;
+	}
+
+	void Lua::RemovePrivateTable(uint32_t id) {
+		mPrivateTables.erase(id);
+	}
+
 	LuaThread* Lua::GetThread(lua_State* L) const {
-		auto it = mThreads.find(L);
-		if (it != mThreads.end()) {
+		if (auto it = mThreads.find(L); it != mThreads.end()) {
 			return it->second;
 		}
 		return nullptr;
@@ -821,8 +1088,7 @@ namespace Game {
 		mThreads.erase(mThreads.find(thread->lua_state()));
 		delete thread;
 
-		mState.collect_garbage();
-		mState.collect_garbage();
+		CollectGarbage();
 	}
 
 	void Lua::RegisterEnums() {
@@ -1025,6 +1291,14 @@ namespace Game {
 			{ "HordeDefeated", ClientEventID::HordeDefeated }
 		});
 
+		// StealthType
+		mState.new_enum<StealthType>("StealthType", {
+			{ "None", StealthType::None },
+			{ "Technology", StealthType::Technology },
+			{ "Supernatural", StealthType::Supernatural },
+			{ "FullyInvisible", StealthType::FullyInvisible }
+		});
+
 		// DamageSource
 		mState.new_enum<DamageSource>("DamageSource", {
 			{ "Physical", DamageSource::Physical },
@@ -1049,6 +1323,7 @@ namespace Game {
 		mState["RegisterAbility"] = [this](std::string abilityName, sol::table abilityTable) {
 			auto id = utils::hash_id(abilityName);
 			if (auto [it, inserted] = mAbilities.try_emplace(id); inserted) {
+				abilityTable["id"] = id;
 				it->second = std::make_shared<Ability>(std::move(abilityTable));
 			}
 		};
@@ -1087,6 +1362,19 @@ namespace Game {
 			nObjectManagerTable["CreateTriggerVolume"] = &LuaFunction::nObjectManager_CreateTriggerVolume;
 
 			nObjectManagerTable["GetObjectsInRadius"] = &LuaFunction::nObjectManager_GetObjectsInRadius;
+			nObjectManagerTable["GetObjectsInRadius_SortedByDistance"] = &LuaFunction::nObjectManager_GetObjectsInRadius_SortedByDistance;
+		}
+
+		// Locomotion
+		{
+			auto locomotionTable = mState.create_named_table("Locomotion");
+
+			// object functions (object as arg0)
+			locomotionTable["TeleportObject"] = &LuaFunction::Locomotion_TeleportObject;
+			locomotionTable["Stop"] = &LuaFunction::Locomotion_Stop;
+
+			// position functions (vec3 as arg0)
+			locomotionTable["GetClosestPosition"] = &LuaFunction::Locomotion_GetClosestPosition;
 		}
 
 		// Player
@@ -1109,6 +1397,7 @@ namespace Game {
 		{
 			auto objectType = mState.new_usertype<Object>("Object", sol::no_constructor);
 			objectType["GetId"] = &Object::GetId;
+			objectType["GetPrivateTable"] = &LuaFunction::Object_GetPrivateTable;
 
 			objectType["GetPosition"] = &Object::GetPosition;
 			objectType["SetPosition"] = &Object::SetPosition;
@@ -1132,9 +1421,11 @@ namespace Game {
 			objectType["SetMana"] = &Object::SetMana;
 
 			objectType["SetAnimationState"] = &LuaFunction::Object_SetAnimationState;
+			objectType["SetAnimationStateToDeath"] = &LuaFunction::Object_SetAnimationStateToDeath;
+			objectType["SetAnimationStateToAggro"] = &LuaFunction::Object_SetAnimationStateToAggro;
 			objectType["SetGraphicsState"] = &LuaFunction::Object_SetGraphicsState;
 
-			objectType["GetAttributesSnapshot"] = &LuaFunction::Object_GetAttributesSnapshot;
+			objectType["GetAttributeSnapshot"] = &LuaFunction::Object_GetAttributeSnapshot;
 			objectType["GetAttributeValue"] = sol::resolve<float(uint8_t) const>(&Object::GetAttributeValue);
 			objectType["SetAttributeValue"] = sol::resolve<void(uint8_t, float)>(&Object::SetAttributeValue);
 
@@ -1166,8 +1457,10 @@ namespace Game {
 			objectType["Heal"] = &LuaFunction::Object_Heal;
 
 			objectType["AddEffect"] = &LuaFunction::Object_AddEffect;
+			objectType["RemoveEffect"] = &LuaFunction::Object_RemoveEffect;
 			objectType["RemoveEffectIndex"] = &LuaFunction::Object_RemoveEffectIndex;
 
+			objectType["UseAbility"] = &LuaFunction::Object_UseAbility;
 			objectType["DropLoot"] = &LuaFunction::Object_DropLoot;
 
 			// Agent blackboard

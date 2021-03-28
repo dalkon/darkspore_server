@@ -39,8 +39,8 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
-			glm::vec3 mUpDirection;
-			glm::vec3 mPlaneDirection;
+			glm::vec3 mUpDirection {};
+			glm::vec3 mPlaneDirection {};
 
 			int32_t mBounceNumber = 0;
 
@@ -62,7 +62,7 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
-			glm::vec3 mDirection;
+			glm::vec3 mDirection {};
 
 			uint32_t mJinkInfo = 0;
 
@@ -112,6 +112,7 @@ namespace Game {
 			void SetGoalObject(const ObjectPtr& object, float distance);
 			void SetGoalObjectEx(const ObjectPtr& object, float distance);
 			void SetGoalFlags(uint32_t flags);
+			void SetFacing(const glm::vec3& facingPosition);
 			void Stop();
 			void MoveToPointWhileFacingTarget(const glm::vec3& position, const ObjectPtr& object);
 			void ApplyExternalVelocity(const glm::vec3& velocity);
@@ -127,15 +128,15 @@ namespace Game {
 
 			LobParameters mLobParameters;
 
-			glm::vec3 mGoalPosition;
-			glm::vec3 mPartialGoalPosition;
-			glm::vec3 mFacing;
-			glm::vec3 mExternalLinearVelocity;
-			glm::vec3 mExternalForce;
-			glm::vec3 mTargetPosition;
-			glm::vec3 mExpectedGeoCollision;
-			glm::vec3 mInitialDirection;
-			glm::vec3 mOffset;
+			glm::vec3 mGoalPosition {};
+			glm::vec3 mPartialGoalPosition {};
+			glm::vec3 mFacing {};
+			glm::vec3 mExternalLinearVelocity {};
+			glm::vec3 mExternalForce {};
+			glm::vec3 mTargetPosition {};
+			glm::vec3 mExpectedGeoCollision {};
+			glm::vec3 mInitialDirection {};
+			glm::vec3 mOffset {};
 
 			uint64_t mLobStartTime = 0;
 

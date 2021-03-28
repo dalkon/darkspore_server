@@ -3,8 +3,6 @@
 #include "scheduler.h"
 
 // Scheduler
-decltype(Scheduler::sInstance) Scheduler::sInstance;
-
 Scheduler::Scheduler() {
 	mThread = std::thread([this] {
 		std::unique_lock<std::mutex> eventLockUnique(mLock, std::defer_lock);
@@ -37,44 +35,41 @@ Scheduler::Scheduler() {
 			eventLockUnique.unlock();
 
 			(*task)();
+			delete task;
 		}
 	});
 }
 
-uint32_t Scheduler::AddTask(uint32_t delay, const std::function<void(uint32_t)>& f) { return sInstance._AddTask(delay, f); }
-void Scheduler::CancelTask(uint32_t id) { sInstance._CancelTask(id); }
-void Scheduler::Shutdown() { sInstance._Shutdown(); }
+uint32_t Scheduler::AddTask(uint32_t delay, const std::function<void(uint32_t)>& f) {
+	static thread_local uint32_t taskId = 0;
 
-uint32_t Scheduler::_AddTask(uint32_t delay, const std::function<void(uint32_t)>& f) {
-	bool do_signal = false;
-
+	bool notify = false;
 	mLock.lock();
 	if (mState.load(std::memory_order_relaxed) != 0) {
 		mLock.unlock();
 		return 0;
 	}
 
-	if (++mLastTaskId == 0) {
-		mLastTaskId = 1;
+	if (++taskId == 0) {
+		taskId = 1;
 	}
 
 	auto task = new Task(delay, f);
-	task->SetId(mLastTaskId);
+	task->SetId(taskId);
 
 	mTaskIds.insert(task->GetId());
 	mTasks.push(task);
 
-	do_signal = task == mTasks.top();
-
+	notify = task == mTasks.top();
 	mLock.unlock();
-	if (do_signal) {
+	if (notify) {
 		mSignal.notify_one();
 	}
 
 	return task->GetId();
 }
 
-void Scheduler::_CancelTask(uint32_t id) {
+void Scheduler::CancelTask(uint32_t id) {
 	if (id == 0) {
 		return;
 	}
@@ -85,7 +80,7 @@ void Scheduler::_CancelTask(uint32_t id) {
 	}
 }
 
-void Scheduler::_Shutdown() {
+void Scheduler::Shutdown() {
 	mState.store(1, std::memory_order_relaxed);
 	mLock.lock();
 

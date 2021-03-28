@@ -26,6 +26,8 @@ class Application {
 
 		boost::asio::io_context& get_io_service();
 
+		Scheduler& GetScheduler() const;
+
 		SporeNet::Instance& GetSporeNet() const;
 
 		Game::API* get_game_api() const;
@@ -43,6 +45,8 @@ class Application {
 
 		boost::asio::io_context mIoService;
 		boost::asio::signal_set mSignals;
+
+		std::unique_ptr<Scheduler> mScheduler;
 
 		std::unique_ptr<SporeNet::Instance> mSporeNet;
 

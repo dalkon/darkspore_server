@@ -63,6 +63,8 @@ namespace Game {
 			Instance& GetGame();
 			const Instance& GetGame() const;
 
+			const std::unordered_set<ObjectPtr>& GetActiveObjects() const;
+
 			ObjectPtr Get(uint32_t id) const;
 			ObjectPtr Create(uint32_t noun);
 			ObjectPtr Create(const MarkerPtr& marker);

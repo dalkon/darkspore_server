@@ -237,6 +237,9 @@
     <ClInclude Include="source\game\locomotion.h">
       <Filter>Header Files\game</Filter>
     </ClInclude>
+    <ClInclude Include="source\game\catalyst.h">
+      <Filter>Header Files\game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -402,6 +405,9 @@
       <Filter>Source Files\game</Filter>
     </ClCompile>
     <ClCompile Include="source\game\locomotion.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\game\catalyst.cpp">
       <Filter>Source Files\game</Filter>
     </ClCompile>
   </ItemGroup>

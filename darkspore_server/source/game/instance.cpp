@@ -5,6 +5,7 @@
 #include "objectmanager.h"
 #include "lua.h"
 #include "serverevent.h"
+#include "catalyst.h"
 #include "scheduler.h"
 
 #include "raknet/server.h"
@@ -60,8 +61,11 @@ namespace Game {
 	}
 
 	void Instance::Stop() {
-		for (uint32_t id : mEvents) {
-			Scheduler::CancelTask(id);
+		if (!mEvents.empty()) {
+			auto& scheduler = GetApp().GetScheduler();
+			for (uint32_t id : mEvents) {
+				scheduler.CancelTask(id);
+			}
 		}
 
 		mEvents.clear();
@@ -99,6 +103,16 @@ namespace Game {
 					const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
 					for (const auto& marker : markers) {
 						mPlayerSpawnpoints.push_back(marker->GetPosition());
+					}
+				}
+
+				// Check design_spawners
+				if (mPlayerSpawnpoints.empty()) {
+					if (mLevel.GetMarkerset(levelName + "_design_spawners.Markerset", markerset)) {
+						const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
+						for (const auto& marker : markers) {
+							mPlayerSpawnpoints.push_back(marker->GetPosition());
+						}
 					}
 				}
 			}
@@ -179,6 +193,57 @@ namespace Game {
 		mServer->add_client_task(id, packet);
 	}
 
+	void Instance::OnObjectCreate(const ObjectPtr& object) {
+		//
+	}
+
+	void Instance::OnObjectDestroy(const ObjectPtr& object) {
+		//
+	}
+
+	void Instance::OnObjectDeath(const ObjectPtr& object, bool critical, bool knockback) {
+		if (!object) {
+			return;
+		}
+
+		SendObjectGfxState(object, utils::hash_id("dead"));
+
+		const auto& noun = object->GetNoun();
+		if (noun) {
+			if (noun->IsCreature()) {
+				object->SetHasCollision(false);
+			}
+
+			const auto& animation = noun->GetCharacterAnimation();
+			if (animation) {
+				uint32_t deathState = 0;
+				if (critical) {
+					// replace 0 with damage type
+					uint8_t type = 0 * static_cast<uint8_t>(critical);
+					type += static_cast<uint8_t>(knockback);
+
+					std::tie(deathState, std::ignore) = animation->GetAnimationData(
+						utils::enum_helper<CharacterAnimationType>::next(CharacterAnimationType::MeleeCriticalDeath, type)
+					);
+				} else {
+					std::tie(deathState, std::ignore) = animation->GetAnimationData(CharacterAnimationType::MeleeDeath);
+				}
+
+				if (deathState == 0) {
+					std::tie(deathState, std::ignore) = animation->GetAnimationData(CharacterAnimationType::Death);
+				}
+
+				if (deathState != 0) {
+					SendAnimationState(object, deathState);
+				}
+			}
+
+			if (critical) {
+				object->MarkForDeletion();
+			}
+		}
+	}
+
 	void Instance::OnPlayerStart(const PlayerPtr& player) {
 		mLua->PreloadAbilities();
 		mLevelLoaded = LoadLevel();
@@ -206,15 +271,18 @@ namespace Game {
 				}
 			}
 
-			if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
-				for (const auto& marker : markerset.GetMarkers()) {
-					mMarkers[marker->GetId()] = marker;
+			constexpr std::array<const char*, 2> designSets { "_design", "_design_spawners" };
+			for (const char* designSet : designSets) {
+				if (mLevel.GetMarkerset(levelName + designSet + ".Markerset", markerset)) {
+					for (const auto& marker : markerset.GetMarkers()) {
+						mMarkers[marker->GetId()] = marker;
 
-					const auto& teleporterData = marker->GetTeleporterData();
-					if (teleporterData) {
-						const auto& object = mObjectManager->Create(marker);
-						if (object) {
-							SendObjectCreate(object);
+						const auto& teleporterData = marker->GetTeleporterData();
+						if (teleporterData) {
+							const auto& object = mObjectManager->Create(marker);
+							if (object) {
+								SendObjectCreate(object);
+							}
 						}
 					}
 				}
@@ -277,17 +345,31 @@ namespace Game {
 				SendObjectUpdate(characterObject);
 			}
 		}
+
+		// Create all existing objects
+		/*
+		const auto& client = mServer->GetClient(player->GetId());
+		if (client) {
+			for (const auto& object : mObjectManager->GetActiveObjects()) {
+				// Create object in client
+				mServer->SendObjectCreate(client, object);
+
+				// Apply effects
+
+			}
+		}
+		*/
 	}
 
 	uint32_t Instance::AddTask(uint32_t delay, std::function<void(uint32_t)> task) {
-		auto id = Scheduler::AddTask(delay, task);
+		auto id = GetApp().GetScheduler().AddTask(delay, task);
 		mEvents.insert(id);
 		return id;
 	}
 
 	void Instance::CancelTask(uint32_t id) {
+		GetApp().GetScheduler().CancelTask(id);
 		mEvents.erase(id);
-		Scheduler::CancelTask(id);
 	}
 
 	bool Instance::ServerUpdate() const {
@@ -342,6 +424,10 @@ namespace Game {
 			return;
 		}
 
+		if (object->HasCooldown(combatData.abilityId)) {
+			return;
+		}
+
 		const auto& ability = mLua->GetAbility(combatData.abilityId);
 		if (ability) {
 			ability->Tick(ObjectPtr(object), mObjectManager->Get(combatData.targetId), combatData.cursorPosition);
@@ -376,6 +462,13 @@ namespace Game {
 			return;
 		}
 
+		// Check for interactable ability
+
+		const auto& interactableData = object->GetInteractableData();
+		if (interactableData) {
+			interactableData->SetTimesUsed(interactableData->GetTimesUsed() + 1);
+		}
+
 		const auto& noun = object->GetNoun();
 		if (noun) {
 			switch (noun->GetType()) {
@@ -395,6 +488,22 @@ namespace Game {
 		} else {
 			const auto& characterObject = player->GetDeployedCharacterObject();
 			DropLoot(characterObject, characterObject, utils::enum_helper<DropType>::bor(DropType::Catalysts, DropType::Orbs));
+		}
+	}
+
+	void Instance::CancelAction(const PlayerPtr& player, const ObjectPtr& object) {
+		if (!player || !object) {
+			return;
+		}
+
+		sol::table privateTable = mLua->GetPrivateTable(object->GetId());
+		if (privateTable == sol::nil) {
+			return;
+		}
+
+		if (sol::object action = privateTable["CURRENT_ACTION"]; action.is<uint32_t>()) {
+			CancelTask(action.as<uint32_t>());
+			privateTable["CURRENT_ACTION"] = sol::nil;
 		}
 	}
 
@@ -530,9 +639,9 @@ namespace Game {
 					break;
 			}
 
-			RakNet::labsCrystal crystal(RakNet::labsCrystal::AttackSpeed, 0, false);
+			Catalyst catalyst(CatalystType::AttackSpeed, CatalystRarity::Common, false);
 
-			const auto& object = mObjectManager->Create(crystal.crystalNoun);
+			const auto& object = mObjectManager->Create(catalyst.GetNounId());
 			object->SetPosition(position);
 
 			SendObjectCreate(object);
@@ -569,9 +678,9 @@ namespace Game {
 
 		static uint64_t lootId = 0;
 		for (uint32_t i = 0; i < 4; ++i) {
-			RakNet::labsCrystal catalyst(static_cast<RakNet::labsCrystal::Type>(i), i % 3, i & 1);
+			Catalyst catalyst(static_cast<CatalystType>(i), static_cast<CatalystRarity>(i % 3), i & 1);
 
-			auto object = mObjectManager->Create(catalyst.crystalNoun);
+			auto object = mObjectManager->Create(catalyst.GetNounId());
 			object->SetPosition(position);
 			object->SetTeam(0);
 			object->SetMovementType(6);
@@ -673,11 +782,15 @@ namespace Game {
 				if (object->IsPlayerControlled()) {
 					mServer->SendObjectPlayerMove(client, object, *locomotionData);
 				} else {
+					if (locomotionData->GetGoalFlags() & 0x20) {
+						mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotionData->GetFacing());
+					} else {
 #if 0 // If unreliable update
-					mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotionData->GetGoalPosition());
+						mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotionData->GetGoalPosition());
 #else
-					mServer->SendLocomotionDataUpdate(client, object, *locomotionData);
+						mServer->SendLocomotionDataUpdate(client, object, *locomotionData);
 #endif
+					}
 				}
 				newFlags &= ~Object::UpdateLocomotion;
 			}
@@ -744,13 +857,13 @@ namespace Game {
 		}
 	}
 
-	void Instance::SendCooldownUpdate(const ObjectPtr& object, uint32_t id, int64_t milliseconds) {
+	void Instance::SendCooldownUpdate(const ObjectPtr& object, uint32_t id, uint64_t start, uint32_t duration) {
 		if (!object) {
 			return;
 		}
 
 		for (const auto& [_, client] : mServer->GetClients()) {
-			mServer->SendCooldownUpdate(client, object, id, milliseconds);
+			mServer->SendCooldownUpdate(client, object, id, start, duration);
 		}
 	}
 
@@ -793,15 +906,15 @@ namespace Game {
 		if (slot != 0xFFFFFFFF) {
 			// object->MarkForDeletion();
 
-			auto crystal = RakNet::labsCrystal(RakNet::labsCrystal::AttackSpeed, 2, true);
+			auto crystal = Catalyst(CatalystType::AttackSpeed, CatalystRarity::Epic, true);
 
 			RakNet::CrystalData crystalData;
 			crystalData.unk8 = 0;
 			crystalData.unk32[0] = 5;
 			crystalData.unk32[1] = 0;
 			crystalData.unk32[2] = 0;
-			crystalData.unk32[3] = crystal.crystalNoun;
-			crystalData.unk32[4] = crystal.level;
+			crystalData.unk32[3] = crystal.GetNounId();
+			crystalData.unk32[4] = crystal.GetLevel();
 			crystalData.unk32[5] = 0;
 			crystalData.unk32[6] = 0;
 

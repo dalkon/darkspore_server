@@ -230,6 +230,22 @@ namespace Game {
 	void Locomotion::SetGoalFlags(uint32_t flags) {
 		mGoalFlags = flags;
 	}
+
+	void Locomotion::SetFacing(const glm::vec3& facingPosition) {
+		// reset data
+		mTargetId = 0;
+		mAllowedStopDistance = 0;
+		mDesiredStopDistance = 0;
+		mExternalLinearVelocity = glm::zero<glm::vec3>();
+
+		// set data
+		mGoalFlags = 0x002 | 0x040;
+		mGoalPosition = mObject.GetPosition();
+		mTargetPosition = facingPosition;
+		mFacing = glm::normalize(mTargetPosition - mGoalPosition);
+
+		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+	}
 	
 	void Locomotion::Stop() {
 		// reset data

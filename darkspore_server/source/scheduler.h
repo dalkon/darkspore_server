@@ -26,6 +26,9 @@ class Task {
 		Task(uint32_t delay, const std::function<void(uint32_t)>& f) :
 			mExecutionPoint(std::chrono::system_clock::now() + std::chrono::milliseconds(delay)), mFunction(f) {}
 
+		Task(uint32_t delay, std::function<void(uint32_t)>&& f) :
+			mExecutionPoint(std::chrono::system_clock::now() + std::chrono::milliseconds(delay)), mFunction(std::move(f)) {}
+
 		std::chrono::system_clock::time_point mExecutionPoint;
 		std::function<void(uint32_t)> mFunction;
 
@@ -42,24 +45,16 @@ struct TaskComparator {
 
 // Scheduler
 class Scheduler {
-	private:
+	public:
 		Scheduler();
 
-	public:
-		static uint32_t AddTask(uint32_t delay, const std::function<void(uint32_t)>& f);
-		static void CancelTask(uint32_t id);
+		uint32_t AddTask(uint32_t delay, const std::function<void(uint32_t)>& f);
+		uint32_t AddTask(uint32_t delay, std::function<void(uint32_t)>&& f);
+		void CancelTask(uint32_t id);
 
-		static void Shutdown();
-
-	private:
-		uint32_t _AddTask(uint32_t delay, const std::function<void(uint32_t)>& f);
-		void _CancelTask(uint32_t id);
-
-		void _Shutdown();
+		void Shutdown();
 
 	private:
-		static Scheduler sInstance;
-
 		std::priority_queue<Task*, std::deque<Task*>, TaskComparator> mTasks;
 		std::unordered_set<uint32_t> mTaskIds;
 
@@ -67,8 +62,6 @@ class Scheduler {
 		std::thread mThread;
 		std::mutex mLock;
 		std::condition_variable mSignal;
-
-		uint32_t mLastTaskId = 0;
 };
 
 #endif

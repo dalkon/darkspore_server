@@ -11,6 +11,7 @@
 #include "game/instance.h"
 #include "game/objectmanager.h"
 #include "game/serverevent.h"
+#include "game/catalyst.h"
 
 #include <glm/gtx/euler_angles.hpp>
 
@@ -234,15 +235,13 @@ namespace RakNet {
 		};
 
 		for (Packet* packet = mSelf->Receive(); packet; mSelf->DeallocatePacket(packet), packet = mSelf->Receive()) {
-			auto packetSize = packet->bitSize / 8;
-			mInStream = BitStream(packet->data, packetSize, false);
+			mInStream = BitStream(packet->data, packet->bitSize >> 3, false);
 
 			uint8_t packetType = GetPacketIdentifier();
-			std::cout << std::endl << "--- packet: "  << (int)packetType << ", length: " << packetSize << " gotten from raknet ---" << std::endl << std::endl;
-
 			if (packetType < ID_USER_PACKET_ENUM) {
 				ParseRakNetPackets(packet, packetType);
 			} else {
+				std::cout << std::endl << "--- packet: " << (int)packetType << ", length: " << (packet->bitSize >> 3) << " gotten from raknet ---" << std::endl << std::endl;
 				ParseSporeNetPackets(packet, packetType);
 			}
 		}
@@ -251,13 +250,12 @@ namespace RakNet {
 	}
 
 	void Server::add_task(std::function<void(void)> task) {
-		mTaskMutex.lock();
+		std::lock_guard<std::mutex> lock(mTaskMutex);
 		mTasks.push(std::move(task));
-		mTaskMutex.unlock();
 	}
 
 	void Server::add_client_task(uint8_t id, MessageID packet) {
-		mTaskMutex.lock();
+		std::lock_guard<std::mutex> lock(mTaskMutex);
 		mTasks.push([this, id, packet] {
 			const auto& client = mClients.begin()->second;
 			if (!client) {
@@ -371,7 +369,6 @@ namespace RakNet {
 					break;
 			}
 		});
-		mTaskMutex.unlock();
 	}
 
 	Game::Instance& Server::GetGame() {
@@ -525,32 +522,33 @@ namespace RakNet {
 
 	void Server::OnNewIncomingConnection(Packet* packet) {
 		const auto& client = AddClient(packet);
-		if (client) {
-			client->SetGameState(GameState::Spaceship);
-
-			// Read but ignore
-			SystemAddress systemAddress;
-			mInStream.Read(systemAddress);
-
-			std::array<SystemAddress, MAXIMUM_NUMBER_OF_INTERNAL_IDS> mySystemAddress;
-			for (decltype(auto) address : mySystemAddress) {
-				mInStream.Read(address);
-			}
-
-			RakNetTime pongTime;
-			mInStream.Read(pongTime);
-
-			RakNetTime time;
-			mInStream.Read(time);
-			//
-
-			std::cout << "Player connected!" << std::endl;
-			std::cout << pongTime << ", " << time << std::endl << std::endl;
-
-			SendConnected(client);
-		} else {
+		if (!client) {
 			std::cout << "OnNewIncomingConnection: Unknown client tried to connect." << std::endl;
+			return;
 		}
+
+		client->SetGameState(GameState::Spaceship);
+
+		// Read but ignore
+		SystemAddress systemAddress;
+		mInStream.Read(systemAddress);
+
+		std::array<SystemAddress, MAXIMUM_NUMBER_OF_INTERNAL_IDS> mySystemAddress;
+		for (decltype(auto) address : mySystemAddress) {
+			mInStream.Read(address);
+		}
+
+		RakNetTime pongTime;
+		mInStream.Read(pongTime);
+
+		RakNetTime time;
+		mInStream.Read(time);
+		//
+
+		std::cout << "Player connected!" << std::endl;
+		std::cout << pongTime << ", " << time << std::endl << std::endl;
+
+		SendConnected(client);
 	}
 
 	void Server::OnHelloPlayerRequest(const ClientPtr& client) {
@@ -568,49 +566,25 @@ namespace RakNet {
 
 		std::cout << "Hello " << client->GetUser()->get_name() << "! " << std::endl;
 
-		// Initial player data (move somewhere else later)
-		/*
-			creature_png = string.format("%d_%d_thumb.png", character.assetID, character.version);
-		*/
-
 		// Crystals
-		player->SetCrystal(labsCrystal(labsCrystal::AoEDamage, 0, false), 7);
-		/*
-		player->SetCrystal(labsCrystal(labsCrystal::DamageAura, 1, false), 1);
-		player->SetCrystal(labsCrystal(labsCrystal::ImmuneSleep, 2, false), 2);
-		player->SetCrystal(labsCrystal(labsCrystal::AttackSpeed, 1, true), 3);
-		*/
+		player->SetCrystal(
+			Game::Catalyst(
+				Game::CatalystType::AoEDamage,
+				Game::CatalystRarity::Common,
+				false
+			),
+			7
+		);
 
 		// Game state data
 		auto& gameStateData = client->GetGameStateData();
 		gameStateData.state = static_cast<uint32_t>(GameState::Spaceship);
 		gameStateData.type = Blaze::GameType::Chain;
 
-		SendHelloPlayer(client);
-
 		// TODO: wait for party
+		SendHelloPlayer(client);
 		SendPartyMergeComplete(client);
 		// SendDebugPing(client);
-
-		/*
-		data=
-		cryos_1_v2_Audio;
-		cryos_1_v2_VFX;
-		cryos_1_v2_ai;
-		cryos_1_v2_animation_common;
-		cryos_1_v2_animators;
-		cryos_1_v2_audio_ambient;
-		cryos_1_v2_default;
-		cryos_1_v2_design;
-		cryos_1_v2_design_blocks;
-		cryos_1_v2_environment;
-		cryos_1_v2_levelshop;
-		cryos_1_v2_lights;
-		cryos_1_v2_objects;
-		cryos_1_v2_plants;
-		cryos_1_v2_smartobjects;
-		cryos_1_v2_trees;
-		*/
 	}
 
 	void Server::OnPlayerStatusUpdate(const ClientPtr& client) {
@@ -629,20 +603,6 @@ namespace RakNet {
 		player->SetStatus(status, progress);
 
 		std::cout << "OnPlayerStatusUpdate: old(" << oldStatus << ", " << oldProgress << "); new(" << status << ", " << progress << ")" << std::endl;
-
-		/*
-			order in darkspore.exe
-				0, 1, 2, 4
-				3, 5, 6, 7, 8
-		*/
-		/*
-		if (status > 0 && progress == 0) {
-			player->GetData().SetUpdateBits(RakNet::labsPlayer::Characters);
-			player->SetUpdateBits(RakNet::labsPlayerBits::CharacterMask);
-			player->SetUpdateBits(RakNet::labsPlayerBits::PlayerBits);
-		}
-		*/
-
 		switch (status) {
 			case 0x02: {
 				break;
@@ -837,7 +797,7 @@ namespace RakNet {
 				actionResponse.cooldown = 5000;
 				actionResponse.userData = 0x1234;
 
-				// skipByte[1] > 0 seems to be "not in range"
+				// skipByte[1] == 0 seems to be "not in range"
 				object->SetOrientation(orientation);
 				if (skipByte[1] > 0) {
 					mGame.UseAbility(object, combatData);
@@ -877,8 +837,12 @@ namespace RakNet {
 				actionResponse.cooldown = 2000;
 				actionResponse.userData = 0x4321;
 
+				/*
 				mGame.UseAbility(object, combatData);
 				SendCooldownUpdate(client, object, actionResponse.abilityId, actionResponse.cooldown);
+				*/
+
+				SendModifierCreated(client, object);
 
 				break;
 			}
@@ -928,14 +892,7 @@ namespace RakNet {
 				std::cout << u0 << ", " << u1 << ", " << u2 << ", " << u3 << std::endl;
 				std::cout << a0 << ", " << a1 << std::endl;
 
-				/*
-				0x0, 0xe8, 0x11, 0x0, 0xb0, 0xfe, 0x7f, 0x0, 0x0, 0x0, 0x0, 0xb7, 0x67, 0x23, 0x77, 0x74, 0xfc, 0x19, 0x0, 0xe5, 0x61, 0xf2, 0x76, 0x8f, 0x61, 0xf2, 0x76, 0x5d, 0x38, 0x21, 0x8e, 0x0, 0x0, 0x0, 0x0, 0xea, 0x3, 0x0, 0x0, 0xa0, 0xb5, 0x1a, 0xf, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xdc, 0x2f, 0x1a, 0x77, 0x4c, 0xae, 0xf3, 0x76, 0x98, 0xfe, 0x19, 0x0
-
-				Same pos?
-				0x0, 0xe8, 0x11, 0x0, 0xb0, 0xfe, 0x7f, 0x0, 0x0, 0x0, 0x0, 0xb7, 0x67, 0x23, 0x77, 0x74, 0xfc, 0x19, 0x0, 0xe5, 0x61, 0xf2, 0x76, 0x8f, 0x61, 0xf2, 0x76, 0x5d, 0x38, 0x21, 0x8e, 0x0, 0x0, 0x0, 0x0, 0xea, 0x3, 0x0, 0x0, 0xa0, 0xb5, 0x1a, 0xf, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x68, 0xfc, 0x19, 0x0, 0x78, 0xfc, 0x19, 0x0, 0x98, 0xfe, 0x19, 0x0
-
-				0x0, 0xe8, 0x11, 0x0, 0xb0, 0xfe, 0x7f, 0x0, 0x0, 0x0, 0x0, 0xb7, 0x67, 0x23, 0x77, 0x74, 0xfc, 0x19, 0x0, 0xe5, 0x61, 0xf2, 0x76, 0x8f, 0x61, 0xf2, 0x76, 0x5d, 0x38, 0x21, 0x8e, 0x0, 0x0, 0x0, 0x0, 0xea, 0x3, 0x0, 0x0, 0xa0, 0xb5, 0x1a, 0xf, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x68, 0xfc, 0x19, 0x0, 0x78, 0xfc, 0x19, 0x0, 0x98, 0xfe, 0x19, 0x0
-				*/
+				mGame.CancelAction(player, object);
 				break;
 			}
 
@@ -1158,7 +1115,6 @@ namespace RakNet {
 				auto& gameStateData = client->GetGameStateData();
 				gameStateData.state = static_cast<uint32_t>(GameState::ChainVoting);
 
-				SendReconnectPlayer(client, GameState::Spaceship);
 				// SendChainGame(client, 0);
 				break;
 			}
@@ -1177,8 +1133,7 @@ namespace RakNet {
 			}
 
 			case GameState::Dungeon: {
-				mGame.OnPlayerStart(player);
-
+				// mGame.OnPlayerStart(player);
 				// SendChainGame(client, 2);
 
 				// Other stuff
@@ -1193,6 +1148,7 @@ namespace RakNet {
 				// SendTutorial(client);
 				// SendChainGame(client, 2);
 
+				mGame.OnPlayerStart(player);
 				mGame.SwapCharacter(player, 1);
 				break;
 			}
@@ -1804,7 +1760,7 @@ namespace RakNet {
 		Send(outStream, client);
 	}
 
-	void Server::SendCooldownUpdate(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t id, int64_t milliseconds) {
+	void Server::SendCooldownUpdate(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t id, uint64_t start, uint32_t duration) {
 		// 100%
 		if (!object) {
 			return;
@@ -1816,8 +1772,8 @@ namespace RakNet {
 		Write<uint32_t>(outStream, object->GetId());
 		Write<uint32_t>(outStream, id);
 		Write<uint32_t>(outStream, 0); // unused
-		Write<uint64_t>(outStream, milliseconds);
-		Write<uint64_t>(outStream, mGame.GetTime());
+		Write<uint64_t>(outStream, duration);
+		Write<uint64_t>(outStream, start);
 		Write<uint64_t>(outStream, 0); // not quite sure how this one works yet
 		
 		Send(outStream, client);
@@ -1849,23 +1805,25 @@ namespace RakNet {
 			return;
 		}
 
+		bool bind = false;
+
 		BitStream outStream(8);
 		outStream.Write(PacketID::ModifierCreated);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, utils::hash_id("SecurityTeleporterPassive"));
-		Write<uint32_t>(outStream, utils::hash_id("SecurityTeleporterPassive"));
-		Write<uint32_t>(outStream, 0x89ABCDEF);
-		Write<uint32_t>(outStream, utils::hash_id("BossSecurityTeleporterPassive"));
-		Write<uint32_t>(outStream, 0x87651234);
-		Write<uint64_t>(outStream, mGame.GetTime()); // some timestamp
-		Write<uint32_t>(outStream, 0x1234); // some noun? because TestLevelData
-		Write<uint8_t>(outStream, 0xFF);
+		Write<uint32_t>(outStream, utils::hash_id("LightningRoguePassive"));
+		Write<uint32_t>(outStream, object->GetId()); // Target object
+		Write<uint32_t>(outStream, 60 * 1000); // duration i think
+		Write<uint32_t>(outStream, 1); // overdrive = 3, some = 1, other stuff is unknown
+		Write<uint32_t>(outStream, 1); // always 1?
+		Write<uint64_t>(outStream, mGame.GetTime());
+		Write<uint32_t>(outStream, 0); // Seems to be a pointer in the client, always send 0
+		Write<bool>(outStream, bind);
 
 		Send(outStream, client);
 	}
 
-	void Server::SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object) {
+	void Server::SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId, uint64_t timestamp, uint32_t stackCount, bool bind) {
 		// 100%
 		if (!object) {
 			return;
@@ -1875,10 +1833,10 @@ namespace RakNet {
 		outStream.Write(PacketID::ModifierUpdated);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, 0); // modifier id
-		Write<uint64_t>(outStream, mGame.GetTime()); // some timestamp
-		Write<uint32_t>(outStream, 0x1234); // esi+24h
-		Write<uint8_t>(outStream, 0xFF); // esi+2Ch
+		Write<uint32_t>(outStream, modifierId);
+		Write<uint64_t>(outStream, timestamp); // 0xFFFFFFFFFFFFFFFFULL = dont update duration?
+		Write<uint32_t>(outStream, stackCount); // not sure yet, maybe stack count
+		Write<bool>(outStream, bind);
 
 		Send(outStream, client);
 	}
@@ -1893,7 +1851,7 @@ namespace RakNet {
 		outStream.Write(PacketID::ModifierDeleted);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, modifierId); // modifier id
+		Write<uint32_t>(outStream, modifierId);
 
 		Send(outStream, client);
 	}

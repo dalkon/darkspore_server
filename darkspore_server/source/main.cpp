@@ -59,6 +59,9 @@ bool Application::OnInit() {
 	// Config
 	Game::Config::Load("config.xml");
 
+	// Scheduler
+	mScheduler = std::make_unique<Scheduler>();
+
 	// SporeNet
 	mSporeNet = std::make_unique<SporeNet::Instance>();
 
@@ -103,7 +106,8 @@ int Application::OnExit() {
 	mQosServer.reset();
 	mSporeNet.reset();
 
-	Scheduler::Shutdown();
+	mScheduler->Shutdown();
+	mScheduler.reset();
 	return 0;
 }
 
@@ -117,6 +121,10 @@ void Application::Run() {
 
 boost::asio::io_context& Application::get_io_service() {
 	return mIoService;
+}
+
+Scheduler& Application::GetScheduler() const {
+	return *mScheduler;
 }
 
 SporeNet::Instance& Application::GetSporeNet() const {

@@ -141,6 +141,10 @@ namespace Game {
 		return mGame;
 	}
 
+	const std::unordered_set<ObjectPtr>& ObjectManager::GetActiveObjects() const {
+		return mActiveObjects;
+	}
+
 	ObjectPtr ObjectManager::Get(uint32_t id) const {
 		if (auto it = mObjects.find(id); it != mObjects.end()) {
 			return it->second;
@@ -256,20 +260,23 @@ namespace Game {
 		}
 
 		if (!mMarkedObjects.empty()) {
+			auto& lua = mGame.GetLua();
+
 			mGame.SendObjectDelete(mMarkedObjects);
 			for (const auto& object : mMarkedObjects) {
 				mActiveObjects.erase(object);
 
 				auto id = object->GetId();
+				lua.RemovePrivateTable(id);
+
 				mObjects.erase(id);
 				mOpenObjectIds.push_back(id);
 			}
 			mMarkedObjects.clear();
+
+			// Cleanup removed private tables
+			lua.CollectGarbage();
 		}
-
-
-
-		// send object updates
 	}
 
 	void ObjectManager::MarkForDeletion(const ObjectPtr& object) {

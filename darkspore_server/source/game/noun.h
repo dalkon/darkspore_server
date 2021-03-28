@@ -14,6 +14,8 @@
 
 // Game
 namespace Game {
+	using AnimationData = std::tuple<uint32_t, float>;
+
 	// BoundingBox
 	class BoundingBox {
 		public:
@@ -184,6 +186,11 @@ namespace Game {
 			
 			const std::shared_ptr<ClassAttributes>& GetAttributes() const;
 
+			float GetAggroRange() const;
+			float GetAlertRange() const;
+			float GetDropAggroRange() const;
+			float GetDropDelay() const;
+
 			bool IsTargetable() const;
 			bool IsPet() const;
 
@@ -217,16 +224,93 @@ namespace Game {
 			friend class NounDatabase;
 	};
 
+	// AssetProperty
+	class AssetProperty {
+		public:
+			void Read(pugi::xml_node node);
+
+		private:
+			std::string mName;
+			std::string mValue;
+
+			uint32_t mKey = 0;
+			uint32_t mType = 0;
+	};
+
+	// GambitDefinition
+	class GambitDefinition {
+		public:
+			void Read(pugi::xml_node node);
+
+			const std::vector<AssetProperty>& GetConditionProperties() const;
+			const std::vector<AssetProperty>& GetAbilityProperties() const;
+
+			uint32_t GetCondition() const;
+			uint32_t GetAbility() const;
+
+		private:
+			std::vector<AssetProperty> mConditionProperties;
+			std::vector<AssetProperty> mAbilityProperties;
+
+			uint32_t mCondition = 0;
+			uint32_t mAbility = 0;
+
+			bool mRandomizeCooldown = false;
+	};
+
+	// PhaseType
+	enum class PhaseType : uint8_t {
+		PrioritizedList = 0,
+		Sequential,
+		Random
+	};
+
+	// Phase
+	class Phase {
+		public:
+			void Read(pugi::xml_node node);
+
+			const std::vector<GambitDefinition>& GetGambit() const;
+
+			PhaseType GetType() const;
+
+			bool IsStartNode() const;
+
+		private:
+			std::vector<GambitDefinition> mGambit;
+
+			std::string mPath;
+
+			uint32_t mId = 0;
+
+			PhaseType mType = PhaseType::PrioritizedList;
+
+			bool mIsStartNode = false;
+
+			friend class NounDatabase;
+	};
+
+	// Condition
+	class Condition {
+		public:
+
+		private:
+			std::string mCondition;
+	};
+
 	// AINode
 	class AINode {
 		public:
 			void Read(pugi::xml_node node);
 
+			const std::shared_ptr<Phase>& GetPhaseData() const;
+			const std::shared_ptr<Condition>& GetConditionData() const;
+
 		private:
 			std::vector<int32_t> mOutput;
 
-			std::string mPhaseData;
-			std::string mConditionData;
+			std::shared_ptr<Phase> mPhase;
+			std::shared_ptr<Condition> mCondition;
 
 			int32_t mX;
 			int32_t mY;
@@ -237,19 +321,24 @@ namespace Game {
 		public:
 			void Read(pugi::xml_node node);
 
-			const std::string& GetPassiveAbility() const;
+			const std::vector<AINode>& GetNodes() const;
+
+			uint32_t GetDeathAbility() const;
+			uint32_t GetDeathCondition() const;
+			uint32_t GetFirstAggroAbility() const;
+			uint32_t GetSecondaryFirstAggroAbility() const;
+			uint32_t GetFirstAlertAbility() const;
+			uint32_t GetSubsequentAggroAbility() const;
+			uint32_t GetPassiveAbility() const;
+
+			bool FaceTarget() const;
+			bool AlwaysRun() const;
+			bool RandomizeCooldowns() const;
 
 		private:
 			std::vector<AINode> mNodes;
 
 			std::string mPath;
-			std::string mDeathAbility;
-			std::string mDeathCondition;
-			std::string mFirstAggroAbility;
-			std::string mSecondaryFirstAggroAbility;
-			std::string mFirstAlertAbility;
-			std::string mSubsequentAggroAbility;
-			std::string mPassiveAbility;
 			std::string mCombatIdle;
 			std::string mSecondaryCombatIdle;
 			std::string mSecondaryCombatIdleCondition;
@@ -259,6 +348,13 @@ namespace Game {
 			std::string mTargetTooFar;
 
 			uint32_t mId = 0;
+			uint32_t mDeathAbility = 0;
+			uint32_t mDeathCondition = 0;
+			uint32_t mFirstAggroAbility = 0;
+			uint32_t mSecondaryFirstAggroAbility = 0;
+			uint32_t mFirstAlertAbility = 0;
+			uint32_t mSubsequentAggroAbility = 0;
+			uint32_t mPassiveAbility = 0;
 			uint32_t mAggroType = 0;
 			uint32_t mCombatIdleCooldown = 0;
 			uint32_t mSecondaryCombatIdleCooldown = 0;
@@ -322,10 +418,10 @@ namespace Game {
 		public:
 			void Read(pugi::xml_node node);
 
-			std::tuple<uint32_t, float> GetAnimationData(CharacterAnimationType type) const;
+			AnimationData GetAnimationData(CharacterAnimationType type) const;
 
 		private:
-			std::array<std::tuple<uint32_t, float>, utils::to_underlying(CharacterAnimationType::Count)> mAnimationData;
+			std::array<AnimationData, utils::to_underlying(CharacterAnimationType::Count)> mAnimationData;
 
 			std::string mPath;
 
@@ -470,6 +566,7 @@ namespace Game {
 			std::shared_ptr<ClassAttributes> GetClassAttributes(uint32_t id) const;
 			std::shared_ptr<AIDefinition> GetAIDefinition(uint32_t id) const;
 			std::shared_ptr<CharacterAnimation> GetCharacterAnimation(uint32_t id) const;
+			std::shared_ptr<Phase> GetPhase(uint32_t id) const;
 
 		private:
 			bool LoadNouns();
@@ -479,6 +576,7 @@ namespace Game {
 			bool LoadClassAttributes();
 			bool LoadAIDefinitions();
 			bool LoadCharacterAnimations();
+			bool LoadPhases();
 
 		private:
 			std::unordered_map<uint32_t, NounPtr> mNouns;
@@ -488,6 +586,7 @@ namespace Game {
 			std::unordered_map<uint32_t, std::shared_ptr<ClassAttributes>> mClassAttributes;
 			std::unordered_map<uint32_t, std::shared_ptr<AIDefinition>> mAIDefinitions;
 			std::unordered_map<uint32_t, std::shared_ptr<CharacterAnimation>> mCharacterAnimations;
+			std::unordered_map<uint32_t, std::shared_ptr<Phase>> mPhases;
 
 			bool mLoaded = false;
 	};

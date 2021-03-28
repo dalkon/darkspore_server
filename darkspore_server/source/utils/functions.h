@@ -181,7 +181,10 @@ namespace utils {
 		public:
 			template<typename T>
 			static T get(T min, T max) {
-				if constexpr (std::is_floating_point_v<T>) {
+				if constexpr (sizeof(T) == 1) { // for i8, u8, etc
+					std::uniform_int_distribution<int16_t> distribution(static_cast<int16_t>(min), static_cast<int16_t>(max));
+					return static_cast<T>(distribution(sGenerator));
+				} else if constexpr (std::is_floating_point_v<T>) {
 					std::uniform_real_distribution<T> distribution(min, max);
 					return distribution(sGenerator);
 				} else if constexpr (std::is_integral_v<T>) {
@@ -245,7 +248,7 @@ namespace utils {
 		}
 
 		static constexpr T next(T value, U n) noexcept {
-			value = static_cast<T>(static_cast<U>(value) + n);
+			return static_cast<T>(static_cast<U>(value) + n);
 		}
 	};
 }

@@ -7,23 +7,38 @@
 #include "attributes.h"
 #include "locomotion.h"
 #include "lua.h"
+
 #include <map>
+#include <tuple>
 
 // Predefined
 namespace SporeNet { class Part; }
-namespace RakNet { struct labsCrystal; }
 
 // Game
 namespace Game {
+	// Cooldown = tuple(Start + milliseconds, milliseconds)
+	using Cooldown = std::tuple<uint64_t, uint32_t>;
+
 	class Object;
 	class ObjectManager;
-	
+
+	// StealthType
+	enum class StealthType : uint8_t {
+		None = 0,
+		Technology,
+		Supernatural,
+		FullyInvisible
+	};
+
 	// EffectList
 	class EffectList {
 		public:
 			uint8_t Add(uint32_t effect);
-			bool Remove(uint32_t effect);
+			uint8_t Remove(uint32_t effect);
 			bool RemoveByIndex(uint8_t index);
+
+		private:
+			uint8_t GetOpenIndex();
 
 		private:
 			std::map<uint32_t, uint8_t> mIndexByEffect;
@@ -91,7 +106,7 @@ namespace Game {
 
 			void SetPart(const SporeNet::Part& part);
 			void SetDNAAmount(float amount);
-			void SetCrystal(const RakNet::labsCrystal& crystal);
+			void SetCrystal(const Catalyst& catalyst);
 
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
@@ -127,8 +142,8 @@ namespace Game {
 			uint32_t GetNumAttackers() const;
 			void SetNumAttackers(uint32_t attackers);
 
-			uint8_t GetStealthType() const;
-			void SetStealthType(uint8_t stealthType);
+			StealthType GetStealthType() const;
+			void SetStealthType(StealthType stealthType);
 
 			bool IsInCombat() const;
 			void SetInCombat(bool inCombat);
@@ -145,10 +160,64 @@ namespace Game {
 			uint32_t mTargetId = 0;
 			uint32_t mNumAttackers = 0;
 
-			uint8_t mStealthType = 0;
+			StealthType mStealthType = StealthType::None;
 
 			bool mInCombat = false;
 			bool mTargetable = false;
+	};
+
+	// Modifier
+	class Modifier {
+		public:
+			Modifier(Object& object, uint32_t id);
+
+			uint32_t GetDuration() const;
+			void SetDuration(uint32_t duration);
+			void ResetDuration();
+
+			uint8_t GetStackCount() const;
+			void SetStackCount(uint8_t count);
+
+		private:
+			Object& mObject;
+
+			ObjectPtr mTargetObject;
+
+			uint64_t mTimestamp = 0;
+
+			uint32_t mId = 0;
+			uint32_t mDuration = 0xFFFFFFFF;
+
+			uint8_t mStackCount = 0;
+
+			bool mBind = false;
+			bool mDirty = true;
+	};
+
+	// AI
+	class AI {
+		public:
+			AI(Object& object);
+
+			void OnTick();
+
+		private:
+			bool SearchForTarget();
+
+			bool UseAbility(uint32_t id);
+			void UseAbility();
+
+		private:
+			Object& mObject;
+
+			std::map<uint32_t, float> mAggroMap;
+
+			ObjectPtr mTargetObject;
+
+			uint8_t mNode = 0;
+			uint8_t mGambit = 0;
+
+			bool mFirstAggro = false;
 	};
 
 	// ObjectDataBits
@@ -205,6 +274,7 @@ namespace Game {
 			virtual ~Object() = default;
 
 			virtual bool IsTrigger() const { return false; }
+			bool IsCreature() const;
 
 			virtual void OnActivate();
 			virtual void OnDeactivate();
@@ -212,6 +282,12 @@ namespace Game {
 
 			void SetTickOverride(sol::protected_function func);
 			void SetPassiveAbility(const AbilityPtr& ability);
+
+			ObjectManager& GetObjectManager();
+			const ObjectManager& GetObjectManager() const;
+
+			Instance& GetGame();
+			const Instance& GetGame() const;
 
 			CombatantData& GetCombatantData();
 			const CombatantData& GetCombatantData() const;
@@ -262,6 +338,12 @@ namespace Game {
 			uint8_t AddEffect(uint32_t effect);
 			bool RemoveEffect(uint32_t effect);
 			bool RemoveEffectByIndex(uint8_t index);
+
+			// Cooldown
+			bool HasCooldown(uint32_t abilityId) const;
+			Cooldown AddCooldown(uint32_t abilityId, uint32_t milliseconds);
+			Cooldown RemoveCooldown(uint32_t abilityId, uint32_t milliseconds);
+			Cooldown ScaleCooldown(uint32_t abilityId, float scale);
 
 			// Properties
 			float GetAttributeValue(uint8_t idx) const;
@@ -325,8 +407,8 @@ namespace Game {
 			uint32_t GetTargetId() const;
 			void SetTargetId(uint32_t id);
 
-			uint8_t GetStealthType() const;
-			void SetStealthType(uint8_t stealthType);
+			StealthType GetStealthType() const;
+			void SetStealthType(StealthType stealthType);
 
 			bool IsInCombat() const;
 			void SetInCombat(bool inCombat);
@@ -349,10 +431,14 @@ namespace Game {
 		protected:
 			ObjectManager& mManager;
 
+			// TODO: add some better way for handling the abilities
 			sol::protected_function mTickOverride = sol::nil;
 			AbilityPtr mPassiveAbility;
 
 			BoundingBox mBoundingBox;
+
+			std::unordered_map<uint32_t, std::shared_ptr<Modifier>> mModifiers;
+			std::map<uint32_t, Cooldown> mCooldowns;
 
 			CombatantData mCombatantData;
 
@@ -362,6 +448,7 @@ namespace Game {
 			std::unique_ptr<LootData> mLootData;
 			std::unique_ptr<Locomotion> mLocomotionData;
 			std::unique_ptr<AgentBlackboard> mAgentBlackboardData;
+			std::unique_ptr<AI> mAI;
 
 			NounPtr mNoun;
 

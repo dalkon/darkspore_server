@@ -8,6 +8,8 @@
 #include "blaze/types.h"
 #include "blaze/functions.h"
 
+#include "raknet/types.h"
+
 #include "player.h"
 #include "level.h"
 
@@ -94,6 +96,7 @@ namespace Game {
 			bool Start();
 			void Stop();
 
+			bool IsLevelLoaded() const;
 			bool LoadLevel();
 
 			MarkerPtr GetMarker(uint32_t id) const;
@@ -131,6 +134,10 @@ namespace Game {
 			void AddClientTask(uint8_t id, MessageID packet);
 
 			// Events
+			void OnObjectCreate(const ObjectPtr& object);
+			void OnObjectDestroy(const ObjectPtr& object);
+			void OnObjectDeath(const ObjectPtr& object, bool critical, bool knockback);
+
 			void OnPlayerStart(const PlayerPtr& player);
 
 			uint32_t AddTask(uint32_t delay, std::function<void(uint32_t)> task);
@@ -146,6 +153,7 @@ namespace Game {
 			void UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
 			void SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex);
 			void InteractWithObject(const PlayerPtr& player, uint32_t objectId);
+			void CancelAction(const PlayerPtr& player, const ObjectPtr& object);
 
 			// Loot
 			void DropLoot(const PlayerPtr& player, uint64_t lootInstanceId);
@@ -167,7 +175,7 @@ namespace Game {
 			void SendServerEvent(const ServerEventBase& serverEvent);
 			void SendServerEvent(const PlayerPtr& player, const ServerEventBase& serverEvent);
 			void SendCombatEvent(const CombatEvent& combatEvent);
-			void SendCooldownUpdate(const ObjectPtr& object, uint32_t id, int64_t milliseconds);
+			void SendCooldownUpdate(const ObjectPtr& object, uint32_t id, uint64_t start, uint32_t duration);
 			void SendLabsPlayerUpdate(const PlayerPtr& player);
 
 		private:

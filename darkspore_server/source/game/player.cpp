@@ -9,6 +9,8 @@
 
 #include "utils/functions.h"
 
+#include "raknet/types.h"
+
 // Game
 namespace Game {
 	// Player
@@ -294,22 +296,22 @@ namespace Game {
 
 	uint32_t Player::GetOpenCrystalSlot() const {
 		for (uint32_t i = 0; i < mCrystals.size(); ++i) {
-			if (mCrystals[i].crystalNoun == 0) {
+			if (mCrystals[i].GetNounId() == 0) {
 				return i;
 			}
 		}
 		return 0xFFFFFFFF;
 	}
 
-	const RakNet::labsCrystal& Player::GetCrystal(uint32_t index) const {
+	const Catalyst& Player::GetCrystal(uint32_t index) const {
 		if (mCrystals.size() < index) {
-			static RakNet::labsCrystal defaultCrystal;
+			static Catalyst defaultCrystal;
 			return defaultCrystal;
 		}
 		return mCrystals[index];
 	}
 
-	void Player::SetCrystal(RakNet::labsCrystal&& crystal, uint32_t index) {
+	void Player::SetCrystal(Catalyst&& crystal, uint32_t index) {
 		if (index < mCrystals.size()) {
 			mCrystals[index] = std::move(crystal);
 
@@ -455,14 +457,14 @@ namespace Game {
 			size_t index = i * gridSize;
 			
 			auto horizontalCrystals =
-				(mCrystals[index + 0].crystalNoun != 0) +
-				(mCrystals[index + 1].crystalNoun != 0) +
-				(mCrystals[index + 2].crystalNoun != 0);
+				(mCrystals[index + 0].GetNounId() != 0) +
+				(mCrystals[index + 1].GetNounId() != 0) +
+				(mCrystals[index + 2].GetNounId() != 0);
 
 			auto verticalCrystals =
-				(mCrystals[i + (gridSize * 0)].crystalNoun != 0) +
-				(mCrystals[i + (gridSize * 1)].crystalNoun != 0) +
-				(mCrystals[i + (gridSize * 2)].crystalNoun != 0);
+				(mCrystals[i + (gridSize * 0)].GetNounId() != 0) +
+				(mCrystals[i + (gridSize * 1)].GetNounId() != 0) +
+				(mCrystals[i + (gridSize * 2)].GetNounId() != 0);
 
 			mCrystalBonuses[i] = horizontalCrystals == 3;
 			mCrystalBonuses[i + gridSize] = verticalCrystals == 3;
@@ -470,15 +472,15 @@ namespace Game {
 
 		// Diagonals
 		mCrystalBonuses[6] = (
-			(mCrystals[0].crystalNoun != 0) +
-			(mCrystals[4].crystalNoun != 0) +
-			(mCrystals[8].crystalNoun != 0)
+			(mCrystals[0].GetNounId() != 0) +
+			(mCrystals[4].GetNounId() != 0) +
+			(mCrystals[8].GetNounId() != 0)
 		) == 3;
 
 		mCrystalBonuses[7] = (
-			(mCrystals[2].crystalNoun != 0) +
-			(mCrystals[4].crystalNoun != 0) +
-			(mCrystals[6].crystalNoun != 0)
+			(mCrystals[2].GetNounId() != 0) +
+			(mCrystals[4].GetNounId() != 0) +
+			(mCrystals[6].GetNounId() != 0)
 		) == 3;
 
 		mDataBits.set(PlayerDataBits::CrystalBonuses);

@@ -190,11 +190,11 @@ namespace RakNet {
 			void SendInteractableDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::InteractableData& interactableData);
 			void SendAgentBlackboardUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::AgentBlackboard& agentBlackboard);
 			void SendLootDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::LootData& lootData);
-			void SendCooldownUpdate(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t id, int64_t milliseconds);
+			void SendCooldownUpdate(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t id, uint64_t start, uint32_t duration);
 			void SendServerEvent(const ClientPtr& client, const Game::ServerEventBase& serverEvent);
 			void SendCombatEvent(const ClientPtr& client, const Game::CombatEvent& combatEvent);
 			void SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object);
-			void SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object);
+			void SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId, uint64_t timestamp, uint32_t stackCount, bool bind);
 			void SendModifierDeleted(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId);
 			void SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp, bool overlay, float scale);
 			void SendObjectGfxState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp);

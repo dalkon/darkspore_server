@@ -5,8 +5,7 @@
 // Include
 #include "predefined.h"
 #include "character.h"
-
-#include "raknet/types.h"
+#include "catalyst.h"
 
 // Game
 namespace Game {
@@ -102,8 +101,8 @@ namespace Game {
 			const Character& GetCharacter(uint32_t index) const;
 
 			uint32_t GetOpenCrystalSlot() const;
-			const RakNet::labsCrystal& GetCrystal(uint32_t index) const;
-			void SetCrystal(RakNet::labsCrystal&& crystal, uint32_t index);
+			const Catalyst& GetCrystal(uint32_t index) const;
+			void SetCrystal(Catalyst&& crystal, uint32_t index);
 
 			uint16_t GetUpdateBits() const;
 			void SetUpdateBits(uint16_t bits);
@@ -125,7 +124,7 @@ namespace Game {
 
 			std::array<ObjectPtr, 3> mCharacterObjects;
 			std::array<Character, 3> mCharacterData;
-			std::array<RakNet::labsCrystal, 9> mCrystals {};
+			std::array<Catalyst, 9> mCrystals {};
 			std::array<bool, 8> mCrystalBonuses { false };
 
 			uint64_t mPlayerOnlineId = 0;

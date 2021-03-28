@@ -5,12 +5,16 @@
 // Include
 #include <memory>
 
+//
+class Scheduler;
+
 // Game
 namespace Game {
 	// classes
 	class Instance;
 	class Player;
 	class Object;
+	class Catalyst;
 	class TriggerVolume;
 	class ServerEventBase;
 	class CombatEvent;

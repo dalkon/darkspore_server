@@ -45,7 +45,7 @@ namespace Game {
 
 		private:
 			sol::table mSelf;
-			// sol::environment mEnvironment;
+			sol::environment mEnvironment;
 
 			bool mHasActivate = false;
 			bool mHasDeactivate = false;
@@ -71,11 +71,16 @@ namespace Game {
 
 			lua_State* GetState() const;
 
+			void CollectGarbage();
+
 		private:
 			void RegisterFunctions();
 
 		protected:
 			sol::state mState;
+
+		private:
+			sol::table mDefaultPackages;
 	};
 
 	// GlobalLua
@@ -113,6 +118,10 @@ namespace Game {
 			AbilityPtr GetAbility(const std::string& abilityName);
 			AbilityPtr GetAbility(uint32_t abilityId);
 
+			sol::table GetPrivateTable(uint32_t id) const;
+			sol::table CreatePrivateTable(uint32_t id);
+			void RemovePrivateTable(uint32_t id);
+
 			LuaThread* GetThread(lua_State* L) const;
 
 			template<typename... Args>
@@ -132,6 +141,7 @@ namespace Game {
 
 			std::unordered_map<lua_State*, LuaThread*> mThreads;
 			std::unordered_map<uint32_t, AbilityPtr> mAbilities;
+			std::unordered_map<uint32_t, sol::table> mPrivateTables;
 	};
 
 	// LuaThread
