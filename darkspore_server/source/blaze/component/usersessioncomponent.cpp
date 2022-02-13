@@ -105,8 +105,7 @@ namespace Blaze {
 		request.notify(packet, Id, PacketID::UserSessionExtendedDataUpdate);
 	}
 
-	void UserSessionComponent::NotifyUserAdded(Request& request, int64_t userId, const std::string& userName) {
-		const auto& user = request.get_user();
+	void UserSessionComponent::NotifyUserAdded(Request& request, const SporeNet::UserPtr& user) {
 		if (!user) {
 			return;
 		}
@@ -116,8 +115,8 @@ namespace Blaze {
 
 		UserIdentification userIdentification;
 		userIdentification.localization = request.get_client().data().lang;
-		userIdentification.id = userId;
-		userIdentification.name = userName;
+		userIdentification.id = user->get_id();
+		userIdentification.name = user->get_name();
 
 		TDF::Packet packet;
 		packet.push_struct("DATA");
@@ -131,10 +130,14 @@ namespace Blaze {
 		request.notify(packet, Id, PacketID::UserAdded);
 	}
 
-	void UserSessionComponent::NotifyUserUpdated(Request& request, int64_t userId) {
+	void UserSessionComponent::NotifyUserUpdated(Request& request, const SporeNet::UserPtr& user, SessionState state) {
+		if (!user) {
+			return;
+		}
+
 		TDF::Packet packet;
-		packet.put_integer("FLGS", SessionState::Authenticated);
-		packet.put_integer("ID", userId);
+		packet.put_integer("FLGS", state);
+		packet.put_integer("ID", user->get_id());
 
 		request.notify(packet, Id, PacketID::UserUpdated);
 	}
@@ -179,7 +182,7 @@ namespace Blaze {
 	void UserSessionComponent::UpdateUserSessionClientData(Request& request) {
 		// Log(request.get_request());
 
-		PresenceInfo presenceInfo;
+		PresenceInfo presenceInfo {};
 		presenceInfo.Read(request["CVAR"]);
 
 		// auto& data = client->data();

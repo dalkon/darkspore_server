@@ -35,6 +35,7 @@ namespace Game {
 // RakNet
 namespace RakNet {
 	// classes
+	class BitStream;
 	class Server;
 	class Client;
 

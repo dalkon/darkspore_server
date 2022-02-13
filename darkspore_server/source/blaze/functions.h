@@ -65,7 +65,7 @@ namespace Blaze {
 
 	struct TickerServer {
 		std::string address;
-		std::string skey;
+		std::string key;
 
 		uint32_t port;
 
@@ -74,16 +74,16 @@ namespace Blaze {
 
 	struct TelemetryServer {
 		std::string address;
-		std::string disa;
+		std::string disable;
 		std::string filter;
-		std::string nook;
+		std::string noToggleOk;
 		std::string session;
-		std::string skey;
+		std::string key;
 
 		uint32_t location;
 		uint32_t port;
-		uint32_t sdly;
-		uint32_t spct;
+		uint32_t sendDelay;
+		uint32_t sendPercentage;
 
 		bool anonymous;
 
@@ -120,10 +120,11 @@ namespace Blaze {
 	};
 
 	struct QosConfigInfo {
+		std::vector<QosPingSiteInfo> bandwidthPingSiteInfo;
 		std::map<std::string, QosPingSiteInfo> pingSiteInfoByAlias;
 
-		uint32_t svid; // server id?
-		uint16_t lnp;
+		uint32_t serviceId;
+		uint16_t latencyProbes;
 
 		void Write(TDF::Packet& packet) const;
 	};

@@ -35,7 +35,6 @@ constexpr std::array<float, 19> magicNumbers {
 
 // difficulty tuning
 
-
 // Game
 namespace Game {
 	// EffectList
@@ -210,6 +209,18 @@ namespace Game {
 		return mRarity;
 	}
 
+	int32_t LootData::GetCatalystLevel() const {
+		return mCatalystLevel;
+	}
+
+	int32_t LootData::GetCatalystType() const {
+		return mCatalystType;
+	}
+
+	bool LootData::IsCatalystPrismatic() const {
+		return mCatalystPrismatic;
+	}
+
 	void LootData::SetId(uint64_t id) {
 		mId = id;
 		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
@@ -235,8 +246,10 @@ namespace Game {
 		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
 	}
 
-	void LootData::SetCrystal(const Catalyst& catalyst) {
-		mCrystalLevel = catalyst.GetLevel();
+	void LootData::SetCatalyst(const Catalyst& catalyst) {
+		mCatalystType = static_cast<int32_t>(catalyst.GetType());
+		mCatalystLevel = static_cast<int32_t>(catalyst.GetRarity());
+		mCatalystPrismatic = catalyst.GetColor() == CatalystColor::Prismatic;
 		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
 	}
 
@@ -249,7 +262,7 @@ namespace Game {
 		auto writeOffset = ReallocateStream(stream, size);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x08));
-		Write(stream, mCrystalLevel);
+		Write(stream, mCatalystLevel);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x10));
 		Write(stream, mId);
@@ -270,7 +283,7 @@ namespace Game {
 	void LootData::WriteReflection(RakNet::BitStream& stream) const {
 		RakNet::reflection_serializer<10> reflector(stream);
 		reflector.begin();
-		reflector.write<0>(mCrystalLevel);
+		reflector.write<0>(mCatalystLevel);
 		reflector.write<1>(mId);
 		reflector.write<2>(mRigblockAsset);
 		reflector.write<3>(mSuffixAssetId);
@@ -431,16 +444,16 @@ namespace Game {
 			// If we don't have class data then we cannot have a target.
 			return false;
 		}
-
+#if 0
 		const auto searchRadius = data->GetAggroRange();
-		const auto& objects = mObject.GetObjectManager().GetObjectsInRadius(mObject.GetPosition(), searchRadius, { NounType::Creature });
+		const auto& objects = mObject.GetObjectManager().GetObjectsInRadius(BoundingSphere(mObject.GetPosition(), searchRadius), { NounType::Creature });
 		for (const auto& possibleTarget : objects) {
 			if (possibleTarget->IsPlayerControlled()) {
 				mTargetObject = possibleTarget;
 				break;
 			}
 		}
-
+#endif
 		if (mTargetObject) {
 			return true;
 		}
@@ -517,85 +530,135 @@ namespace Game {
 	Object::Object(ObjectManager& manager, uint32_t id, uint32_t noun) : mManager(manager), mId(id), mNounId(noun) {
 		mNoun = NounDatabase::Instance().Get(mNounId);
 
-		mBoundingBox.mCenter = glm::vec3(0);
-		mBoundingBox.mExtent = glm::vec3(1);
+		mBoundingBox.center = glm::vec3(0);
+		mBoundingBox.extent = glm::vec3(1);
+	}
 
-		if (mNoun) {
-			mAssetId = mNoun->GetAssetId();
-			if (mNoun->IsCreature()) {
-				CreateAgentBlackboardData();
-				CreateLocomotionData();
+	void Object::Initialize() {
+		if (!mNoun) {
+			return;
+		}
+
+		mAssetId = mNoun->GetAssetId();
+		mTeam = mNoun->GetTeam();
+		mMovementType = mNoun->GetMovementType();
+
+		// BoundingBox stuff
+		switch (mNoun->GetPresetExtents()) {
+			case PresetExtents::None: {
+				mBoundingBox = mNoun->GetBoundingBox();
+				break;
 			}
 
-			if (mNoun->IsPlayer()) {
-				const auto& data = mNoun->GetPlayerClassData();
-				if (!data) {
-					return;
+			// All others
+			default: {
+				break;
+			}
+		}
+
+		if (mNoun->HasLocomotion()) {
+			CreateLocomotionData();
+		}
+
+		// Mob data
+		const auto& playerClassData = mNoun->GetPlayerClassData();
+		const auto& npcClassData = mNoun->GetNonPlayerClassData();
+		const auto& aiDefinition = mNoun->GetAIDefinition();
+		if (playerClassData || npcClassData || aiDefinition) {
+			CreateAgentBlackboardData();
+		}
+
+		if (mNoun->IsCreature()) {
+			CreateCombatantData();
+		}
+
+		if (aiDefinition) {
+			// Create "ai brain" (thats what they called it)
+		}
+
+		if (const auto& projectile = mNoun->GetProjectileData()) {
+			const auto& otherCollision = projectile->GetOtherCollisionVolume();
+			if (otherCollision) {
+				switch (otherCollision->GetShape()) {
+					case CollisionShape::Sphere:
+						mBoundingBox.extent = glm::vec3(otherCollision->GetSphereRadius());
+						break;
+
+					case CollisionShape::Box:
+						mBoundingBox.extent = otherCollision->GetBoxExtents() * 0.5f;
+						break;
+				}
+			}
+		}
+
+		if (mNoun->IsPlayer()) {
+			const auto& data = mNoun->GetPlayerClassData();
+			if (!data) {
+				return;
+			}
+
+			// Otherwise enemies can't use any abilities on you.
+			SetTargetable(true);
+
+			const auto& attributes = data->GetAttributes();
+			if (attributes) {
+				auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
+				if (health > 0) {
+					SetAttributeValue(AttributeType::MaxHealth, health);
+					SetHealth(GetMaxHealth());
 				}
 
-				// Otherwise enemies can't use any abilities on you.
-				SetTargetable(true);
-
-				const auto& attributes = data->GetAttributes();
-				if (attributes) {
-					auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
-					if (health > 0) {
-						SetAttributeValue(AttributeType::MaxHealth, health);
-						SetHealth(GetMaxHealth());
-					}
-
-					auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
-					if (mana > 0) {
-						SetAttributeValue(AttributeType::MaxMana, mana);
-						SetMana(GetMaxMana());
-					}
-
-					auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-					if (nonCombatSpeed > 0) {
-						SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
-					}
-
-					auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-					if (combatSpeed > 0) {
-						SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
-					}
-
-					mAttributes->SetWeaponDamage(1, 5);
-				}
-			} else {
-				// All nonplayer objects should have an AI object
-				mAI = std::make_unique<AI>(*this);
-
-				const auto& data = mNoun->GetNonPlayerClassData();
-				if (!data) {
-					return;
+				auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
+				if (mana > 0) {
+					SetAttributeValue(AttributeType::MaxMana, mana);
+					SetMana(GetMaxMana());
 				}
 
-				SetTargetable(data->IsTargetable());
+				auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+				if (nonCombatSpeed > 0) {
+					SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
+				}
 
-				const auto& attributes = data->GetAttributes();
-				if (attributes) {
-					auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
-					if (health > 0) {
-						SetAttributeValue(AttributeType::MaxHealth, health);
-						SetHealth(GetMaxHealth());
-					}
+				auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+				if (combatSpeed > 0) {
+					SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
+				}
 
-					auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
-					if (mana > 0) {
-						SetAttributeValue(AttributeType::MaxMana, mana);
-						SetMana(GetMaxMana());
-					}
+				mAttributes->SetWeaponDamage(1, 5);
+			}
+		} else {
+			// All nonplayer objects should have an AI object
+			mAI = std::make_unique<AI>(*this);
 
-					auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-					if (nonCombatSpeed > 0) {
-						// SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
-					}
+			const auto& data = mNoun->GetNonPlayerClassData();
+			if (!data) {
+				return;
+			}
 
-					auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-					if (combatSpeed > 0) {
-						// SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
-					}
+			SetTargetable(data->IsTargetable());
+
+			const auto& attributes = data->GetAttributes();
+			if (attributes) {
+				auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
+				if (health > 0) {
+					SetAttributeValue(AttributeType::MaxHealth, health);
+					SetHealth(GetMaxHealth());
+				}
+
+				auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
+				if (mana > 0) {
+					SetAttributeValue(AttributeType::MaxMana, mana);
+					SetMana(GetMaxMana());
+				}
+
+				auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+				if (nonCombatSpeed > 0) {
+					// SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
+				}
+
+				auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
+				if (combatSpeed > 0) {
+					// SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
 				}
 			}
 		}
@@ -617,7 +680,11 @@ namespace Game {
 		}
 	}
 
-	void Object::OnTick() {
+	void Object::OnTick(float deltaTime) {
+		if (mLocomotionData) {
+			mLocomotionData->Update(deltaTime);
+		}
+
 		if (mTickOverride != sol::nil) {
 			mTickOverride.call<void>(mPassiveAbility, shared_from_this());
 		} else if (mPassiveAbility) {
@@ -657,11 +724,19 @@ namespace Game {
 		return mManager.GetGame();
 	}
 
-	CombatantData& Object::GetCombatantData() {
-		return mCombatantData;
+	bool Object::HasCombatantData() const {
+		return static_cast<bool>(mCombatantData);
 	}
 
-	const CombatantData& Object::GetCombatantData() const {
+	const std::unique_ptr<CombatantData>& Object::CreateCombatantData() {
+		if (!mCombatantData) {
+			mCombatantData = std::make_unique<CombatantData>();
+			SetFlags(GetFlags() | Flags::UpdateCombatant);
+		}
+		return GetCombatantData();
+	}
+
+	const std::unique_ptr<CombatantData>& Object::GetCombatantData() const {
 		return mCombatantData;
 	}
 
@@ -761,17 +836,31 @@ namespace Game {
 		return mNoun ? mNoun->GetType() : NounType::None;
 	}
 
+	NpcType Object::GetNpcType() const {
+		if (mNoun) {
+			const auto& npcData = mNoun->GetNonPlayerClassData();
+			if (npcData) {
+				return npcData->GetType();
+			}
+		}
+		return NpcType::Invalid;
+	}
+
 	const glm::vec3& Object::GetPosition() const {
-		return mBoundingBox.mCenter;
+		return mBoundingBox.center;
 	}
 
 	void Object::SetPosition(const glm::vec3& position) {
-		bool dirty = position != mBoundingBox.mCenter;
-		mBoundingBox.mCenter = position;
+		SetPositionSimulated(position);
+		mDataBits.set(ObjectDataBits::Position);
+	}
+
+	void Object::SetPositionSimulated(const glm::vec3& position) {
+		bool dirty = position != mBoundingBox.center;
+		mBoundingBox.center = position;
 		if (dirty) {
 			SetDirty(true);
 		}
-		mDataBits.set(ObjectDataBits::Position);
 	}
 
 	const glm::quat& Object::GetOrientation() const {
@@ -783,81 +872,140 @@ namespace Game {
 		mDataBits.set(ObjectDataBits::Orientation);
 	}
 
+	const glm::vec3& Object::GetLinearVelocity() const {
+		return mLinearVelocity;
+	}
+
+	void Object::SetLinearVelocity(const glm::vec3& velocity) {
+		mLinearVelocity = velocity;
+		mDataBits.set(ObjectDataBits::LinearVelocity);
+	}
+
+	const glm::vec3& Object::GetAngularVelocity() const {
+		return mAngularVelocity;
+	}
+
+	void Object::SetAngularVelocity(const glm::vec3& velocity) {
+		mAngularVelocity = velocity;
+		mDataBits.set(ObjectDataBits::AngularVelocity);
+	}
+
 	const BoundingBox& Object::GetBoundingBox() const {
 		return mBoundingBox;
 	}
 
 	const glm::vec3& Object::GetExtent() const {
-		return mBoundingBox.mExtent;
+		return mBoundingBox.extent;
 	}
 
 	void Object::SetExtent(const glm::vec3& extent) {
-		bool dirty = extent != mBoundingBox.mCenter;
-		mBoundingBox.mExtent = glm::abs(extent);
+		bool dirty = extent != mBoundingBox.extent;
+		mBoundingBox.extent = glm::abs(extent);
 		if (dirty) {
 			SetDirty(true);
 		}
 	}
 
 	float Object::GetFootprintRadius() const {
-		constexpr std::array<std::tuple<glm::vec3, float>, 17> objectExtents {
-			// Critter
-			std::make_tuple(glm::vec3(1, 1, 1), -10.f),
-			std::make_tuple(glm::vec3(1, 1, 1), -10.f),
-
-			// Minion
-			std::make_tuple(glm::vec3(1.5f, 1.5f, 2.25f), 1.f),
-			std::make_tuple(glm::vec3(1.6f, 1.6f, 1.5f), 1.f),
-
-			// Elite minion
-			std::make_tuple(glm::vec3(1.5f, 1.5f, 2.5f), 1.f),
-			std::make_tuple(glm::vec3(1.75f, 1.75f, 1.75f), 1.f),
-
-			// Player (ravager, tempest, sentinel)
-			std::make_tuple(glm::vec3(1.5f, 1.5f, 3.75f), 1.f),
-			std::make_tuple(glm::vec3(1.75f, 1.75f, 3.5f), 1.f),
-			std::make_tuple(glm::vec3(2, 2, 4), 1.f),
-
-			// Lieutenant
-			std::make_tuple(glm::vec3(2.2f, 2.2f, 4), 1.f),
-			std::make_tuple(glm::vec3(2.5f, 2.5f, 3.5f), 1.f),
-
-			// Elite lieutenant
-			std::make_tuple(glm::vec3(2.25f, 2.25f, 5.5f), 1.f),
-			std::make_tuple(glm::vec3(2.5f, 2.5f, 4.5f), 1.f),
-
-			// Captain
-			std::make_tuple(glm::vec3(3, 3, 5), 1.f),
-			std::make_tuple(glm::vec3(3.5f, 3.5f, 4.5f), 1.f),
-			
-			// Boss
-			std::make_tuple(glm::vec3(4.5f, 4.5f, 9), 1.f),
-			std::make_tuple(glm::vec3(5.5f, 5.5f, 8), 1.f)
-		};
-
 		float result = 0;
 		if (mNoun) {
-			auto presetExtents = mNoun->GetPresetExtents();
-			if (presetExtents == PresetExtents::None) {
+			const auto& [extent, scale] = Noun::GetExtents(mNoun->GetPresetExtents());
+			if (scale == 0) {
 				const auto& bBox = mNoun->GetBoundingBox();
 
 				auto min = bBox.GetMin();
 				auto max = bBox.GetMax();
 
-				auto x = glm::min(glm::abs(min.x), glm::abs(max.x));
-				auto y = glm::min(glm::abs(min.y), glm::abs(max.y));
-
-				result = glm::sqrt((x * x) + (y * y)) * GetScale();
+				result = glm::length(glm::min(glm::abs(min), glm::abs(max)));
 			} else {
-				auto presetIndex = static_cast<uint32_t>(presetExtents) - 1;
-				if (objectExtents.size() < presetIndex) {
-					const auto& [extent, _] = objectExtents[presetIndex];
-					result = glm::sqrt(extent.x * extent.x * 2) * GetScale() * 0.5f;
-				}
+				result = glm::sqrt(glm::dot(extent.x, extent.x) * 2) * 0.5f;
+			}
+		}
+
+		return result * GetScale();
+	}
+
+	glm::vec3 Object::GetCenterPoint() const {
+		glm::vec3 center(0, 0, 1);
+		if (mNoun) {
+			const auto& [extent, scale] = Noun::GetExtents(mNoun->GetPresetExtents());
+			if (scale == 0) {
+				center.z = mNoun->GetBoundingBox().GetMax().z;
+			} else {
+				center.z = extent.z;
+			}
+		}
+
+		center = GetPosition() + GetScale() * center * 0.5f;
+		return std::move(center);
+	}
+
+	float Object::GetCurrentSpeed() const {
+		auto speed = mLinearVelocity;
+		if (mMovementType != MovementType::Default && HasAttributeData()) {
+			speed *= GetAttributeValue(AttributeType::MovementSpeedBuff) + 1.0f;
+		}
+		return glm::length(speed);
+	}
+
+	float Object::GetModifiedMovementSpeed() const {
+		if (!HasAttributeData()) {
+			return 0;
+		}
+
+		AttributeType attribute = AttributeType::NonCombatSpeed;
+		if (IsInCombat()) { // || GetGame().GetType() == GameType::Arena
+			attribute = AttributeType::CombatSpeed;
+		}
+
+		return (GetAttributeValue(attribute) + 1.f) * GetAttributeValue(AttributeType::MovementSpeedBuff);
+	}
+
+	// Physics
+	std::vector<ObjectPtr> Object::GetCollidingObjectsWith(const CollisionVolume& collisionVolume, const std::vector<NounType>& types) const {
+		static thread_local BoundingSphere localSphere {};
+		static thread_local BoundingBox localBox {};
+
+		std::vector<ObjectPtr> result;
+		switch (collisionVolume.GetShape()) {
+			case CollisionShape::Sphere: {
+				localSphere.center = mBoundingBox.center;
+				localSphere.radius = collisionVolume.GetSphereRadius();
+				mManager.GetObjectsInRadius(localSphere, types);
+
+				// Line of sight for sphere
+				break;
+			}
+
+			case CollisionShape::Box: {
+				localBox.center = mBoundingBox.center;
+				localBox.extent = collisionVolume.GetBoxExtents();
+				mManager.GetObjectsInRegion(localBox, types);
+
+				// Line of sight for box
+				break;
 			}
 		}
 
 		return result;
+	}
+
+	bool Object::IsColliding() const {
+		if (!mNoun) {
+			return false;
+		}
+
+		const auto& projectile = mNoun->GetProjectileData();
+		if (!projectile) {
+			return false;
+		}
+
+		const auto& otherCollision = projectile->GetOtherCollisionVolume();
+		if (!otherCollision) {
+			return false;
+		}
+
+		return !GetCollidingObjectsWith(*otherCollision, {}).empty();
 	}
 
 	// Effects
@@ -944,6 +1092,7 @@ namespace Game {
 	void Object::SetAttributeValue(uint8_t idx, float value) {
 		if (!mAttributes) {
 			mAttributes = std::make_unique<Attributes>();
+			mAttributes->SetOwnerObject(shared_from_this());
 		}
 		mAttributes->SetValue(idx, value);
 		SetFlags(GetFlags() | Flags::UpdateAttributes);
@@ -953,8 +1102,30 @@ namespace Game {
 		SetAttributeValue(static_cast<uint8_t>(type), value);
 	}
 
+	PrimaryAttribute Object::GetPrimaryAttribute() const {
+		if (mNoun) {
+			const auto& playerClassData = mNoun->GetPlayerClassData();
+			if (playerClassData) {
+				return playerClassData->GetPrimaryAttribute();
+			}
+		}
+		return PrimaryAttribute::Invalid;
+	}
+
+	float Object::GetPrimaryAttributeValue() const {
+		switch (GetPrimaryAttribute()) {
+			case PrimaryAttribute::Strength: return GetAttributeValue(AttributeType::Strength);
+			case PrimaryAttribute::Dexterity: return GetAttributeValue(AttributeType::Dexterity);
+			case PrimaryAttribute::Mind: return GetAttributeValue(AttributeType::Mind);
+		}
+		return 0.f;
+	}
+
 	float Object::GetHealth() const {
-		return mCombatantData.mHitPoints;
+		if (HasCombatantData()) {
+			return mCombatantData->mHitPoints;
+		}
+		return 0.f;
 	}
 
 	float Object::GetMaxHealth() const {
@@ -965,12 +1136,17 @@ namespace Game {
 	}
 
 	void Object::SetHealth(float newHealth) {
-		mCombatantData.mHitPoints = std::max<float>(0, std::min<float>(newHealth, GetMaxHealth()));
-		SetFlags(GetFlags() | Flags::UpdateCombatant);
+		if (HasCombatantData()) {
+			mCombatantData->mHitPoints = std::max<float>(0, std::min<float>(newHealth, GetMaxHealth()));
+			SetFlags(GetFlags() | Flags::UpdateCombatant);
+		}
 	}
 
 	float Object::GetMana() const {
-		return mCombatantData.mManaPoints;
+		if (HasCombatantData()) {
+			return mCombatantData->mManaPoints;
+		}
+		return 0.f;
 	}
 
 	float Object::GetMaxMana() const {
@@ -981,8 +1157,28 @@ namespace Game {
 	}
 
 	void Object::SetMana(float newMana) {
-		mCombatantData.mManaPoints = std::max<float>(0, std::min<float>(newMana, GetMaxMana()));
-		SetFlags(GetFlags() | Flags::UpdateCombatant);
+		if (HasCombatantData()) {
+			mCombatantData->mManaPoints = std::max<float>(0, std::min<float>(newMana, GetMaxMana()));
+			SetFlags(GetFlags() | Flags::UpdateCombatant);
+		}
+	}
+
+	ObjectPtr Object::GetOwnerObject() const {
+		return mOwnerObject.lock();
+	}
+
+	void Object::SetOwnerObject(const ObjectPtr& object) {
+		mOwnerObject = object;
+		mDataBits.set(ObjectDataBits::OwnerId);
+	}
+
+	uint32_t Object::GetInputSyncStamp() const {
+		return mInputSyncStamp;
+	}
+
+	void Object::SetInputSyncStamp(uint32_t inputSyncStamp) {
+		mInputSyncStamp = inputSyncStamp;
+		mDataBits.set(ObjectDataBits::InputSyncStamp);
 	}
 
 	uint32_t Object::GetInteractableState() const {
@@ -1021,11 +1217,11 @@ namespace Game {
 		mDataBits.set(ObjectDataBits::Team);
 	}
 
-	uint8_t Object::GetMovementType() const {
+	MovementType Object::GetMovementType() const {
 		return mMovementType;
 	}
 
-	void Object::SetMovementType(uint8_t movementType) {
+	void Object::SetMovementType(MovementType movementType) {
 		mMovementType = movementType;
 		mDataBits.set(ObjectDataBits::MovementType);
 	}
@@ -1043,6 +1239,10 @@ namespace Game {
 
 	bool Object::IsPlayerControlled() const {
 		return mbPlayerControlled;
+	}
+
+	bool Object::IsImmobilized() const {
+		return GetAttributeValue(AttributeType::Immobilized) > 0;
 	}
 
 	bool Object::HasCollision() const {
@@ -1089,7 +1289,7 @@ namespace Game {
 		const AttributesPtr& attackerAttributes,
 		const std::tuple<float, float>& damageRange,
 		DamageType damageType, DamageSource damageSource, float damageCoefficient,
-		int32_t descriptors, float damageMultiplier, const glm::vec3& direction
+		Descriptors descriptors, float damageMultiplier, const glm::vec3& direction
 	) {
 		// Move this to Instance?
 
@@ -1099,15 +1299,7 @@ namespace Game {
 		if (damage <= 0) {
 			damage = utils::random::get<float>(std::get<0>(damageRange), std::get<1>(damageRange));
 
-			if (attackerAttributes->GetValue(AttributeType::AutoCrit) > 0) {
-				critical = true;
-			} else {
-				// calculate critical hit
-				if (utils::random::get<uint32_t>(0, 1)) {
-					critical = true;
-				}
-			}
-
+			critical = CheckCritical(attackerAttributes);
 			if (critical) {
 				auto criticalIncrease = attackerAttributes->GetValue(AttributeType::CriticalDamageIncrease);
 				damage *= criticalIncrease + 1;
@@ -1124,9 +1316,102 @@ namespace Game {
 		return { true, damage, critical };
 	}
 
-	std::tuple<float, bool> Object::Heal() {
-		float healingReduction = GetAttributeValue(AttributeType::HealingReduction) - 1.f;
-		return { 0.f, false };
+	std::tuple<float, bool> Object::Heal(
+		const AttributesPtr& attackerAttributes,
+		const std::tuple<float, float>& healRange,
+		float healCoefficient,
+		Descriptors descriptors,
+		bool allowMultipliers,
+		bool ignoreCritical
+	) {
+		if (!HasCombatantData()) {
+			return { 0.f, false };
+		}
+
+		float value = utils::random::get<float>(std::get<0>(healRange), std::get<1>(healRange));
+		bool critical = false;
+
+		if (allowMultipliers) {
+			float multiplier = 1.f;
+
+			uint8_t attackerPlayerIndex = 0xFF;
+			if (attackerAttributes) {
+				const auto& attackerOwner = attackerAttributes->GetOwnerObject();
+				if (attackerOwner) {
+					attackerPlayerIndex = attackerOwner->GetPlayerIndex();
+					if (attackerPlayerIndex != 0xFF) {
+						healCoefficient *= attackerOwner->GetPrimaryAttributeValue() - magicNumbers[13];
+					}
+				}
+
+				multiplier += attackerAttributes->GetValue(AttributeType::HealIncrease);
+				if (utils::enum_helper<Descriptors>::test(descriptors, Descriptors::IsHoT)) {
+					multiplier += attackerAttributes->GetValue(AttributeType::HoTDoneIncrease);
+				}
+			}
+
+			value *= multiplier * (healCoefficient + 1.f);
+			if (!ignoreCritical) {
+				critical = CheckCritical(attackerAttributes);
+				if (critical) {
+					value *= magicNumbers[12];
+				}
+			}
+		}
+
+		value *= 1.f - GetAttributeValue(AttributeType::HealingReduction);
+
+		float maxHealth = GetMaxHealth();
+		float health = GetHealth();
+
+		SetHealth(health + value);
+		if (value > 0) {
+
+
+			// Check if we should resurrect.
+			if (health <= 0) {
+				// SendResurrectEvent();
+				OnResurrect();
+			}
+		}
+
+		float remainder = std::max<float>(0.f, health - maxHealth);
+		if (remainder > 0 && GetPlayerIndex() != 0xFF) {
+			DistributeDamageAmongSquad(remainder);
+		}
+
+		return { value, critical };
+	}
+
+	bool Object::CheckCritical(const AttributesPtr& attackerAttributes) const {
+		if (!attackerAttributes) {
+			return false;
+		}
+
+		if (attackerAttributes->GetValue(AttributeType::AutoCrit) > 0) {
+			return true;
+		}
+
+		const auto& attacker = attackerAttributes->GetOwnerObject();
+		if (!attacker) {
+			return false;
+		}
+
+		float value = 1.f;
+		if (attacker->GetPlayerIndex() != 0xFF) {
+			// value = DifficultyTuning::RatingConversion[0] - 4 + difficulty * 4;
+		}
+
+		return utils::random::get<float>(0.f, 1.f) < (attackerAttributes->GetValue(AttributeType::CriticalRating) / (value * 100.f));
+	}
+
+	void Object::DistributeDamageAmongSquad(float damage) {
+		float distribute = GetAttributeValue(AttributeType::DistributeDamageAmongSquad);
+		if (distribute <= 0) {
+			return;
+		}
+
+		//
 	}
 
 	void Object::OnChangeHealth(float healthChange) {
@@ -1137,6 +1422,41 @@ namespace Game {
 	void Object::OnChangeMana(float manaChange) {
 		// TODO: Add scripting event (lua)
 		SetMana(GetMana() + manaChange);
+	}
+
+	void Object::OnDeath() {
+		//
+	}
+
+	void Object::OnResurrect() {
+		// Set corpse state to "Not dead"
+		if (HasCombatantData()) {
+			mCombatantData->mCorpseState = CorpseState::Alive;
+		}
+
+		// If we have a noun then...
+		if (!mNoun) {
+			return;
+		}
+
+		// Restart any passive ability
+		if (IsPlayerControlled()) {
+			const auto& playerClassData = mNoun->GetPlayerClassData();
+			if (playerClassData) {
+				const auto abilityId = playerClassData->GetAbility(PlayerAbility::Passive);
+				if (abilityId != 0) {
+					// RequestModifier(abilityId, etc);
+				}
+			}
+		} else {
+			const auto& aiDefinition = mNoun->GetAIDefinition();
+			if (aiDefinition) {
+				const auto abilityId = aiDefinition->GetPassiveAbility();
+				if (abilityId != 0) {
+					// RequestModifier(abilityId, etc);
+				}
+			}
+		}
 	}
 
 	// Agent Blackboard
@@ -1182,22 +1502,16 @@ namespace Game {
 
 	// Network & reflection
 	void Object::WriteTo(RakNet::BitStream& stream) const {
-		/*
-			Movement type
-				0 = nothing special?
-				1 = projectile? (uses locomotion projectile params)
-				2 = projectile again
-				3 = projectile again
-				4 = bouncing? (uses locomotion lob params)
-				5 = uses locomotion offset... somehow
-				6 = projectile again
-		*/
+		// This seems unused.
+
 		using RakNet::bytes_to_bits;
 		using RakNet::ReallocateStream;
 
 		constexpr auto size = bytes_to_bits(0x308);
+		const auto writeOffset = ReallocateStream(stream, size);
 
-		auto writeOffset = ReallocateStream(stream, size);
+		// Find a nicer solution but... just dont store an extra int because i dont wanna.
+		const auto& owner = GetOwnerObject();
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x010));
 		Write<float>(stream, mScale);
@@ -1210,7 +1524,7 @@ namespace Game {
 		Write(stream, mAngularVelocity);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x050));
-		Write(stream, mOwnerId);
+		Write<uint32_t>(stream, owner ? owner->GetId() : 0);
 		Write<uint8_t>(stream, mTeam);
 		Write<uint8_t>(stream, mPlayerIndex);
 
@@ -1221,7 +1535,7 @@ namespace Game {
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x05F));
 		Write<bool>(stream, mVisible);
 		Write<bool>(stream, mbHasCollision);
-		Write<uint8_t>(stream, mMovementType); // 0 to 6
+		Write<uint8_t>(stream, static_cast<uint8_t>(mMovementType));
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x088));
 		Write(stream, mMarkerId);
@@ -1271,7 +1585,12 @@ namespace Game {
 			if (mDataBits.test(15)) { reflector.write<15>(mNewGraphicsStateStartTime); }
 			if (mDataBits.test(16)) { reflector.write<16>(mVisible); }
 			if (mDataBits.test(17)) { reflector.write<17>(mbHasCollision); }
-			if (mDataBits.test(18)) { reflector.write<18>(mOwnerId); }
+
+			if (mDataBits.test(18)) {
+				const auto& owner = GetOwnerObject();
+				reflector.write<18>(owner ? owner->GetId() : 0);
+			}
+
 			if (mDataBits.test(19)) { reflector.write<19>(mMovementType); }
 			if (mDataBits.test(20)) { reflector.write<20>(mDisableRepulsion); }
 			if (mDataBits.test(21)) { reflector.write<21>(mInteractableState); }
@@ -1288,11 +1607,11 @@ namespace Game {
 		return (mFlags & Object::UpdateFlags) || mDataBits.any();
 	}
 
-	uint8_t Object::GetFlags() const {
+	uint16_t Object::GetFlags() const {
 		return mFlags;
 	}
 
-	void Object::SetFlags(uint8_t flags) {
+	void Object::SetFlags(uint16_t flags) {
 		mFlags = static_cast<Flags>(flags);
 	}
 }

@@ -15,8 +15,11 @@ namespace Game {
 		SetHasCollision(false);
 		SetPosition(position);
 
-		mBoundingBox.mExtent = glm::vec3(radius);
-		// mBoundingBox.mExtent.z = NAN;
+		mBoundingBox.extent = glm::vec3(radius);
+		// mBoundingBox.extent.z = NAN;
+
+		// Remove locomotion, triggers cannot move
+		// mLocomotionData.reset();
 
 		if (mNoun) {
 			const auto& aidefinition = mNoun->GetAIDefinition();
@@ -38,13 +41,13 @@ namespace Game {
 		}
 	}
 
-	void TriggerVolume::OnTick() {
-		Object::OnTick();
+	void TriggerVolume::OnTick(float deltaTime) {
+		Object::OnTick(deltaTime);
 		if (mObjectStates.empty()) {
 			return;
 		}
 
-		auto radius = mBoundingBox.mExtent.x;
+		auto radius = mBoundingBox.extent.x;
 		for (auto it = mObjectStates.begin(); it != mObjectStates.end(); ++it) {
 			bool isInRadius = glm::distance(it->first->GetPosition(), GetPosition()) <= radius;
 			if (it->second == 0) {
@@ -112,19 +115,19 @@ namespace Game {
 
 	void TriggerVolume::OnEnter(ObjectPtr object) const {
 		if (mOnEnter) {
-			mManager.GetGame().GetLua().CreateThread(mOnEnter, mEnvironment, shared_from_this(), std::move(object));
+			mManager.GetGame().GetLua().CallCoroutine(mEnvironment, mOnEnter, shared_from_this(), std::move(object));
 		}
 	}
 
 	void TriggerVolume::OnExit(ObjectPtr object) const {
 		if (mOnExit) {
-			mManager.GetGame().GetLua().CreateThread(mOnExit, mEnvironment, shared_from_this(), std::move(object));
+			mManager.GetGame().GetLua().CallCoroutine(mEnvironment, mOnExit, shared_from_this(), std::move(object));
 		}
 	}
 
 	void TriggerVolume::OnStay(ObjectPtr object) const {
 		if (mOnStay) {
-			mManager.GetGame().GetLua().CreateThread(mOnStay, mEnvironment, shared_from_this(), std::move(object));
+			mManager.GetGame().GetLua().CallCoroutine(mEnvironment, mOnStay, shared_from_this(), std::move(object));
 		}
 	}
 
@@ -160,9 +163,14 @@ namespace Game {
 
 		const auto& [it, inserted] = mObjects.try_emplace(id);
 		if (inserted) {
+			// Create a new object
 			auto object = ObjectPtr(new Object(*this, id, noun));
 			it->second = object;
 
+			// Initialize object (cannot use shared_from_this() when creating the object)
+			object->Initialize();
+
+			// Add to octree and active list
 			mOctTree->Enqueue(object);
 			mActiveObjects.insert(object);
 
@@ -179,12 +187,14 @@ namespace Game {
 
 		ObjectPtr object;
 		if (const auto& teleporterData = marker->GetTeleporterData()) {
+			/*
 			const auto& triggerVolumeData = teleporterData->GetTriggerVolumeData();
 			if (triggerVolumeData) {
-				object = CreateTrigger(marker->GetPosition(), triggerVolumeData->GetBoundingBox().mExtent.x);
+				object = CreateTrigger(marker->GetPosition(), triggerVolumeData->GetBoundingBox().extent.x);
 			} else {
 				object = CreateTrigger(marker->GetPosition(), 1.f);
 			}
+			*/
 		} else {
 			object = Create(marker->GetNoun());
 		}
@@ -246,14 +256,18 @@ namespace Game {
 		return nullptr;
 	}
 
-	std::vector<ObjectPtr> ObjectManager::GetObjectsInRadius(const glm::vec3& position, float radius, const std::vector<NounType>& types) const {
-		return mOctTree->GetObjectsInRadius(position, radius, types);
+	std::vector<ObjectPtr> ObjectManager::GetObjectsInRegion(const BoundingBox& region, const std::vector<NounType>& types) const {
+		return mOctTree->GetObjectsInRegion(region, types);
 	}
 
-	void ObjectManager::Update() {
+	std::vector<ObjectPtr> ObjectManager::GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const {
+		return mOctTree->GetObjectsInRadius(region, types);
+	}
+
+	void ObjectManager::Update(float deltaTime) {
 		mOctTree->Update();
 		for (const auto& object : mActiveObjects) {
-			object->OnTick();
+			object->OnTick(deltaTime);
 			if (object->NeedUpdate()) {
 				mGame.SendObjectUpdate(object);
 			}

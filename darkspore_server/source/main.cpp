@@ -81,9 +81,11 @@ bool Application::OnInit() {
 
 	// HTTP
 	mHttpServer = std::make_unique<HTTP::Server>(mIoService, 80);
+	mHttpTelemetryServer = std::make_unique<HTTP::Server>(mIoService, 8080);
 	mHttpQosServer = std::make_unique<HTTP::Server>(mIoService, 17502);
 
 	const auto& router = mHttpServer->get_router();
+	mHttpTelemetryServer->set_router(router);
 	mHttpQosServer->set_router(router);
 
 	//

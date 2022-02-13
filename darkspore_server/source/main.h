@@ -59,6 +59,7 @@ class Application {
 		std::unique_ptr<Blaze::Server> mTickServer;
 
 		std::unique_ptr<HTTP::Server> mHttpServer;
+		std::unique_ptr<HTTP::Server> mHttpTelemetryServer;
 		std::unique_ptr<HTTP::Server> mHttpQosServer;
 
 		std::unique_ptr<QoS::Server> mQosServer;

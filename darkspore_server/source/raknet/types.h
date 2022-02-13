@@ -20,6 +20,106 @@ namespace RakNet {
 	using tObjID = uint32_t;
 	using asset = uint32_t;
 
+	// PacketID
+	enum class PacketID : uint8_t {
+		HelloPlayerRequest = 0x7F,
+		HelloPlayer = 0x80,
+		ReconnectPlayer = 0x81,
+		Connected = 0x82,
+		Goodbye = 0x83,
+		PlayerJoined = 0x84,
+		PartyMergeComplete = 0x85,
+		PlayerDeparted = 0x86,
+		VoteKickStarted = 0x87,
+		PlayerStatusUpdate = 0x88,
+		GameAborted = 0x89,
+		GameState = 0x8A,
+		DirectorState = 0x8B,
+		ObjectCreate = 0x8C,
+		ObjectUpdate = 0x8D,
+		ObjectDelete = 0x8E,
+		ObjectJump = 0x8F,
+		ObjectTeleport = 0x90,
+		ObjectPlayerMove = 0x91,
+		ForcePhysicsUpdate = 0x92,
+		PhysicsChanged = 0x93,
+		LocomotionDataUpdate = 0x94,
+		LocomotionDataUnreliableUpdate = 0x95,
+		AttributeDataUpdate = 0x96,
+		CombatantDataUpdate = 0x97,
+		InteractableDataUpdate = 0x98,
+		AgentBlackboardUpdate = 0x99,
+		LootDataUpdate = 0x9A,
+		ServerEvent = 0x9B,
+		ActionCommandMsgs = 0x9C,
+		PlayerDamage = 0x9E,
+		LootSpawned = 0x9F,
+		LootAcquired = 0xA0,
+		LabsPlayerUpdate = 0xA1,
+		ModifierCreated = 0xA2,
+		ModifierUpdated = 0xA3,
+		ModifierDeleted = 0xA4,
+		SetAnimationState = 0xA5,
+		SetObjectGfxState = 0xA6,
+		PlayerCharacterDeploy = 0xA7,
+		ActionCommandResponse = 0xA8,
+		ChainVoteMsgs = 0xA9,
+		ChainLevelResultsMsgs = 0xAA,
+		ChainCashOutMsgs = 0xAB,
+		ChainPlayerMsgs = 0xAC,
+		ChainGameMsgs = 0xAD,
+		ChainGameOverMsgs = 0xAE,
+		QuickGameMsgs = 0xAF,
+		GamePrepareForStart = 0xB0,
+		GameStart = 0xB1,
+		CheatMessageDontUseInReleaseButDontChangeTheIndexOfTheMessagesBelowInCaseWeAreRunningOnADevServer = 0xB2,
+		ArenaPlayerMsgs = 0xB3,
+		ArenaLobbyMsgs = 0xB4,
+		ArenaGameMsgs = 0xB5,
+		ArenaResultsMsgs = 0xB6,
+		ObjectivesInitForLevel = 0xB7,
+		ObjectiveUpdated = 0xB8,
+		ObjectivesComplete = 0xB9,
+		CombatEvent = 0xBA,
+		JuggernautPlayerMsgs = 0xBB,
+		JuggernautLobbyMsgs = 0xBC,
+		JuggernautGameMsgs = 0xBD,
+		JuggernautResultsMsgs = 0xBE,
+		ReloadLevel = 0xBF,
+		GravityForceUpdate = 0xC0,
+		CooldownUpdate = 0xC1,
+		CrystalDragMessage = 0xC2,
+		CrystalMessage = 0xC3,
+		KillRacePlayerMsgs = 0xC4,
+		KillRaceLobbyMsgs = 0xC5,
+		KillRaceGameMsgs = 0xC6,
+		KillRaceResultsMsgs = 0xC7,
+		TutorialGameMsgs = 0xC8,
+		CinematicMsgs = 0xC9,
+		ObjectiveAdd = 0xCA,
+		LootDropMessage = 0xCB,
+		DebugPing = 0xCC
+	};
+
+	// ActionCommand
+	enum class ActionCommand : uint8_t {
+		// 1-2 = unknown
+		Movement = 3,
+		StopMovement = 4,
+		SwitchCharacter = 5,
+		// 6 = unknown
+		UseCharacterAbility = 7,
+		UseSquadAbility = 8,
+		CatalystPickup = 9,
+		Cancel = 10,
+		UseInteractableObject = 11,
+		Dance = 12,
+		Taunt = 13
+	};
+
+	// to_string
+	std::string to_string(PacketID type);
+
 	// labsPlayerBits
 	enum labsPlayerBits {
 		// Characters (creatures)
@@ -106,6 +206,12 @@ namespace RakNet {
 			stream.Read<T>(value);
 			value = bswap<T>(value);
 		}
+	}
+
+	template<typename T>
+	std::enable_if_t<std::is_enum_v<T>, void> Read(BitStream& stream, T& value) {
+		using UT = std::underlying_type_t<T>;
+		Read<UT>(stream, reinterpret_cast<UT&>(value));
 	}
 
 	template<typename T>
@@ -315,19 +421,6 @@ namespace RakNet {
 		FYI: All class names are what darkspore calls them, not me.
 			The same goes for the variable names, they are stupid, they will change later on.
 	*/
-
-	// MovementType
-	enum class MovementType : uint8_t {
-		Default = 0,
-		Pathfinding = Default,
-		Projectile,
-		Ballistic,
-		HomingProjectile,
-		Lobbed,
-		OrbitOwner,
-		None,
-		GroundRoll
-	};
 
 	// cAIDirector
 	struct cAIDirector {
@@ -636,6 +729,21 @@ namespace RakNet {
 		void WriteReflection(BitStream& stream) const;
 	};
 
+	// PlanetData
+	struct PlanetData {
+		uint32_t kills;
+		uint32_t unk;
+
+		float damageDealt { 0.f };
+		float damageTaken { 0.f };
+		float healingDone { 0.f };
+		float healingReceived { 0.f };
+
+		uint8_t playerIndex { 0xFF };
+
+		void WriteTo(BitStream& stream) const;
+	};
+
 	// ChainVoteData
 	class ChainVoteData {
 		public:
@@ -649,6 +757,9 @@ namespace RakNet {
 
 			uint32_t GetLevel() const;
 			void SetLevel(uint32_t level);
+
+			uint8_t GetProgression() const;
+			void SetProgression(uint8_t progression);
 
 			uint32_t GetLevelIndex() const;
 			void SetLevelByIndex(uint32_t index);
@@ -670,6 +781,9 @@ namespace RakNet {
 			void WriteTo(RakNet::BitStream& stream) const;
 
 		private:
+			std::array<PlanetData, 4> mPlanetData;
+			std::array<PlanetData, 4> mChainSummary;
+
 			std::array<uint32_t, 6> mEnemyNouns;
 			std::array<uint32_t, 2> mLevelNouns;
 
@@ -680,6 +794,8 @@ namespace RakNet {
 			uint32_t mStarLevel = 0;
 
 			uint32_t mPlayerAsset = 0;
+
+			uint8_t mProgression = 0;
 
 			bool mCompletedLevel = false;
 	};
@@ -705,6 +821,7 @@ namespace RakNet {
 	};
 
 	// ActionCommand
+	/*
 	struct ActionCommand {
 		// TODO: separate this into multiple structs to minimize data use
 		uint8_t type;
@@ -712,6 +829,7 @@ namespace RakNet {
 
 
 	};
+	*/
 
 	// AbilityCommandResponse
 	struct AbilityCommandResponse {
@@ -728,8 +846,10 @@ namespace RakNet {
 
 		uint32_t targetId;
 		uint32_t abilityId;
+		uint32_t abilityRank;
 		uint32_t valueFromActionResponse;
 		uint32_t unk[2];
+
 	};
 }
 

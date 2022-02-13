@@ -3,10 +3,8 @@
 #define _GAME_NOUN_HEADER
 
 // Include
+#include "collision.h"
 #include "utils/functions.h"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 #include <array>
 #include <memory>
@@ -16,28 +14,66 @@
 namespace Game {
 	using AnimationData = std::tuple<uint32_t, float>;
 
-	// BoundingBox
-	class BoundingBox {
+	// CollisionShape
+	enum class CollisionShape : uint8_t {
+		Sphere = 0,
+		Box
+	};
+
+	// CollisionVolume
+	class CollisionVolume {
 		public:
-			BoundingBox();
-			BoundingBox(const glm::vec3& min, const glm::vec3& max);
+			void Read(pugi::xml_node node);
 
-			bool IsPoint() const;
-			bool Contains(const glm::vec3& point) const;
-			bool Contains(const BoundingBox& boundingBox) const;
-			bool Intersects(const BoundingBox& boundingBox) const;
-			bool Touches(const BoundingBox& boundingBox) const;
+			const glm::vec3& GetBoxExtents() const;
+			float GetSphereRadius() const;
+			CollisionShape GetShape() const;
 
-			void Transform(const glm::mat4& matrix);
+		private:
+			glm::vec3 mBoxExtents {};
 
-			glm::vec3 GetMin() const;
-			glm::vec3 GetMax() const;
+			float mSphereRadius = 0;
 
-			glm::vec3 GetSize() const;
+			CollisionShape mShape = CollisionShape::Sphere;
+	};
 
+	// TargetType
+	enum class TargetType : uint32_t {
+		Enemies = 0,
+		Allies,
+		Any,
+		None
+	};
+
+	// ProjectileData
+	class ProjectileData {
 		public:
-			glm::vec3 mCenter;
-			glm::vec3 mExtent;
+			void Read(pugi::xml_node node);
+
+			const std::unique_ptr<CollisionVolume>& GetCreatureCollisionVolume() const;
+			const std::unique_ptr<CollisionVolume>& GetOtherCollisionVolume() const;
+			TargetType GetTargetType() const;
+
+		private:
+			std::unique_ptr<CollisionVolume> mCreatureCollisionVolume;
+			std::unique_ptr<CollisionVolume> mOtherCollisionVolume;
+
+			TargetType mTargetType = TargetType::Enemies;
+	};
+
+	// OrbitData
+	class OrbitData {
+		public:
+			void Read(pugi::xml_node node);
+
+			float GetHeight() const;
+			float GetRadius() const;
+			float GetSpeed() const;
+
+		private:
+			float mHeight = 0;
+			float mRadius = 0;
+			float mSpeed = 0;
 	};
 
 	// ClassAttribute
@@ -83,6 +119,7 @@ namespace Game {
 
 	// NpcType
 	enum class NpcType : uint32_t {
+		Invalid = 0xFFFFFFFF,
 		Minion = 0,
 		Special,
 		Boss,
@@ -145,6 +182,23 @@ namespace Game {
 			int32_t mMaxDifficulty = 0;
 	};
 
+	// PlayerAbility
+	enum class PlayerAbility : uint8_t {
+		Basic = 0,
+		Special1,
+		Special2,
+		Special3,
+		Passive
+	};
+
+	// PrimaryAttribute
+	enum class PrimaryAttribute : uint32_t {
+		Invalid = 0xFFFFFFFF,
+		Strength = 0,
+		Dexterity,
+		Mind
+	};
+
 	// PlayerClass
 	class PlayerClass {
 		public:
@@ -152,20 +206,29 @@ namespace Game {
 
 			const std::shared_ptr<ClassAttributes>& GetAttributes() const;
 
+			uint32_t GetAbility(PlayerAbility ability) const;
+
+			const glm::vec3& GetSharedAbilityOffset() const;
+
+			Homeworld GetHomeworld() const;
+			PrimaryAttribute GetPrimaryAttribute() const;
+
 		private:
 			std::shared_ptr<ClassAttributes> mAttributes;
 
 			std::array<std::string, 5> mAbilities;
+
+			glm::vec3 mSharedAbilityOffset;
 
 			std::string mName;
 			std::string mEffect;
 			std::string mPath;
 
 			Homeworld mHomeworld = Homeworld::ZelemsNexus;
+			PrimaryAttribute mPrimaryAttribute = PrimaryAttribute::Invalid;
 
 			uint32_t mCreatureType = 0;
 			uint32_t mCreatureClass = 0;
-			uint32_t mPrimaryAttribute = 0; // str, dex, mind
 			uint32_t mId = 0;
 
 			int32_t mUnlockLevel = 0;
@@ -185,6 +248,8 @@ namespace Game {
 			void Read(pugi::xml_node node);
 			
 			const std::shared_ptr<ClassAttributes>& GetAttributes() const;
+
+			NpcType GetType() const;
 
 			float GetAggroRange() const;
 			float GetAlertRange() const;
@@ -500,12 +565,30 @@ namespace Game {
 		BossHorizontal
 	};
 
+	// MovementType
+	enum class MovementType : uint8_t {
+		Default = 0,
+		Pathfinding = Default,
+		Projectile,
+		Ballistic,
+		HomingProjectile,
+		Lobbed,
+		OrbitOwner,
+		None,
+		GroundRoll
+	};
+
 	// Noun
 	class Noun {
 		public:
 			void Read(pugi::xml_node node);
 
+			static std::tuple<glm::vec3, float> GetExtents(PresetExtents preset);
+
 			const BoundingBox& GetBoundingBox() const;
+
+			const std::unique_ptr<ProjectileData>& GetProjectileData() const;
+			const std::unique_ptr<OrbitData>& GetOrbitData() const;
 
 			const std::shared_ptr<NonPlayerClass>& GetNonPlayerClassData() const;
 			const std::shared_ptr<PlayerClass>& GetPlayerClassData() const;
@@ -516,15 +599,21 @@ namespace Game {
 
 			uint64_t GetAssetId() const;
 			uint32_t GetId() const;
+			uint8_t GetTeam() const;
 
 			NounType GetType() const;
 			PresetExtents GetPresetExtents() const;
+			MovementType GetMovementType() const;
 
+			bool HasLocomotion() const;
 			bool IsCreature() const;
 			bool IsPlayer() const;
 
 		private:
 			BoundingBox mBoundingBox;
+
+			std::unique_ptr<ProjectileData> mProjectileData;
+			std::unique_ptr<OrbitData> mOrbitData;
 
 			std::shared_ptr<NonPlayerClass> mNpcClassData;
 			std::shared_ptr<PlayerClass> mPlayerClassData;
@@ -537,10 +626,13 @@ namespace Game {
 
 			uint64_t mAssetId = 0;
 			uint32_t mId = 0;
+			uint8_t mTeam = 0;
 
 			NounType mType = NounType::None;
 			PresetExtents mPresetExtents = PresetExtents::None;
+			MovementType mMovementType = MovementType::Default;
 
+			bool mHasLocomotion = false;
 			bool mIsFlora = false;
 			bool mIsMineral = false;
 			bool mIsCreature = false;

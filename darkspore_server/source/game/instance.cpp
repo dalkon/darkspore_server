@@ -26,6 +26,31 @@
 
 // Game
 namespace Game {
+	// CashOutData
+	void CashOutData::WriteTo(RakNet::BitStream& stream) const {
+		using RakNet::bytes_to_bits;
+		using RakNet::ReallocateStream;
+
+		constexpr auto size = bytes_to_bits(0x2C8);
+
+		auto writeOffset = ReallocateStream(stream, size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x00));
+		Write(stream, mPlanetsCompleted);
+		Write(stream, mDna);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x34));
+		for (const auto medalCount : mGoldMedals) { Write(stream, medalCount); }
+		for (const auto medalCount : mSilverMedals) { Write(stream, medalCount); }
+		for (const auto medalCount : mBronzeMedals) { Write(stream, medalCount); }
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x64));
+		for (const auto chance : mUniqueChances) { Write(stream, chance); }
+		for (const auto chance : mRareChances) { Write(stream, chance); }
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
 	// Instance
 	InstancePtr Instance::Create(uint32_t id) {
 		return InstancePtr(new Instance(id));
@@ -34,10 +59,21 @@ namespace Game {
 	Instance::Instance(uint32_t id) {
 		mData.id = id;
 
-		decltype(auto) objective = mObjectives.emplace_back();
-		objective.id = utils::hash_id("FinishLevelQuickly");
-		objective.value = 0;
-		objective.description = "Do some stuff bruh";
+		constexpr std::array<std::string_view, 5> objectiveTypes {
+			"FinishLevelQuickly",
+			"DoDamageOften",
+			"TouchAllObelisks",
+			"DefeatAllMonsters",
+			"HugeDamage"
+		};
+
+		for (const auto& objectiveName : objectiveTypes) {
+			decltype(auto) objective = mObjectives.emplace_back();
+			objective.id = utils::hash_id(objectiveName);
+			objective.value = 1;
+			objective.medal = RakNet::ObjectiveMedal::Gold;
+			objective.description = "Do some stuff bruh";
+		}
 	}
 
 	Instance::~Instance() {
@@ -80,39 +116,41 @@ namespace Game {
 	}
 
 	bool Instance::LoadLevel() {
-		if (!mLevelLoaded) {
-			std::string levelName = mChainData.GetName().data();
-			mLevelLoaded = mLevel.Load(mChainData.GetDifficultyName(), levelName);
-			if (mLevelLoaded) {
-				LevelConfig config;
-				if (mChainData.IsCompleted()) {
-					config = mLevel.GetConfig();
-				} else {
-					config = mLevel.GetFirstTimeConfig();
+		if (mLevelLoaded) {
+			return true;
+		}
+
+		std::string levelName = mChainData.GetName().data();
+		mLevelLoaded = mLevel.Load(mChainData.GetDifficultyName(), levelName);
+		if (mLevelLoaded) {
+			LevelConfig config;
+			if (mChainData.IsCompleted()) {
+				config = mLevel.GetConfig();
+			} else {
+				config = mLevel.GetFirstTimeConfig();
+			}
+
+			mChainData.SetEnemyNoun(config.GetMinion(0).GetNounName(), 0);
+			mChainData.SetEnemyNoun(config.GetMinion(1).GetNounName(), 1);
+			mChainData.SetEnemyNoun(config.GetMinion(2).GetNounName(), 2);
+			mChainData.SetEnemyNoun(config.GetSpecial(0).GetNounName(), 3);
+			mChainData.SetEnemyNoun(config.GetSpecial(1).GetNounName(), 4);
+			mChainData.SetEnemyNoun(config.GetSpecial(2).GetNounName(), 5);
+
+			Markerset markerset;
+			if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
+				const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
+				for (const auto& marker : markers) {
+					mPlayerSpawnpoints.push_back(marker->GetPosition());
 				}
+			}
 
-				mChainData.SetEnemyNoun(config.GetMinion(0).GetNounName(), 0);
-				mChainData.SetEnemyNoun(config.GetMinion(1).GetNounName(), 1);
-				mChainData.SetEnemyNoun(config.GetMinion(2).GetNounName(), 2);
-				mChainData.SetEnemyNoun(config.GetSpecial(0).GetNounName(), 3);
-				mChainData.SetEnemyNoun(config.GetSpecial(1).GetNounName(), 4);
-				mChainData.SetEnemyNoun(config.GetSpecial(2).GetNounName(), 5);
-
-				Markerset markerset;
-				if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
+			// Check design_spawners
+			if (mPlayerSpawnpoints.empty()) {
+				if (mLevel.GetMarkerset(levelName + "_design_spawners.Markerset", markerset)) {
 					const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
 					for (const auto& marker : markers) {
 						mPlayerSpawnpoints.push_back(marker->GetPosition());
-					}
-				}
-
-				// Check design_spawners
-				if (mPlayerSpawnpoints.empty()) {
-					if (mLevel.GetMarkerset(levelName + "_design_spawners.Markerset", markerset)) {
-						const auto& markers = markerset.GetMarkersByType(utils::hash_id("CameraSpawnPoint.Noun"));
-						for (const auto& marker : markers) {
-							mPlayerSpawnpoints.push_back(marker->GetPosition());
-						}
 					}
 				}
 			}
@@ -189,7 +227,7 @@ namespace Game {
 		mServer->add_task(std::move(task));
 	}
 
-	void Instance::AddClientTask(uint8_t id, MessageID packet) {
+	void Instance::AddClientTask(uint8_t id, RakNet::PacketID packet) {
 		mServer->add_client_task(id, packet);
 	}
 
@@ -245,10 +283,12 @@ namespace Game {
 	}
 
 	void Instance::OnPlayerStart(const PlayerPtr& player) {
-		mLua->PreloadAbilities();
-		mLevelLoaded = LoadLevel();
+		std::cout << "Player Start" << std::endl;
 
-		if (mLevelLoaded) {
+		mLua->PreloadAbilities();
+		mGameStarted = LoadLevel();
+
+		if (mGameStarted) {
 			std::string levelName = mChainData.GetName().data();
 
 			// create level objects and whatnot
@@ -256,18 +296,12 @@ namespace Game {
 			if (mLevel.GetMarkerset(levelName + "_obelisk_1.Markerset", markerset)) {
 				const auto& healthObelisks = markerset.GetMarkersByType(utils::hash_id("prefab_health_obelisk.Noun"));
 				for (const auto& marker : healthObelisks) {
-					const auto& object = mObjectManager->Create(marker);
-					if (object) {
-						SendObjectCreate(object);
-					}
+					mObjectManager->Create(marker);
 				}
 
 				const auto& bossObelisks = markerset.GetMarkersByType(utils::hash_id("prefab_boss_obelisk.Noun"));
 				for (const auto& marker : bossObelisks) {
-					const auto& object = mObjectManager->Create(marker);
-					if (object) {
-						SendObjectCreate(object);
-					}
+					mObjectManager->Create(marker);
 				}
 			}
 
@@ -279,10 +313,7 @@ namespace Game {
 
 						const auto& teleporterData = marker->GetTeleporterData();
 						if (teleporterData) {
-							const auto& object = mObjectManager->Create(marker);
-							if (object) {
-								SendObjectCreate(object);
-							}
+							mObjectManager->Create(marker);
 						}
 					}
 				}
@@ -302,28 +333,40 @@ namespace Game {
 							if (object) {
 								object->SetPosition(marker->GetPosition());
 								object->SetOrientation(marker->GetRotation());
-								SendObjectCreate(object);
 							}
 							break;
 						}
 					}
+
+					// temporary
+					break;
 				}
 			};
-
-			if (mLevel.GetMarkerset(levelName + "_AI_WandererA.Markerset", markerset)) {
+			
+			if (mLevel.GetMarkerset(levelName + "_AI_WandererA.Markerset", markerset) || mLevel.GetMarkerset(levelName + "_AI_Wanderers_A.Markerset", markerset)) {
 				TestEnemy(markerset);
 			}
 
-			if (mLevel.GetMarkerset(levelName + "_AI_WandererB.Markerset", markerset)) {
+			if (mLevel.GetMarkerset(levelName + "_AI_WandererB.Markerset", markerset) || mLevel.GetMarkerset(levelName + "_AI_Wanderers_B.Markerset", markerset)) {
 				TestEnemy(markerset);
 			}
 
-			if (mLevel.GetMarkerset(levelName + "_AI_WandererC.Markerset", markerset)) {
+			if (mLevel.GetMarkerset(levelName + "_AI_WandererC.Markerset", markerset) || mLevel.GetMarkerset(levelName + "_AI_Wanderers_C.Markerset", markerset)) {
 				TestEnemy(markerset);
 			}
+			
 		}
 
 		// mLua->LoadFile("data/lua/player_start.lua");
+
+		// Set objectives
+		const auto& client = mServer->GetClient(player->GetId());
+		if (client) {
+			mServer->SendObjectivesInitForLevel(client);
+			for (uint8_t i = 0, l = static_cast<uint8_t>(mObjectives.size()); i < l; ++i) {
+				mServer->SendObjectiveUpdate(client, i, 0);
+			}
+		}
 
 		// Create creatures
 		glm::vec3 spawnpoint;
@@ -331,19 +374,21 @@ namespace Game {
 			spawnpoint = mPlayerSpawnpoints[player->GetId()];
 		}
 
+		// Force send character objects so the client can find them when swapping.
 		for (uint32_t i = 0; i < 3; ++i) {
 			const auto& characterObject = player->GetCharacterObject(i);
-			if (characterObject) {
-				characterObject->SetPosition(spawnpoint);
-				characterObject->SetVisible(true); // i == creatureIndex
-
-				characterObject->SetAttributeValue(AttributeType::InvisibleToSecurityTeleporters, 1);
-				characterObject->SetAttributeValue(AttributeType::AttackSpeedScale, 1);
-				characterObject->SetAttributeValue(AttributeType::CooldownScale, 1);
-
-				SendObjectCreate(characterObject);
-				SendObjectUpdate(characterObject);
+			if (!characterObject) {
+				continue;
 			}
+
+			characterObject->SetPosition(spawnpoint);
+			characterObject->SetVisible(true); // i == creatureIndex
+
+			characterObject->SetAttributeValue(AttributeType::InvisibleToSecurityTeleporters, 1);
+			characterObject->SetAttributeValue(AttributeType::AttackSpeedScale, 1);
+			characterObject->SetAttributeValue(AttributeType::CooldownScale, 1);
+
+			SendObjectUpdate(characterObject);
 		}
 
 		// Create all existing objects
@@ -379,18 +424,25 @@ namespace Game {
 	bool Instance::Update() {
 		// It is safe to send packets in this function.
 		auto newGameTime = utils::get_milliseconds();
-		auto diff = newGameTime - mGameTime;
 
-		if (diff >= 50) {
+		if (auto delta = (newGameTime - mGameTimeLua); delta >= 1) {
+			mGameTimeLua = newGameTime;
+			mLua->Update();
+		}
+
+		if (auto delta = (newGameTime - mGameTime); delta >= 50) {
 			mGameTime = newGameTime;
-			mObjectManager->Update();
+			mObjectManager->Update(delta / 1000.f); // Maybe send update time so we can compensate for lag?
+			for (const auto& [_, player] : mPlayers) {
+				SendLabsPlayerUpdate(player);
+			}
 
 			const auto& client = mServer->GetClient(static_cast<uint8_t>(0));
 			if (client) {
 				auto& objective = mObjectives.front();
 				if (objective.id == utils::hash_id("FinishLevelQuickly")) {
 					objective.value = static_cast<uint32_t>(GetTimeElapsed() / 1000);
-					mServer->SendObjectiveUpdate(client, 0);
+					mServer->SendObjectiveUpdate(client, 0, utils::hash_id("vo_ship_obelisk_accessed"));
 				}
 			}
 
@@ -405,11 +457,16 @@ namespace Game {
 			return;
 		}
 
-		bool teleport = locomotionData.GetGoalFlags() & 0x020;
+		const auto goalFlags = locomotionData.GetGoalFlags();
+		if (goalFlags & 0x002) {
+			object->SetOrientation(glm::quat(locomotionData.GetFacing()));
+		}
+
+		bool teleport = goalFlags & 0x020;
 		if (teleport) {
 			object->SetPosition(locomotionData.GetGoalPosition());
 			for (const auto& [_, client] : mServer->GetClients()) {
-				mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotionData.GetFacing());
+				mServer->SendObjectTeleport(client, object, object->GetPosition(), object->GetOrientation());
 			}
 		} else {
 			object->SetPosition(locomotionData.GetPartialGoalPosition());
@@ -430,7 +487,8 @@ namespace Game {
 
 		const auto& ability = mLua->GetAbility(combatData.abilityId);
 		if (ability) {
-			ability->Tick(ObjectPtr(object), mObjectManager->Get(combatData.targetId), combatData.cursorPosition);
+			// ability:tick(object, target, cursorPosition, rank)
+			ability->Tick(ObjectPtr(object), mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank);
 		}
 	}
 
@@ -492,6 +550,7 @@ namespace Game {
 	}
 
 	void Instance::CancelAction(const PlayerPtr& player, const ObjectPtr& object) {
+		// TODO: Change this to not force lua updates
 		if (!player || !object) {
 			return;
 		}
@@ -552,8 +611,6 @@ namespace Game {
 
 			auto object = mObjectManager->Create(utils::hash_id(dropRarityNouns[containerType]));
 			object->SetPosition(position);
-			object->SetTeam(0);
-			object->SetMovementType(6);
 			object->SetInteractableState(0);
 			
 			const auto& lootData = object->CreateLootData();
@@ -566,10 +623,11 @@ namespace Game {
 			interactableData->SetTimesUsed(0);
 			interactableData->SetAbility(utils::hash_id("PickUpLoot"));
 
-			for (const auto& [_, client] : clients) {
-				mServer->SendObjectCreate(client, object);
-				mServer->SendLootDataUpdate(client, object, *lootData);
-				mServer->SendInteractableDataUpdate(client, object, *interactableData);
+			if (SendObjectCreate(object)) {
+				for (const auto& [_, client] : clients) {
+					mServer->SendLootDataUpdate(client, object, *lootData);
+					mServer->SendInteractableDataUpdate(client, object, *interactableData);
+				}
 			}
 
 			mObjects.push_back(std::move(object));
@@ -639,10 +697,21 @@ namespace Game {
 					break;
 			}
 
+			static uint64_t test_id = 0;
+
 			Catalyst catalyst(CatalystType::AttackSpeed, CatalystRarity::Common, false);
 
 			const auto& object = mObjectManager->Create(catalyst.GetNounId());
 			object->SetPosition(position);
+
+			const auto& lootData = object->CreateLootData();
+			lootData->SetId(++test_id);
+			lootData->SetCatalyst(catalyst);
+
+			const auto& interactableData = object->CreateInteractableData();
+			interactableData->SetUsesAllowed(1);
+			interactableData->SetTimesUsed(0);
+			interactableData->SetAbility(utils::hash_id("PickUpLoot"));
 
 			SendObjectCreate(object);
 		}
@@ -657,7 +726,39 @@ namespace Game {
 	}
 
 	void Instance::DropCatalyst(const PlayerPtr& player, uint32_t catalystSlot) {
+		if (!player) {
+			return;
+		}
 
+		auto characterObject = player->GetDeployedCharacterObject();
+		if (!characterObject) {
+			return;
+		}
+
+		auto catalyst = player->GetCatalyst(catalystSlot);
+		if (!catalyst) {
+			return;
+		}
+
+		player->SetCatalyst(Catalyst(), catalystSlot);
+		{
+			static uint64_t lootId = 0;
+
+			auto object = mObjectManager->Create(catalyst.GetNounId());
+			object->SetPosition(characterObject->GetPosition());
+			object->SetInteractableState(0);
+
+			const auto& lootData = object->CreateLootData();
+			lootData->SetId(++lootId);
+			lootData->SetCatalyst(catalyst);
+
+			const auto& interactableData = object->CreateInteractableData();
+			interactableData->SetUsesAllowed(1);
+			interactableData->SetTimesUsed(0);
+			interactableData->SetAbility(utils::hash_id("PickUpLoot"));
+
+			SendObjectCreate(object);
+		}
 	}
 
 	void Instance::DropCatalyst() {
@@ -682,28 +783,53 @@ namespace Game {
 
 			auto object = mObjectManager->Create(catalyst.GetNounId());
 			object->SetPosition(position);
-			object->SetTeam(0);
-			object->SetMovementType(6);
 			object->SetInteractableState(0);
 
 			const auto& lootData = object->CreateLootData();
 			lootData->SetId(++lootId);
-			lootData->SetCrystal(catalyst);
+			lootData->SetCatalyst(catalyst);
 
 			const auto& interactableData = object->CreateInteractableData();
 			interactableData->SetUsesAllowed(1);
 			interactableData->SetTimesUsed(0);
 			interactableData->SetAbility(utils::hash_id("PickUpLoot"));
 
-			for (const auto& [_, client] : clients) {
-				mServer->SendObjectCreate(client, object);
-				mServer->SendLootDataUpdate(client, object, *lootData);
-				mServer->SendInteractableDataUpdate(client, object, *interactableData);
+			if (SendObjectCreate(object)) {
+				for (const auto& [_, client] : clients) {
+					mServer->SendLootDataUpdate(client, object, *lootData);
+					mServer->SendInteractableDataUpdate(client, object, *interactableData);
+				}
 			}
 
 			mObjects.push_back(std::move(object));
 			position.x += 5;
 		}
+	}
+
+	void Instance::BeamOut(const PlayerPtr& player) {
+		const auto& client = mServer->GetClient(player->GetId());
+		if (client) {
+			mChainData.SetCompleted(true);
+			mChainData.SetProgression(1);
+
+			mCashOutData.mDna = 50;
+			mCashOutData.mPlanetsCompleted = 2;
+			mCashOutData.mGoldMedals.fill(3);
+			mCashOutData.mSilverMedals.fill(1);
+			mCashOutData.mBronzeMedals.fill(4);
+			mCashOutData.mUniqueChances.fill(50);
+			mCashOutData.mRareChances.fill(30);
+
+			mServer->SendReconnectPlayer(client, GameState::ChainVoting);
+			mServer->SendDebugPing(client);
+		}
+
+		/*
+		ClientEvent cashOutEvent;
+		cashOutEvent.SetEventId(ClientEventID::PlayerCashOut);
+
+		SendServerEvent(player, cashOutEvent);
+		*/
 	}
 
 	/*
@@ -718,10 +844,32 @@ namespace Game {
 		DNA.noun - DNA_Pickup
 	*/
 
-	void Instance::SendObjectCreate(const ObjectPtr& object) {
+	bool Instance::SendObjectCreate(const ObjectPtr& object) {
+		if (!object) {
+			return false;
+		}
+#if 0
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendObjectCreate(client, object);
 		}
+#else
+		if (!mGameStarted) {
+			return false;
+		}
+
+		auto flags = object->GetFlags();
+		if (flags & Object::Created) {
+			return true;
+		}
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendObjectCreate(client, object);
+		}
+
+		object->SetFlags(flags | Object::Created);
+		object->ResetUpdateBits();
+#endif
+		return true;
 	}
 
 	void Instance::SendObjectDelete(const ObjectPtr& object) {
@@ -737,7 +885,7 @@ namespace Game {
 	}
 
 	void Instance::SendObjectUpdate(const ObjectPtr& object) {
-		if (!object) {
+		if (!SendObjectCreate(object)) {
 			return;
 		}
 
@@ -747,13 +895,15 @@ namespace Game {
 		for (const auto& [_, client] : mServer->GetClients()) {
 			const auto& player = client->GetPlayer();
 			if (object == player->GetDeployedCharacterObject()) {
-				if (player->SyncCharacterData()) {
-					SendLabsPlayerUpdate(player);
-				}
+				player->SyncCharacterData();
+			}
+
+			if (object->mDataBits.any()) {
+				mServer->SendObjectUpdate(client, object);
 			}
 
 			if (flags & Object::UpdateCombatant) {
-				mServer->SendCombatantDataUpdate(client, object, object->GetCombatantData());
+				mServer->SendCombatantDataUpdate(client, object, *object->GetCombatantData());
 				newFlags &= ~Object::UpdateCombatant;
 			}
 
@@ -778,25 +928,21 @@ namespace Game {
 			}
 
 			if (flags & Object::UpdateLocomotion) {
-				const auto& locomotionData = object->GetLocomotionData();
+				const auto& locomotion = object->GetLocomotionData();
 				if (object->IsPlayerControlled()) {
-					mServer->SendObjectPlayerMove(client, object, *locomotionData);
+					mServer->SendObjectPlayerMove(client, object, *locomotion);
 				} else {
-					if (locomotionData->GetGoalFlags() & 0x20) {
-						mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotionData->GetFacing());
+					if (locomotion->GetGoalFlags() & 0x20) {
+						mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotion->GetFacing());
 					} else {
 #if 0 // If unreliable update
-						mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotionData->GetGoalPosition());
+						mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotion->GetGoalPosition());
 #else
-						mServer->SendLocomotionDataUpdate(client, object, *locomotionData);
+						mServer->SendLocomotionDataUpdate(client, object, *locomotion);
 #endif
 					}
 				}
 				newFlags &= ~Object::UpdateLocomotion;
-			}
-			
-			if (object->mDataBits.any()) {
-				mServer->SendObjectUpdate(client, object);
 			}
 		}
 
@@ -835,13 +981,17 @@ namespace Game {
 	}
 
 	void Instance::SendServerEvent(const ServerEventBase& serverEvent) {
+		if (!serverEvent) {
+			return;
+		}
+
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendServerEvent(client, serverEvent);
 		}
 	}
 
 	void Instance::SendServerEvent(const PlayerPtr& player, const ServerEventBase& serverEvent) {
-		if (!player) {
+		if (!serverEvent || !player) {
 			return;
 		}
 
@@ -868,7 +1018,7 @@ namespace Game {
 	}
 
 	void Instance::SendLabsPlayerUpdate(const PlayerPtr& player) {
-		if (!player) {
+		if (!player || !player->NeedUpdate()) {
 			return;
 		}
 
@@ -902,26 +1052,21 @@ namespace Game {
 			return;
 		}
 
-		uint32_t slot = player->GetOpenCrystalSlot();
+		uint32_t slot = player->GetOpenCatalystSlot();
 		if (slot != 0xFFFFFFFF) {
-			// object->MarkForDeletion();
-
-			auto crystal = Catalyst(CatalystType::AttackSpeed, CatalystRarity::Epic, true);
-
-			RakNet::CrystalData crystalData;
-			crystalData.unk8 = 0;
-			crystalData.unk32[0] = 5;
-			crystalData.unk32[1] = 0;
-			crystalData.unk32[2] = 0;
-			crystalData.unk32[3] = crystal.GetNounId();
-			crystalData.unk32[4] = crystal.GetLevel();
-			crystalData.unk32[5] = 0;
-			crystalData.unk32[6] = 0;
-
-			player->SetCrystal(std::move(crystal), 5);
-			for (const auto& [_, client] : mServer->GetClients()) {
-				mServer->SendCrystalMessage(client, crystalData);
+			object->MarkForDeletion();
+			
+			const auto& lootData = object->GetLootData();
+			if (!lootData) {
+				// Actual object contains no catalyst, ignore.
+				return;
 			}
+
+			auto catalyst = Catalyst(*lootData);
+			player->SetCatalyst(catalyst, slot);
+
+			const auto& client = mServer->GetClient(player->GetId());
+			mServer->SendCrystalMessage(client, 0, 0, slot, catalyst);
 		} else {
 			// TODO: add bounce
 			ClientEvent catalystEvent;

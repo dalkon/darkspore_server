@@ -3,33 +3,32 @@
 #define _GAME_CATALYST_HEADER
 
 // Include
+#include "predefined.h"
+
 #include <cstdint>
 #include <string>
 #include <memory>
 
-// Predefine
-namespace RakNet {
-	class BitStream;
-}
-
 // Game
 namespace Game {
 	enum class CatalystColor : uint8_t {
+		None = 0xFF,
 		Blue = 0,
-		Yellow,
-		Pink,
+		Prismatic,
+		Gold,
 		Red,
-		Green,
-		Prismatic
+		Green
 	};
 
 	enum class CatalystRarity : uint8_t {
+		None = 0xFF,
 		Common = 0,
 		Rare,
 		Epic
 	};
 
 	enum class CatalystType : uint8_t {
+		None = 0xFF,
 		AoEDamage = 0,
 		AttackSpeed,
 		BuffDuration,
@@ -76,9 +75,17 @@ namespace Game {
 		public:
 			Catalyst() = default;
 			Catalyst(CatalystType type, CatalystRarity rarity, bool prismatic);
+			Catalyst(const LootData& lootData);
+
+			explicit operator bool() const { return mNounId != 0; }
 
 			uint32_t GetNounId() const;
-			uint16_t GetLevel() const;
+
+			CatalystType GetType() const;
+			CatalystColor GetColor() const;
+			CatalystRarity GetRarity() const;
+
+			bool MatchingColor(const Catalyst& other) const;
 
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
@@ -86,7 +93,11 @@ namespace Game {
 		private:
 			uint32_t mNounId = 0;
 
-			uint16_t mLevel = 0;
+			CatalystType mType = CatalystType::None;
+
+			CatalystColor mColor = CatalystColor::None;
+
+			CatalystRarity mRarity = CatalystRarity::None;
 	};
 }
 

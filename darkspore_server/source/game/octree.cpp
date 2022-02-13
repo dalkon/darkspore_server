@@ -145,7 +145,7 @@ namespace Game {
 			// TODO: get and update extents.
 		}
 
-		glm::vec3 extent = mRegion.mExtent;
+		glm::vec3 extent = mRegion.extent;
 		if (extent.x <= sSmallestExtent && extent.y <= sSmallestExtent && extent.z <= sSmallestExtent) {
 			return;
 		}
@@ -197,7 +197,7 @@ namespace Game {
 			mObjects.erase(std::next(mObjects.begin(), objectRemoveList[index]));
 		}
 
-		//Create child nodes where there are items contained in the bounding region
+		// Create child nodes where there are items contained in the bounding region
 		for (uint32_t corner = 0; corner < 8; ++corner) {
 			const auto& objects = objectList[corner];
 			if (objects.empty()) {
@@ -221,7 +221,7 @@ namespace Game {
 			return true;
 		}
 
-		const glm::vec3& extent = mRegion.mExtent;
+		const glm::vec3& extent = mRegion.extent;
 		if (extent.x <= sSmallestExtent && extent.y <= sSmallestExtent && extent.z <= sSmallestExtent) {
 			mObjects.push_back(object);
 			return true;
@@ -234,7 +234,7 @@ namespace Game {
 			if (mParentNode) {
 				return mParentNode->Insert(object);
 			} else {
-				std::cout << "Object outside of root region. (x: " << mRegion.mCenter.x << ", y: " << mRegion.mCenter.y << ", z: " << mRegion.mCenter.z << ")" << std::endl;
+				std::cout << std::format("Object outside of root region. (x: {}, y: {}, z: {})", mRegion.center.x, mRegion.center.y, mRegion.center.z) << std::endl;
 				return false;
 			}
 		}
@@ -296,18 +296,51 @@ namespace Game {
 		return false;
 	}
 
-	std::vector<ObjectPtr> OctTree::GetObjectsInRadius(const glm::vec3& position, float radius, const std::vector<NounType>& types) const {
+	std::vector<ObjectPtr> OctTree::GetObjectsInRegion(const BoundingBox& region, const std::vector<NounType>& types) const {
 		std::vector<ObjectPtr> objects;
-		
-		BoundingBox region;
-		region.mCenter = position;
-		region.mExtent = glm::vec3(radius);
+		GetObjectsInRegion(objects, region, types);
+		return objects;
+	}
 
+	std::vector<ObjectPtr> OctTree::GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const {
+		std::vector<ObjectPtr> objects;
 		GetObjectsInRadius(objects, region, types);
 		return objects;
 	}
 
-	void OctTree::GetObjectsInRadius(std::vector<ObjectPtr>& objects, const BoundingBox& region, const std::vector<NounType>& types) const {
+	void OctTree::GetObjectsInRegion(std::vector<ObjectPtr>& objects, const BoundingBox& region, const std::vector<NounType>& types) const {
+		if (!mBuilt) {
+			return;
+		}
+
+		for (const auto& object : mObjects) {
+			if (types.empty()) {
+				if (region.Intersects(object->GetBoundingBox())) {
+					objects.push_back(object);
+				}
+			} else {
+				auto type = object->GetType();
+				for (auto acceptedType : types) {
+					if (type == acceptedType) {
+						if (region.Intersects(object->GetBoundingBox())) {
+							objects.push_back(object);
+						}
+						break;
+					}
+				}
+			}
+		}
+
+		if (mActiveNodes) {
+			for (const auto& childNode : mChildNode) {
+				if (childNode && region.Intersects(childNode->mRegion)) {
+					childNode->GetObjectsInRegion(objects, region, types);
+				}
+			}
+		}
+	}
+
+	void OctTree::GetObjectsInRadius(std::vector<ObjectPtr>& objects, const BoundingSphere& region, const std::vector<NounType>& types) const {
 		if (!mBuilt) {
 			return;
 		}
@@ -380,7 +413,7 @@ namespace Game {
 
 				for (const auto& trigger : localTriggers) {
 					std::vector<ObjectPtr> foundObjects;
-					node->GetObjectsInRadius(foundObjects, trigger->GetBoundingBox(), {});
+					node->GetObjectsInRegion(foundObjects, trigger->GetBoundingBox(), {});
 
 					for (const auto& object : foundObjects) {
 						if (object->IsTrigger() || object == trigger->GetOwnerObject()) {

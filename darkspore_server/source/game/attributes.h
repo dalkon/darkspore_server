@@ -6,12 +6,8 @@
 #include <cstdint>
 #include <vector>
 #include <bitset>
-#include <memory>
 
-// RakNet
-namespace RakNet {
-	class BitStream;
-}
+#include "predefined.h"
 
 // Game
 namespace Game {
@@ -27,7 +23,7 @@ namespace Game {
 		PhysicalDefense,
 		PhysicalDamageReduction,
 		EnergyDefense,
-		CriticalRating,
+		CriticalRating,								// 10
 		NonCombatSpeed,
 		CombatSpeed,
 		DamageBuff,
@@ -37,7 +33,7 @@ namespace Game {
 		PhysicalDamageIncrease,
 		PhysicalDamageIncreaseFlat,
 		AutoCrit,
-		BehindDirectDamageIncrease,
+		BehindDirectDamageIncrease,					// 20
 		BehindOrSideDirectDamageIncrease,
 		CriticalDamageIncrease,
 		AttackSpeedScale,
@@ -47,7 +43,7 @@ namespace Game {
 		AoEResistance,
 		EnergyDamageBuff,
 		Intangible,
-		HealingReduction,
+		HealingReduction,							// 30
 		EnergyDamageIncrease,
 		EnergyDamageIncreaseFlat,
 		Immune,
@@ -57,7 +53,7 @@ namespace Game {
 		AoEDamage,
 		TechnologyTypeDamage,
 		SpacetimeTypeDamage,
-		LifeTypeDamage,
+		LifeTypeDamage,								// 40
 		ElementsTypeDamage,
 		SupernaturalTypeDamage,
 		TechnologyTypeResistance,
@@ -67,7 +63,7 @@ namespace Game {
 		SupernaturalTypeResistance,
 		MovementSpeedBuff,
 		ImmuneToDebuffs,
-		BuffDuration,
+		BuffDuration,								// 50
 		DebuffDuration,
 		ManaSteal,
 		DebuffDurationIncrease,
@@ -77,7 +73,7 @@ namespace Game {
 		MindControlled,
 		SwapDisabled,
 		ImmuneToRandomTeleport,
-		ImmuneToBanish,
+		ImmuneToBanish,								// 60
 		ImmuneToKnockback,
 		AoeRadius,
 		PetDamage,
@@ -87,7 +83,7 @@ namespace Game {
 		RangeIncrease,
 		OrbEffectiveness,
 		OverdriveBuildup,
-		OverdriveDuration,
+		OverdriveDuration,							// 70
 		LootFind,
 		Surefooted,
 		ImmuneToStunned,
@@ -97,7 +93,7 @@ namespace Game {
 		ImmuneToTerrified,
 		ImmuneToSilence,
 		ImmuneToCursed,
-		ImmuneToPoisonOrDisease,
+		ImmuneToPoisonOrDisease,					// 80
 		ImmuneToBurning,
 		ImmuneToRooted,
 		ImmuneToSlow,
@@ -107,7 +103,7 @@ namespace Game {
 		AggroDecrease,
 		PhysicalDamageDoneIncrease,
 		PhysicalDamageDoneByAbilityIncrease,
-		EnergyDamageDoneIncrease,
+		EnergyDamageDoneIncrease,					// 90
 		EnergyDamageDoneByAbilityIncrease,
 		ChannelTimeDecrease,
 		CrowdControlDurationDecrease,
@@ -117,7 +113,7 @@ namespace Game {
 		OnLockdown,
 		HoTDoneIncrease,
 		ProjectileDamageIncrease,
-		DistributeDamageAmongSquad,
+		DistributeDamageAmongSquad,					// 100
 		DeployBonusInvincibilityTime,
 		PhysicalDamageDecreaseFlat,
 		EnergyDamageDecreaseFlat,
@@ -127,7 +123,7 @@ namespace Game {
 		MaxWeaponDamagePercent,
 		DirectAttackDamage,
 		DirectAttackDamagePercent,
-		GetHitAnimDisabled,
+		GetHitAnimDisabled,							// 110
 		XPBoost,
 		InvisibleToSecurityTeleporters,
 		BodyScale,
@@ -148,6 +144,28 @@ namespace Game {
 		Elements,
 		Supernatural,
 		Generic
+	};
+
+	enum class Descriptors : uint32_t {
+		IsMelee				= 1 << 0,
+		IsBasic				= 1 << 1,
+		IsDoT				= 1 << 2,
+		IsAoE				= 1 << 3,
+		IsBuff				= 1 << 4,
+		IsDebuff			= 1 << 5,
+		IsPhysicalDamage	= 1 << 6,
+		IsEnergyDamage		= 1 << 7,
+		IsCosmetic			= 1 << 8,
+		IsHaste				= 1 << 9,
+		IsChannel			= 1 << 10,
+		HitReactNone		= 1 << 11,
+		IsHoT				= 1 << 12,
+		IsProjectile		= 1 << 13,
+		IgnorePlayerCount	= 1 << 14,
+		IgnoreDifficulty	= 1 << 15,
+		IsSelfResurrect		= 1 << 16,
+		IsInteract			= 1 << 17,
+		IsThorns			= 1 << 18
 	};
 
 	// AttributeType
@@ -289,6 +307,9 @@ namespace Game {
 			std::tuple<float, float> GetWeaponDamage() const;
 			void SetWeaponDamage(float minDamage, float maxDamage);
 
+			ObjectPtr GetOwnerObject() const;
+			void SetOwnerObject(const ObjectPtr& object);
+
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
 
@@ -296,6 +317,8 @@ namespace Game {
 
 		private:
 			static constexpr uint8_t sClientVisibleAttributeCount = static_cast<uint8_t>(AttributeType::ClientCount) + 2;
+
+			ObjectPtr::weak_type mOwnerObject;
 
 			std::vector<std::tuple<uint8_t, float>> mData;
 			std::vector<uint8_t> mErasedData;

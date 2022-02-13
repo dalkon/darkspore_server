@@ -72,6 +72,14 @@ namespace Game {
 		mMaxWeaponDamage = maxDamage;
 	}
 
+	ObjectPtr Attributes::GetOwnerObject() const {
+		return mOwnerObject.lock();
+	}
+
+	void Attributes::SetOwnerObject(const ObjectPtr& object) {
+		mOwnerObject = object;
+	}
+
 	void Attributes::WriteTo(RakNet::BitStream& stream) const {
 		using RakNet::bytes_to_bits;
 		using RakNet::ReallocateStream;

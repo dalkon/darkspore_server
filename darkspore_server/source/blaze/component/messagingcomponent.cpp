@@ -176,7 +176,7 @@ namespace Blaze {
 							game->AddClientTask(0, RakNet::PacketID::PlayerCharacterDeploy);
 							messageText = "<tried to deploy character>";
 						} else {
-							auto packetId = utils::to_number<MessageID>(messageTextView, 0);
+							auto packetId = utils::to_number<RakNet::PacketID>(messageTextView, 0);
 							game->AddClientTask(0, packetId);
 
 							std::string valueStr(messageTextView);
@@ -198,6 +198,8 @@ namespace Blaze {
 							});
 							messageText = "<load lua buffer>";
 						}
+					} else if (messageTextView.starts_with("debug")) {
+						game->AddClientTask(0, RakNet::PacketID::PhysicsChanged);
 					}
 				}
 

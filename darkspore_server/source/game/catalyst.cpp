@@ -1,6 +1,7 @@
 
 // Include
 #include "catalyst.h"
+#include "object.h"
 
 #include "utils/functions.h"
 
@@ -11,11 +12,10 @@ namespace Game {
 	std::string to_string(CatalystColor color) {
 		switch (color) {
 			case CatalystColor::Blue: return "blue";
-			case CatalystColor::Yellow: return "yellow";
-			case CatalystColor::Pink: return "pink";
+			case CatalystColor::Prismatic: return "prismatic";
+			case CatalystColor::Gold: return "yellow";
 			case CatalystColor::Red: return "red";
 			case CatalystColor::Green: return "green";
-			case CatalystColor::Prismatic: return "prismatic";
 		}
 		return "unknown";
 	}
@@ -71,14 +71,15 @@ namespace Game {
 	}
 
 	// Catalyst
-	Catalyst::Catalyst(CatalystType type, CatalystRarity rarity, bool prismatic) {
+	Catalyst::Catalyst(CatalystType type, CatalystRarity rarity, bool prismatic) : mType(type), mRarity(rarity) {
 		std::string noun = "crystal_";
 		if (prismatic) {
 			noun += "wild_";
+			mColor = CatalystColor::Prismatic;
 		}
 
-		noun += to_string(type);
-		switch (rarity) {
+		noun += to_string(mType);
+		switch (mRarity) {
 			case CatalystRarity::Rare:
 				noun += "_rare";
 				break;
@@ -89,20 +90,96 @@ namespace Game {
 		}
 
 		mNounId = utils::hash_id(noun + ".noun");
-		mLevel = static_cast<uint16_t>(rarity);
+		if (mColor == CatalystColor::Prismatic) {
+			return;
+		}
+
+		switch (mType) {
+			case CatalystType::AoEDamage:
+			case CatalystType::AttackSpeed:
+			case CatalystType::Crit:
+			case CatalystType::Damage:
+			case CatalystType::DamageAura:
+			case CatalystType::DebuffIncrease:
+			case CatalystType::Knockback:
+			case CatalystType::Mana:
+			case CatalystType::ProjectileSpeed:
+				mColor = CatalystColor::Red;
+				break;
+
+			case CatalystType::BuffDuration:
+			case CatalystType::DebuffDuration:
+			case CatalystType::Dexterity:
+			case CatalystType::Mind:
+			case CatalystType::PetDamage:
+			case CatalystType::PetHealth:
+			case CatalystType::Strength:
+				mColor = CatalystColor::Gold;
+				break;
+
+			case CatalystType::CCReduction:
+			case CatalystType::DefenseRating:
+			case CatalystType::DeflectionRating:
+			case CatalystType::DodgeRating:
+			case CatalystType::Health:
+			case CatalystType::ImmunePoison:
+			case CatalystType::ImmuneSleep:
+			case CatalystType::ImmuneSlow:
+			case CatalystType::ImmuneStun:
+			case CatalystType::ManaCostReduction:
+			case CatalystType::Surefooted:
+			case CatalystType::Thorns:
+				mColor = CatalystColor::Blue;
+				break;
+
+			case CatalystType::Cooldown:
+			case CatalystType::LifeLeech:
+			case CatalystType::ManaLeech:
+			case CatalystType::MoveSpeed:
+			case CatalystType::OrbEffectiveness:
+			case CatalystType::OverdriveBuildup:
+			case CatalystType::RangeIncrease:
+				mColor = CatalystColor::Green;
+				break;
+		}
 	}
+
+	Catalyst::Catalyst(const LootData& lootData) : Catalyst(
+		static_cast<CatalystType>(lootData.GetCatalystType()),
+		static_cast<CatalystRarity>(lootData.GetCatalystLevel()),
+		lootData.IsCatalystPrismatic()
+	) {}
 
 	uint32_t Catalyst::GetNounId() const {
 		return mNounId;
 	}
 
-	uint16_t Catalyst::GetLevel() const {
-		return mLevel;
+	CatalystType Catalyst::GetType() const {
+		return mType;
+	}
+
+	CatalystColor Catalyst::GetColor() const {
+		return mColor;
+	}
+
+	CatalystRarity Catalyst::GetRarity() const {
+		return mRarity;
+	}
+
+	bool Catalyst::MatchingColor(const Catalyst& other) const {
+		const auto color = GetColor();
+		const auto otherColor = other.GetColor();
+		if (color == CatalystColor::None || otherColor == CatalystColor::None) {
+			return false;
+		} else if (color == CatalystColor::Prismatic || otherColor == CatalystColor::Prismatic) {
+			return true;
+		}
+		return color == otherColor;
 	}
 
 	void Catalyst::WriteTo(RakNet::BitStream& stream) const {
 		Write<uint32_t>(stream, mNounId);
-		Write<uint16_t>(stream, mLevel);
+		Write<uint16_t>(stream, static_cast<uint16_t>(mRarity));
 
 		// padding?
 		Write<uint32_t>(stream, 0x00);
@@ -114,7 +191,7 @@ namespace Game {
 		RakNet::reflection_serializer<2> reflector(stream);
 		reflector.begin();
 		reflector.write<0>(mNounId);
-		reflector.write<1>(mLevel);
+		reflector.write<1>(static_cast<uint16_t>(mRarity));
 		reflector.end();
 	}
 }

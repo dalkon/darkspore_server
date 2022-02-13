@@ -3,6 +3,8 @@
 #define _BLAZE_COMPONENT_USERSESSION_HEADER
 
 // Include
+#include "predefined.h"
+
 #include "blaze/component.h"
 #include "blaze/functions.h"
 
@@ -23,8 +25,8 @@ namespace Blaze {
 
 		public:
 			static void NotifyUserSessionExtendedDataUpdate(Request& request, int64_t userId, const UserSessionExtendedData& extendedData);
-			static void NotifyUserAdded(Request& request, int64_t userId, const std::string& userName);
-			static void NotifyUserUpdated(Request& request, int64_t userId);
+			static void NotifyUserAdded(Request& request, const SporeNet::UserPtr& user);
+			static void NotifyUserUpdated(Request& request, const SporeNet::UserPtr& user, SessionState state);
 
 		private:
 			static void LookupUser(Request& request);

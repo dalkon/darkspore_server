@@ -24,7 +24,7 @@ namespace Game {
 
 			void OnActivate() override;
 			void OnDeactivate() override;
-			void OnTick() override;
+			void OnTick(float deltaTime) override;
 
 			const ObjectPtr& GetOwnerObject() const;
 
@@ -72,9 +72,10 @@ namespace Game {
 			TriggerVolumePtr GetTrigger(uint32_t id) const;
 			TriggerVolumePtr CreateTrigger(const glm::vec3& position, float radius);
 
-			std::vector<ObjectPtr> GetObjectsInRadius(const glm::vec3& position, float radius, const std::vector<NounType>& types) const;
+			std::vector<ObjectPtr> GetObjectsInRegion(const BoundingBox& region, const std::vector<NounType>& types) const;
+			std::vector<ObjectPtr> GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const;
 
-			void Update();
+			void Update(float deltaTime);
 
 		private:
 			void MarkForDeletion(const ObjectPtr& object);

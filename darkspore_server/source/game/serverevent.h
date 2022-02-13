@@ -69,6 +69,8 @@ namespace Game {
 		public:
 			virtual ~ServerEventBase() = default;
 
+			virtual explicit operator bool() const = 0;
+
 			void SetIgnoredPlayerBits(uint8_t bits);
 
 			// virtual void WriteTo(RakNet::BitStream& stream) const = 0; // UNUSED
@@ -82,10 +84,13 @@ namespace Game {
 
 	class ServerEvent : public ServerEventBase {
 		public:
+			explicit operator bool() const override;
+
 			void WriteReflection(RakNet::BitStream& stream) const override;
 
 		public:
 			glm::quat mOrientation {};
+			glm::vec3 mPosition {};
 			glm::vec3 mFacing {};
 			glm::vec3 mTargetPoint {};
 
@@ -105,6 +110,9 @@ namespace Game {
 
 	class ClientEvent : public ServerEventBase {
 		public:
+			explicit operator bool() const override;
+
+			void SetEventId(ClientEventID eventId);
 			void SetLootPickup(uint8_t playerId, const SporeNet::Part& part);
 			void SetLootPickup(uint8_t playerId, const LootData& lootData);
 			void SetCatalystPickup(uint8_t playerId);

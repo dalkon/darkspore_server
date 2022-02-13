@@ -428,6 +428,18 @@ namespace Blaze {
 	}
 
 	void AuthComponent::WriteLogin(TDF::Packet& packet, const SporeNet::UserPtr& user) {
+		/*
+			Internal packet offsets
+				NTOS = 0x71
+				PCTK = 0x10 (max len: 0x400)
+				PLST = 0x1C
+				PRIV = 0x4C (max len: 0x80)
+				SKEY = 0x64 (max len: 0x40)
+				SPAM = 0x70
+				THST = 0x58 (max len: 0x80)
+				TURI = 0x40 (max len: 0x80)
+				UID = 0x08
+		*/
 		if (!user) {
 			return;
 		}
@@ -451,7 +463,7 @@ namespace Blaze {
 		packet.pop();
 
 		packet.put_string("PRIV", "");
-		packet.put_string("SKEY", "test_session_key");
+		packet.put_string("SKEY", "telemetry_key");
 		packet.put_integer("SPAM", 0);
 		packet.put_string("THST", "");
 		packet.put_string("TURI", "");
@@ -470,7 +482,7 @@ namespace Blaze {
 		SessionInfo sessionInfo;
 		sessionInfo.blazeId = userId;
 		sessionInfo.firstLogin = false;
-		sessionInfo.key = "test_session_key";
+		sessionInfo.key = "telemetry_key";
 		sessionInfo.lastLogin = currentTime;
 		sessionInfo.uid = userId;
 
@@ -530,6 +542,9 @@ namespace Blaze {
 		WriteAuthToken(packet, user->get_auth_token());
 
 		request.reply(packet);
+
+		// Notifications
+		UserSessionComponent::NotifyUserUpdated(request, user, SessionState::Authenticated);
 	}
 
 	void AuthComponent::Login(Request& request) {
@@ -635,7 +650,7 @@ namespace Blaze {
 		SessionInfo sessionInfo;
 		sessionInfo.blazeId = userId;
 		sessionInfo.firstLogin = false;
-		sessionInfo.key = "test_session_key";
+		sessionInfo.key = "telemetry_key";
 		sessionInfo.lastLogin = currentTime;
 		sessionInfo.uid = userId;
 
@@ -651,8 +666,8 @@ namespace Blaze {
 		request.reply(packet);
 
 		// Notifications
-		UserSessionComponent::NotifyUserAdded(request, userId, user->get_name());
-		UserSessionComponent::NotifyUserUpdated(request, userId);
+		UserSessionComponent::NotifyUserAdded(request, user);
+		UserSessionComponent::NotifyUserUpdated(request, user, SessionState::Connected);
 	}
 
 	void AuthComponent::Logout(Request& request) {

@@ -79,6 +79,25 @@ namespace Game {
 		std::string id;
 	};
 
+	// CashOutData
+	class CashOutData {
+		public:
+			void WriteTo(RakNet::BitStream& stream) const;
+
+		private:
+			std::array<uint32_t, 4> mGoldMedals {};
+			std::array<uint32_t, 4> mSilverMedals {};
+			std::array<uint32_t, 4> mBronzeMedals {};
+			std::array<uint32_t, 4> mUniqueChances {};
+			std::array<uint32_t, 4> mRareChances {};
+
+			uint32_t mPlanetsCompleted = 0;
+
+			float mDna = 0;
+
+			friend class Instance;
+	};
+
 	// Predefined
 	class ObjectManager;
 	class Lua;
@@ -125,13 +144,16 @@ namespace Game {
 			auto& GetStateData() { return mStateData; }
 			const auto& GetStateData() const { return mStateData; }
 
+			auto& GetCashOutData() { return mCashOutData; }
+			const auto& GetCashOutData() const { return mCashOutData; }
+
 			auto& GetInfo() { return mData; }
 			const auto& GetInfo() const { return mData; }
 
 			const auto& GetObjectives() const { return mObjectives; }
 
 			void AddServerTask(std::function<void(void)> task);
-			void AddClientTask(uint8_t id, MessageID packet);
+			void AddClientTask(uint8_t id, RakNet::PacketID packet);
 
 			// Events
 			void OnObjectCreate(const ObjectPtr& object);
@@ -163,10 +185,13 @@ namespace Game {
 			void DropCatalyst(const PlayerPtr& player, uint32_t catalystSlot);
 			void DropCatalyst();
 
+			//
+			void BeamOut(const PlayerPtr& player);
+
 			// Server stuff
 			void AddEffect();
 
-			void SendObjectCreate(const ObjectPtr& object);
+			bool SendObjectCreate(const ObjectPtr& object);
 			void SendObjectDelete(const ObjectPtr& object);
 			void SendObjectDelete(const std::vector<ObjectPtr>& objects);
 			void SendObjectUpdate(const ObjectPtr& object);
@@ -200,12 +225,17 @@ namespace Game {
 			RakNet::ChainVoteData mChainData {};
 			RakNet::GameStateData mStateData {};
 
+			CashOutData mCashOutData {};
+
 			Blaze::ReplicatedGameData mData {};
 
 			uint64_t mGameStartTime = 0;
 			uint64_t mGameTime = 0;
+			uint64_t mGameTimeLua = 0;
 
 			Level mLevel {};
+
+			bool mGameStarted = false;
 			bool mLevelLoaded = false;
 
 			friend class GameManager;

@@ -201,6 +201,9 @@
 
 */
 
+// temporary
+const std::string currentTheme = "classic";
+
 // XML, TODO: XMLResponse class?
 auto create_xml_response() {
 	std::pair<pugi::xml_document, pugi::xml_node> data;
@@ -288,6 +291,11 @@ namespace Game {
 			std::cout << "Got API route." << std::endl;
 		});
 
+		// Telemetry
+		router->add("/telemetryevent", { boost::beast::http::verb::get, boost::beast::http::verb::post }, [](HTTP::Session& session, HTTP::Response& response) {
+			std::cout << "Got telemetry event." << std::endl;
+		});
+
 		// ReCap
 		router->add("/recap/api", { boost::beast::http::verb::get, boost::beast::http::verb::post }, [this](HTTP::Session& session, HTTP::Response& response) {
 			const auto& request = session.get_request();
@@ -324,6 +332,7 @@ namespace Game {
 			if (build.empty()) { build = "5.3.0.127"; }
 			if (method.empty()) { method = "api.config.getConfigs"; }
 
+			std::cout << method << std::endl;
 			if (method.find("api.config.") == 0) {
 				if (method == "api.config.getConfigs") {
 					bootstrap_config_getConfig(session, response);
@@ -339,10 +348,12 @@ namespace Game {
 				response.set(boost::beast::http::field::content_type, "text/html");
 				response.body() = skipLauncherScript;
 			} else {
-				std::string path = Config::Get(CONFIG_STORAGE_PATH) +
-					"www/" +
-					Config::Get(CONFIG_DARKSPORE_LAUNCHER_THEMES_PATH) +
-					"darkui/index.html";
+				std::string path = std::format(
+					"{}www/{}{}/index.html",
+					Config::Get(CONFIG_STORAGE_PATH),
+					Config::Get(CONFIG_DARKSPORE_LAUNCHER_THEMES_PATH),
+					currentTheme
+				);
 
 				std::string client_script(recapClientScript);
 				utils::string_replace(client_script, "{{host}}", Config::Get(CONFIG_SERVER_HOST));
@@ -360,11 +371,13 @@ namespace Game {
 
 			const std::string& resource = request.uri.resource();
 
-			std::string path = Config::Get(CONFIG_STORAGE_PATH) +
-				"www/" +
-				Config::Get(CONFIG_DARKSPORE_LAUNCHER_THEMES_PATH) +
-				"darkui/images/" +
-				resource.substr(resource.rfind('/') + 1);
+			std::string path = std::format(
+				"{}www/{}{}/images/{}",
+				Config::Get(CONFIG_STORAGE_PATH),
+				Config::Get(CONFIG_DARKSPORE_LAUNCHER_THEMES_PATH),
+				currentTheme,
+				resource.substr(resource.rfind('/') + 1)
+			);
 
 			response.version() |= 0x1000'0000;
 			response.body() = std::move(path);
@@ -802,7 +815,7 @@ namespace Game {
 		}
 
 		// selectedTheme
-		document.AddMember(rapidjson::Value("selectedTheme"), rapidjson::Value("darkui"), allocator);
+		document.AddMember(rapidjson::Value("selectedTheme"), rapidjson::Value(currentTheme, allocator), allocator);
 
 		rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
 		document.Accept(writer);
@@ -1017,7 +1030,7 @@ namespace Game {
 		docResponse.append_child("to_image");
 		docResponse.append_child("from_image");
 
-		bool include_settings = request.uri.parameter("include_settings") == "true";
+		bool include_settings = request.uri.parameter<bool>("include_settings");
 		if (include_settings) {
 			if (auto settings = docResponse.append_child("settings")) {
 				using namespace std::string_view_literals;
@@ -1028,14 +1041,9 @@ namespace Game {
 			}
 		}
 
-		bool include_patches = request.uri.parameter("include_patches") == "true";
+		bool include_patches = request.uri.parameter<bool>("include_patches");
 		if (include_patches) {
-			docResponse.append_child("patches");
-			/*
-			target, date, from_version, to_version, id, description, application_instructions,
-			locale, shipping, file_url, archive_size, uncompressed_size,
-			hashes(attributes, Version, Hash, Size, BlockSize)
-			*/
+			add_patches(docResponse);
 		}
 
 		set_response_body(response, document, boost::beast::http::status::ok);
@@ -1048,8 +1056,6 @@ namespace Game {
 		add_common_keys(docResponse);
 
 		if (auto status = docResponse.append_child("status")) {
-			utils::xml_add_text_node(status, "health", 0x11);
-
 			if (auto api = status.append_child("api")) {
 				utils::xml_add_text_node(api, "health", 1); // this+4Ah 1/0
 				utils::xml_add_text_node(api, "revision", 1); // this+5Ch integer, setz to this+59h
@@ -1088,7 +1094,7 @@ namespace Game {
 			*/
 		}
 
-		bool include_broadcasts = request.uri.parameter("include_broadcasts") == "true";
+		bool include_broadcasts = request.uri.parameter<bool>("include_broadcasts");
 		if (include_broadcasts) {
 			add_broadcasts(docResponse);
 		}
@@ -1278,19 +1284,19 @@ namespace Game {
 				account.Write(docAccount);
 			}
 
-			if (request.uri.parameter("include_creatures") == "true") {
+			if (request.uri.parameter<bool>("include_creatures")) {
 				user->get_creatures().WriteApi(docResponse);
 			}
 
-			if (request.uri.parameter("include_decks") == "true") {
+			if (request.uri.parameter<bool>("include_decks")) {
 				user->WriteSquadsAPI(docResponse);
 			}
 
-			if (request.uri.parameter("include_feed") == "true") {
+			if (request.uri.parameter<bool>("include_feed")) {
 				user->get_feed().Write(docResponse);
 			}
 
-			if (request.uri.parameter("include_settings") == "true") {
+			if (request.uri.parameter<bool>("include_settings")) {
 				if (auto settingsDoc = docResponse.append_child("settings")) {
 					// Values can be an integer(long) or "on/off"
 					/*
@@ -1301,7 +1307,7 @@ namespace Game {
 				}
 			}
 
-			if (request.uri.parameter("include_server_tuning") == "true") {
+			if (request.uri.parameter<bool>("include_server_tuning")) {
 				if (auto server_tuning = docResponse.append_child("server_tuning")) {
 					utils::xml_add_text_node(server_tuning, "itemstore_offer_period", timestamp);
 					utils::xml_add_text_node(server_tuning, "itemstore_current_expiration", timestamp + (3 * 60 * 60 * 1000));
@@ -1315,7 +1321,7 @@ namespace Game {
 				}
 			}
 
-			if (request.uri.parameter("cookie") == "true") {
+			if (request.uri.parameter<bool>("cookie")) {
 				response.set(boost::beast::http::field::set_cookie, "token=" + user->get_auth_token());
 			}
 		} else {
@@ -1497,55 +1503,78 @@ namespace Game {
 		auto [document, docResponse] = create_xml_response();
 		add_common_keys(docResponse);
 
-		if (auto docAccount = docResponse.append_child("account")) {
-			account.Write(docAccount);
+		switch (response.method()) {
+			case boost::beast::http::verb::get: {
+				if (auto docAccount = docResponse.append_child("account")) {
+					account.Write(docAccount);
+				}
+
+				user->WriteSquadsAPI(docResponse);
+
+				set_response_body(response, document, boost::beast::http::status::ok);
+				break;
+			}
+
+			case boost::beast::http::verb::post: {
+				bool include_creatures = request.uri.parameter<bool>("include_creatures");
+				bool include_decks = request.uri.parameter<bool>("include_decks");
+				bool include_feed = request.uri.parameter<bool>("include_feed");
+				bool include_stats = request.uri.parameter<bool>("include_stats");
+
+				if (include_creatures || include_decks || include_feed || include_stats) {
+					if (auto docAccount = docResponse.append_child("account")) {
+						account.Write(docAccount);
+					}
+
+					if (include_creatures) {
+						user->get_creatures().WriteApi(docResponse);
+					}
+
+					if (include_decks) {
+						user->WriteSquadsAPI(docResponse);
+					}
+
+					if (include_feed) {
+						user->get_feed().Write(docResponse);
+					}
+
+					if (include_stats) {
+						auto stats = docResponse.append_child("stats");
+						auto stat = stats.append_child("stat");
+						utils::xml_add_text_node(stat, "wins", 0);
+
+						/*
+							if(detailstats.childNodes[i].tagName != 'pve_swaps'
+							  && detailstats.childNodes[i].tagName != 'pve_overcharges'
+							  && detailstats.childNodes[i].tagName != 'pve_dna'
+							  && detailstats.childNodes[i].tagName != 'pve_abilitiesUsed'
+							  && detailstats.childNodes[i].tagName != 'pve_healthCollected'
+							  && detailstats.childNodes[i].tagName != 'pve_powerCollected'
+							  && detailstats.childNodes[i].tagName != 'pve_obelisks'
+							  && detailstats.childNodes[i].tagName != 'pve_catalysts'
+							  && detailstats.childNodes[i].tagName != 'pvp_xp'
+							  && detailstats.childNodes[i].tagName != 'pvp_swaps'
+							  && detailstats.childNodes[i].tagName != 'pvp_overcharges'
+							  && detailstats.childNodes[i].tagName != 'pvp_abilitiesUsed'
+							  && detailstats.childNodes[i].tagName != 'pvp_healthCollected'
+							  && detailstats.childNodes[i].tagName != 'pvp_powerCollected'
+							  && detailstats.childNodes[i].tagName != 'wins'
+							  && detailstats.childNodes[i].tagName != 'pvp_glickoSkill'
+							  && detailstats.childNodes[i].tagName != 'pvp_glickoRD'
+							  && detailstats.childNodes[i].tagName != 'pve_progression'
+						*/
+					}
+				} else {
+					utils::xml_add_text_node(docResponse, "blaze_id", account.id);
+					utils::xml_add_text_node(docResponse, "name", user->get_name());
+					utils::xml_add_text_node(docResponse, "grant_online_access", account.grantOnlineAccess);
+					utils::xml_add_text_node(docResponse, "cashout_bonus_time", account.cashoutBonusTime);
+				}
+
+				set_response_body(response, document, boost::beast::http::status::created);
+				break;
+			}
 		}
-
-		if (request.uri.parameter("include_creatures") == "true") {
-			user->get_creatures().WriteApi(docResponse);
-		}
-
-		if (request.uri.parameter("include_decks") == "true") {
-			user->WriteSquadsAPI(docResponse);
-		}
-
-		if (request.uri.parameter("include_feed") == "true") {
-			user->get_feed().Write(docResponse);
-		}
-
-		if (request.uri.parameter("include_stats") == "true") {
-			auto stats = docResponse.append_child("stats");
-			auto stat = stats.append_child("stat");
-			utils::xml_add_text_node(stat, "wins", 0);
-
-			/*
- if(detailstats.childNodes[i].tagName != 'pve_swaps'
-		  && detailstats.childNodes[i].tagName != 'pve_overcharges'
-		  && detailstats.childNodes[i].tagName != 'pve_dna'
-		  && detailstats.childNodes[i].tagName != 'pve_abilitiesUsed'
-		  && detailstats.childNodes[i].tagName != 'pve_healthCollected'
-		  && detailstats.childNodes[i].tagName != 'pve_powerCollected'
-		  && detailstats.childNodes[i].tagName != 'pve_obelisks'
-		  && detailstats.childNodes[i].tagName != 'pve_catalysts'
-		  && detailstats.childNodes[i].tagName != 'pvp_xp'
-		  && detailstats.childNodes[i].tagName != 'pvp_swaps'
-		  && detailstats.childNodes[i].tagName != 'pvp_overcharges'
-		  && detailstats.childNodes[i].tagName != 'pvp_abilitiesUsed'
-		  && detailstats.childNodes[i].tagName != 'pvp_healthCollected'
-		  && detailstats.childNodes[i].tagName != 'pvp_powerCollected'
-		  && detailstats.childNodes[i].tagName != 'wins'
-		  && detailstats.childNodes[i].tagName != 'pvp_glickoSkill'
-		  && detailstats.childNodes[i].tagName != 'pvp_glickoRD'
-		  && detailstats.childNodes[i].tagName != 'pve_progression'
-			*/
-		}
-
-		utils::xml_add_text_node(docResponse, "blaze_id", account.id);
-		utils::xml_add_text_node(docResponse, "name", user->get_name());
-		utils::xml_add_text_node(docResponse, "grant_online_access", account.grantOnlineAccess);
-		utils::xml_add_text_node(docResponse, "cashout_bonus_time", account.cashoutBonusTime);
-
-		set_response_body(response, document, boost::beast::http::status::created);
 	}
 
 	void API::game_account_logout(HTTP::Session& session, HTTP::Response& response) {
@@ -1635,7 +1664,7 @@ namespace Game {
 
 			}
 
-			success = true;
+			success = false;
 		}
 
 		add_common_keys(docResponse, success);
@@ -1786,8 +1815,8 @@ namespace Game {
 
 		const auto& user = session.get_user();
 		if (user) {
-			bool include_abilities = request.uri.parameter("include_abilities") == "true";
-			bool include_parts = request.uri.parameter("include_parts") == "true";
+			bool include_abilities = request.uri.parameter<bool>("include_abilities");
+			bool include_parts = request.uri.parameter<bool>("include_parts");
 
 			auto creature = user->GetCreatureById(request.uri.parameter<uint32_t>("id"));
 			if (creature) {
@@ -1810,7 +1839,7 @@ namespace Game {
 		add_common_keys(docResponse);
 
 		if (user) {
-			bool include_abilities = request.uri.parameter("include_abilities") == "true";
+			bool include_abilities = request.uri.parameter<bool>("include_abilities");
 
 			auto templateCreature = SporeNet::Get().GetTemplateDatabase().Get(request.uri.parameter<uint32_t>("id"));
 			if (templateCreature) {
@@ -2005,6 +2034,73 @@ version = 1
 		set_response_body(response, document, boost::beast::http::status::ok);
 	}
 
+	void API::add_patches(pugi::xml_node& node) {
+		/*
+			target, date, from_version, to_version, id, description, application_instructions,
+			locale, shipping, file_url, archive_size, uncompressed_size,
+			hashes(attributes, Version, Hash, Size, BlockSize)
+		*/
+		auto patches = node.append_child("patches");
+		if (!patches) {
+			return;
+		}
+
+		// target
+		patches.append_attribute("target").set_value("test");
+
+		// date
+		patches.append_attribute("date").set_value("test2");
+
+		// from_version
+		patches.append_attribute("from_version").set_value("test3");
+
+		// to_version
+		patches.append_attribute("to_version").set_value("test4");
+
+		// id
+		patches.append_attribute("id").set_value("test5");
+
+		// description
+		patches.append_attribute("description").set_value("test6");
+
+		// application_instructions
+		patches.append_attribute("application_instructions").set_value("test6");
+
+		// locale
+		patches.append_attribute("locale").set_value("en-US");
+
+		// shipping (true or false)
+		patches.append_attribute("shipping").set_value("true");
+
+		// file_url
+		patches.append_attribute("file_url").set_value("test.zip");
+
+		// archive_size
+		patches.append_attribute("archive_size").set_value("1000");
+
+		// uncompressed_size
+		patches.append_attribute("uncompressed_size").set_value("2000");
+
+		// hashes
+		patches.append_attribute("hashes").set_value("0123456789abcdef");
+
+		// length 16 hashes u128
+		/*
+		if (auto hashes = patches.append_child("hashes")) {
+			std::vector<std::string> test = { "a", "b" };
+			for (const auto& t : test) {
+				auto attributes = hashes.append_child("attributes");
+				utils::xml_add_text_node(attributes, "Version", "1");
+				utils::xml_add_text_node(attributes, "Hash", "2");
+				utils::xml_add_text_node(attributes, "Size", "3");
+
+				// required field
+				utils::xml_add_text_node(attributes, "BlockSize", "4");
+			}
+		}
+		*/
+	}
+
 	void API::add_broadcasts(pugi::xml_node& node) {
 		if (auto broadcasts = node.append_child("broadcasts")) {
 			
@@ -2061,6 +2157,10 @@ version = 1
 		response.set(boost::beast::http::field::content_language, "en-us");
 		response.set(boost::beast::http::field::content_type, "text/xml");
 		// response.set(boost::beast::http::field::content_type, "text/xml; charset=utf-8");
+
+		if (result == boost::beast::http::status::created) {
+			response.set(boost::beast::http::field::location, "http://127.0.0.1/api");
+		}
 
 		response.result() = result;
 		response.body() = std::move(writer.result);

@@ -108,22 +108,22 @@ namespace Blaze {
 	void TickerServer::Write(TDF::Packet& packet) const {
 		packet.put_string("ADRS", address);
 		packet.put_integer("PORT", port);
-		packet.put_string("SKEY", skey);
+		packet.put_string("SKEY", key);
 	}
 
 	// TelemetryServer
 	void TelemetryServer::Write(TDF::Packet& packet) const {
 		packet.put_string("ADRS", address);
 		packet.put_integer("ANON", anonymous ? 1 : 0);
-		packet.put_string("DISA", disa);
+		packet.put_string("DISA", disable);
 		packet.put_string("FILT", filter);
 		packet.put_integer("LOC", location);
-		packet.put_string("NOOK", nook);
+		packet.put_string("NOOK", noToggleOk);
 		packet.put_integer("PORT", port);
-		packet.put_integer("SDLY", sdly);
+		packet.put_integer("SDLY", sendDelay);
 		packet.put_string("SESS", session);
-		packet.put_string("SKEY", skey);
-		packet.put_integer("SPCT", spct);
+		packet.put_string("SKEY", key);
+		packet.put_integer("SPCT", sendPercentage);
 	}
 
 	// PssConfig
@@ -160,12 +160,12 @@ namespace Blaze {
 	// QosConfigInfo
 	void QosConfigInfo::Write(TDF::Packet& packet) const {
 		packet.push_struct("BWPS"); // something something Ping Site
-		if (!pingSiteInfoByAlias.empty()) {
-			pingSiteInfoByAlias.begin()->second.Write(packet);
+		if (!bandwidthPingSiteInfo.empty()) {
+			bandwidthPingSiteInfo.begin()->Write(packet);
 		}
 		packet.pop();
 
-		packet.put_integer("LNP", lnp);
+		packet.put_integer("LNP", latencyProbes);
 
 		packet.push_map("LTPS", TDF::Type::String, TDF::Type::Struct);
 		for (const auto& [name, siteInfo] : pingSiteInfoByAlias) {
@@ -175,7 +175,7 @@ namespace Blaze {
 		}
 		packet.pop();
 
-		packet.put_integer("SVID", svid);
+		packet.put_integer("SVID", serviceId);
 	}
 
 	// UserSessionExtendedData

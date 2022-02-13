@@ -22,6 +22,8 @@ namespace Game {
 	class Object;
 	class ObjectManager;
 
+	using ObjectPtr = std::shared_ptr<Object>;
+
 	// StealthType
 	enum class StealthType : uint8_t {
 		None = 0,
@@ -47,6 +49,13 @@ namespace Game {
 			std::vector<uint8_t> mUsedIndexes;
 	};
 
+	// CorpseState
+	enum class CorpseState : uint32_t {
+		Alive = 0,
+		Unknown,
+		Vaporized
+	};
+
 	// CombatantData
 	class CombatantData {
 		public:
@@ -54,8 +63,12 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
+			CorpseState mCorpseState = CorpseState::Alive;
+
 			float mHitPoints = 0;
 			float mManaPoints = 0;
+
+			bool mCorpseFadingAway = false;
 
 			friend class Object;
 	};
@@ -100,13 +113,17 @@ namespace Game {
 
 			int32_t GetLevel() const;
 			int32_t GetRarity() const;
+			int32_t GetCatalystLevel() const;
+			int32_t GetCatalystType() const;
+
+			bool IsCatalystPrismatic() const;
 
 			void SetId(uint64_t id);
 			void SetInstanceId(uint64_t id);
 
 			void SetPart(const SporeNet::Part& part);
 			void SetDNAAmount(float amount);
-			void SetCrystal(const Catalyst& catalyst);
+			void SetCatalyst(const Catalyst& catalyst);
 
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
@@ -123,10 +140,13 @@ namespace Game {
 			uint32_t mSecondaryPrefixAssetId = 0;
 
 			int32_t mItemLevel = 0;
-			int32_t mCrystalLevel = 0;
 			int32_t mRarity = 0;
+			int32_t mCatalystLevel = 0;
+			int32_t mCatalystType = 0;
 
 			float mDNAAmount = 0;
+
+			bool mCatalystPrismatic = false;
 
 			friend class Object;
 	};
@@ -253,16 +273,17 @@ namespace Game {
 	// Object
 	class Object : public std::enable_shared_from_this<Object> {
 		public:
-			enum Flags : uint8_t {
+			enum Flags : uint16_t {
 				None							= 0,
 				MarkedForDeletion				= 1 << 0,
-				Dirty							= 1 << 1,
-				UpdateCombatant					= 1 << 2,
-				UpdateAttributes				= 1 << 3,
-				UpdateLootData					= 1 << 4,
-				UpdateAgentBlackboardData		= 1 << 5,
-				UpdateInteractableData			= 1 << 6,
-				UpdateLocomotion				= 1 << 7,
+				Created							= 1 << 1,
+				Dirty							= 1 << 2,
+				UpdateCombatant					= 1 << 3,
+				UpdateAttributes				= 1 << 4,
+				UpdateLootData					= 1 << 5,
+				UpdateAgentBlackboardData		= 1 << 6,
+				UpdateInteractableData			= 1 << 7,
+				UpdateLocomotion				= 1 << 8,
 
 				UpdateFlags = UpdateCombatant | UpdateAttributes | UpdateLootData | UpdateAgentBlackboardData | UpdateInteractableData | UpdateLocomotion
 			};
@@ -273,12 +294,14 @@ namespace Game {
 		public:
 			virtual ~Object() = default;
 
+			virtual void Initialize();
+
 			virtual bool IsTrigger() const { return false; }
 			bool IsCreature() const;
 
 			virtual void OnActivate();
 			virtual void OnDeactivate();
-			virtual void OnTick();
+			virtual void OnTick(float deltaTime);
 
 			void SetTickOverride(sol::protected_function func);
 			void SetPassiveAbility(const AbilityPtr& ability);
@@ -289,8 +312,9 @@ namespace Game {
 			Instance& GetGame();
 			const Instance& GetGame() const;
 
-			CombatantData& GetCombatantData();
-			const CombatantData& GetCombatantData() const;
+			bool HasCombatantData() const;
+			const std::unique_ptr<CombatantData>& CreateCombatantData();
+			const std::unique_ptr<CombatantData>& GetCombatantData() const;
 
 			bool HasInteractableData() const;
 			const std::unique_ptr<InteractableData>& CreateInteractableData();
@@ -320,12 +344,20 @@ namespace Game {
 			uint32_t GetNounId() const;
 
 			NounType GetType() const;
+			NpcType GetNpcType() const;
 
 			const glm::vec3& GetPosition() const;
 			void SetPosition(const glm::vec3& position);
+			void SetPositionSimulated(const glm::vec3& position);
 
 			const glm::quat& GetOrientation() const;
 			void SetOrientation(const glm::quat& orientation);
+
+			const glm::vec3& GetLinearVelocity() const;
+			void SetLinearVelocity(const glm::vec3& velocity);
+
+			const glm::vec3& GetAngularVelocity() const;
+			void SetAngularVelocity(const glm::vec3& velocity);
 
 			const BoundingBox& GetBoundingBox() const;
 
@@ -333,6 +365,14 @@ namespace Game {
 			void SetExtent(const glm::vec3& extent);
 
 			float GetFootprintRadius() const;
+			glm::vec3 GetCenterPoint() const;
+
+			float GetCurrentSpeed() const;
+			float GetModifiedMovementSpeed() const;
+			
+			// Physics
+			std::vector<ObjectPtr> GetCollidingObjectsWith(const CollisionVolume& collisionVolume, const std::vector<NounType>& types) const;
+			bool IsColliding() const;
 
 			// Effects
 			uint8_t AddEffect(uint32_t effect);
@@ -351,6 +391,9 @@ namespace Game {
 			void SetAttributeValue(uint8_t idx, float value);
 			void SetAttributeValue(AttributeType type, float value);
 
+			PrimaryAttribute GetPrimaryAttribute() const;
+			float GetPrimaryAttributeValue() const;
+
 			float GetHealth() const;
 			float GetMaxHealth() const;
 			void SetHealth(float newHealth);
@@ -358,6 +401,12 @@ namespace Game {
 			float GetMana() const;
 			float GetMaxMana() const;
 			void SetMana(float newMana);
+
+			ObjectPtr GetOwnerObject() const;
+			void SetOwnerObject(const ObjectPtr& object);
+
+			uint32_t GetInputSyncStamp() const;
+			void SetInputSyncStamp(uint32_t inputSyncStamp);
 
 			uint32_t GetInteractableState() const;
 			void SetInteractableState(uint32_t interactableState);
@@ -371,13 +420,14 @@ namespace Game {
 			uint8_t GetTeam() const;
 			void SetTeam(uint8_t team);
 
-			uint8_t GetMovementType() const;
-			void SetMovementType(uint8_t movementType);
+			MovementType GetMovementType() const;
+			void SetMovementType(MovementType movementType);
 
 			uint8_t GetPlayerIndex() const;
 			void SetPlayerIndex(uint8_t playerIndex);
 
 			bool IsPlayerControlled() const;
+			bool IsImmobilized() const;
 
 			bool HasCollision() const;
 			void SetHasCollision(bool collision);
@@ -396,12 +446,28 @@ namespace Game {
 				const AttributesPtr& attackerAttributes,
 				const std::tuple<float, float>& damageRange,
 				DamageType damageType, DamageSource damageSource, float damageCoefficient,
-				int32_t descriptors, float damageMultiplier, const glm::vec3& direction
+				Descriptors descriptors, float damageMultiplier, const glm::vec3& direction
 			);
-			std::tuple<float, bool> Heal();
+
+			std::tuple<float, bool> Heal(
+				const AttributesPtr& attackerAttributes,
+				const std::tuple<float, float>& healRange,
+				float healCoefficient,
+				Descriptors descriptors,
+				bool allowMultipliers,
+				bool ignoreCritical
+			);
+
+			bool CheckCritical(const AttributesPtr& attackerAttributes) const;
+			void DistributeDamageAmongSquad(float damage);
+
+			void RequestModifier(const ObjectPtr& attacker);
 
 			void OnChangeHealth(float healthChange);
 			void OnChangeMana(float manaChange);
+
+			void OnDeath();
+			void OnResurrect();
 
 			// Agent Blackboard
 			uint32_t GetTargetId() const;
@@ -425,8 +491,8 @@ namespace Game {
 		protected:
 			bool NeedUpdate() const;
 
-			uint8_t GetFlags() const;
-			void SetFlags(uint8_t flags);
+			uint16_t GetFlags() const;
+			void SetFlags(uint16_t flags);
 
 		protected:
 			ObjectManager& mManager;
@@ -440,10 +506,9 @@ namespace Game {
 			std::unordered_map<uint32_t, std::shared_ptr<Modifier>> mModifiers;
 			std::map<uint32_t, Cooldown> mCooldowns;
 
-			CombatantData mCombatantData;
-
 			std::unique_ptr<EffectList> mEffects;
 			std::unique_ptr<Attributes> mAttributes;
+			std::unique_ptr<CombatantData> mCombatantData;
 			std::unique_ptr<InteractableData> mInteractableData;
 			std::unique_ptr<LootData> mLootData;
 			std::unique_ptr<Locomotion> mLocomotionData;
@@ -452,10 +517,14 @@ namespace Game {
 
 			NounPtr mNoun;
 
+			ObjectPtr::weak_type mOwnerObject;
+
 			uint64_t mAssetId;
 
 			uint32_t mId;
 			uint32_t mNounId;
+
+			MovementType mMovementType = MovementType::Default;
 
 			Flags mFlags = Flags::None;
 
@@ -468,7 +537,6 @@ namespace Game {
 			uint64_t mGraphicsStateStartTime = 0;
 			uint64_t mNewGraphicsStateStartTime = 0;
 
-			uint32_t mOwnerId = 0;
 			uint32_t mInputSyncStamp = 0;
 			uint32_t mLastAnimationState = 0;
 			uint32_t mOverrideMoveIdleAnimationState = 0;
@@ -480,7 +548,6 @@ namespace Game {
 			float mMarkerScale = 1;
 
 			uint8_t mTeam = 0;
-			uint8_t mMovementType = 0;
 			uint8_t mPlayerIndex = 0xFF;
 
 			bool mbPlayerControlled = false;
@@ -497,8 +564,6 @@ namespace Game {
 			friend class AgentBlackboard;
 			friend class Locomotion;
 	};
-
-	using ObjectPtr = std::shared_ptr<Object>;
 }
 
 #endif

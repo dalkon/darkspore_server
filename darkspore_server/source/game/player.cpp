@@ -61,6 +61,15 @@ namespace Game {
 		mPlayerIndex = playerIndex;
 		mDataBits.set(PlayerDataBits::PlayerIndex);
 
+		mChainProgression = user->get_account().chainProgression;
+		mDataBits.set(PlayerDataBits::ChainProgression);
+
+		// Some data bits to clear out data from previous missions
+		mDataBits.set(PlayerDataBits::CharacterData);
+		mDataBits.set(PlayerDataBits::CrystalData);
+		mDataBits.set(PlayerDataBits::CrystalBonuses);
+
+		//
 		Setup();
 	}
 
@@ -114,6 +123,15 @@ namespace Game {
 		}
 
 		return 0;
+	}
+
+	uint32_t Player::GetAbilityRank(uint8_t creatureIndex, uint8_t abilityIndex) const {
+		if (creatureIndex >= 3) {
+			creatureIndex = 0;
+		}
+
+		const auto& characterData = mCharacterData[std::clamp<size_t>(creatureIndex, 0, mCharacterData.size() - 1)];
+		return characterData.mAbilityRanks[std::clamp<size_t>(abilityIndex, 0, 8)];
 	}
 
 	void Player::Setup() {
@@ -294,31 +312,31 @@ namespace Game {
 		SetUpdateBits(PlayerUpdateBits::CharacterBits << index);
 	}
 
-	uint32_t Player::GetOpenCrystalSlot() const {
-		for (uint32_t i = 0; i < mCrystals.size(); ++i) {
-			if (mCrystals[i].GetNounId() == 0) {
+	uint32_t Player::GetOpenCatalystSlot() const {
+		for (uint32_t i = 0; i < mCatalysts.size(); ++i) {
+			if (mCatalysts[i].GetNounId() == 0) {
 				return i;
 			}
 		}
 		return 0xFFFFFFFF;
 	}
 
-	const Catalyst& Player::GetCrystal(uint32_t index) const {
-		if (mCrystals.size() < index) {
-			static Catalyst defaultCrystal;
-			return defaultCrystal;
+	Catalyst Player::GetCatalyst(uint32_t index) const {
+		if (mCatalysts.size() < index) {
+			return Catalyst();
 		}
-		return mCrystals[index];
+		return mCatalysts[index];
 	}
 
-	void Player::SetCrystal(Catalyst&& crystal, uint32_t index) {
-		if (index < mCrystals.size()) {
-			mCrystals[index] = std::move(crystal);
-
-			mDataBits.set(PlayerDataBits::CrystalData);
+	void Player::SetCatalyst(const Catalyst& catalyst, uint32_t index) {
+		if (index < mCatalysts.size()) {
+			mCatalysts[index] = catalyst;
 			SetUpdateBits(PlayerUpdateBits::CrystalBits << index);
 
-			UpdateCrystalBonuses();
+			// This crashes the client, probably because it updates raw data and not reflection dataa
+			// mDataBits.set(PlayerDataBits::CrystalData);
+
+			UpdateCatalystBonuses();
 		}
 	}
 
@@ -389,13 +407,13 @@ namespace Game {
 		Write(stream, mChainProgression);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x133C));
-		for (const auto& crystal : mCrystals) {
-			crystal.WriteTo(stream);
+		for (const auto& catalyst : mCatalysts) {
+			catalyst.WriteTo(stream);
 		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x13CC));
-		for (auto crystalBonus : mCrystalBonuses) {
-			Write(stream, crystalBonus);
+		for (auto bonus : mCatalystBonuses) {
+			Write(stream, bonus);
 		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x1408));
@@ -434,8 +452,8 @@ namespace Game {
 			if (mDataBits.test(10)) { reflector.write<10>(mEnergyPoints); }
 			if (mDataBits.test(11)) { reflector.write<11>(mbIsCharged); }
 			if (mDataBits.test(12)) { reflector.write<12>(mDNA); }
-			if (mDataBits.test(13)) { reflector.write<13>(mCrystals); }
-			if (mDataBits.test(14)) { reflector.write<14>(mCrystalBonuses); }
+			if (mDataBits.test(13)) { reflector.write<13>(mCatalysts); }
+			if (mDataBits.test(14)) { reflector.write<14>(mCatalystBonuses); }
 			if (mDataBits.test(15)) { reflector.write<15>(mAvatarLevel); }
 			if (mDataBits.test(16)) { reflector.write<16>(mAvatarXP); }
 			if (mDataBits.test(17)) { reflector.write<17>(mChainProgression); }
@@ -449,40 +467,31 @@ namespace Game {
 		reflector.end();
 	}
 
-	void Player::UpdateCrystalBonuses() {
-		// TODO: match catalyst colors
+	bool Player::NeedUpdate() const {
+		return (mUpdateBits & PlayerUpdateBits::Mask) || mDataBits.any();
+	}
 
-		constexpr size_t gridSize = 3;
-		for (size_t i = 0; i < gridSize; ++i) {
-			size_t index = i * gridSize;
-			
-			auto horizontalCrystals =
-				(mCrystals[index + 0].GetNounId() != 0) +
-				(mCrystals[index + 1].GetNounId() != 0) +
-				(mCrystals[index + 2].GetNounId() != 0);
+	void Player::UpdateCatalystBonuses() {
+		constexpr size_t GRID_SIZE = 3;
+		constexpr size_t MIDDLE_SLOT = 4;
 
-			auto verticalCrystals =
-				(mCrystals[i + (gridSize * 0)].GetNounId() != 0) +
-				(mCrystals[i + (gridSize * 1)].GetNounId() != 0) +
-				(mCrystals[i + (gridSize * 2)].GetNounId() != 0);
+		const Catalyst* catalyst;
+		for (size_t i = 0; i < GRID_SIZE; ++i) {
+			size_t index = i * GRID_SIZE;
 
-			mCrystalBonuses[i] = horizontalCrystals == 3;
-			mCrystalBonuses[i + gridSize] = verticalCrystals == 3;
+			catalyst = &mCatalysts[index];
+			mCatalystBonuses[i] = catalyst->MatchingColor(mCatalysts[index + 1]) && catalyst->MatchingColor(mCatalysts[index + 2]);
+
+			catalyst = &mCatalysts[i];
+			mCatalystBonuses[i + GRID_SIZE] = catalyst->MatchingColor(mCatalysts[i + (GRID_SIZE * 1)]) && catalyst->MatchingColor(mCatalysts[i + (GRID_SIZE * 2)]);
 		}
 
 		// Diagonals
-		mCrystalBonuses[6] = (
-			(mCrystals[0].GetNounId() != 0) +
-			(mCrystals[4].GetNounId() != 0) +
-			(mCrystals[8].GetNounId() != 0)
-		) == 3;
-
-		mCrystalBonuses[7] = (
-			(mCrystals[2].GetNounId() != 0) +
-			(mCrystals[4].GetNounId() != 0) +
-			(mCrystals[6].GetNounId() != 0)
-		) == 3;
+		catalyst = &mCatalysts[MIDDLE_SLOT];
+		mCatalystBonuses[6] = catalyst->MatchingColor(mCatalysts[0]) && catalyst->MatchingColor(mCatalysts[8]);
+		mCatalystBonuses[7] = catalyst->MatchingColor(mCatalysts[2]) && catalyst->MatchingColor(mCatalysts[6]);
 
 		mDataBits.set(PlayerDataBits::CrystalBonuses);
+		SetUpdateBits(PlayerUpdateBits::PlayerBits);
 	}
 }

@@ -61,11 +61,11 @@ namespace Game {
 
 		switch (mShape) {
 			case TriggerVolumeShape::Sphere:
-				mBoundingBox.mExtent = glm::vec3(utils::xml_get_text_node<float>(node, "sphereRadius"));
+				mBoundingBox.extent = glm::vec3(utils::xml_get_text_node<float>(node, "sphereRadius"));
 				break;
 
 			case TriggerVolumeShape::Box:
-				mBoundingBox.mExtent = glm::vec3(
+				mBoundingBox.extent = glm::vec3(
 					utils::xml_get_text_node<float>(node, "boxWidth"),
 					utils::xml_get_text_node<float>(node, "boxHeight"),
 					utils::xml_get_text_node<float>(node, "boxLength")
@@ -74,7 +74,7 @@ namespace Game {
 
 			case TriggerVolumeShape::Capsule:
 				auto radius = utils::xml_get_text_node<float>(node, "capsuleRadius");
-				mBoundingBox.mExtent = glm::vec3(radius, utils::xml_get_text_node<float>(node, "capsuleHeight"), radius);
+				mBoundingBox.extent = glm::vec3(radius, utils::xml_get_text_node<float>(node, "capsuleHeight"), radius);
 				break;
 		}
 

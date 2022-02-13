@@ -9,6 +9,8 @@
 #include "types.h"
 #include "client.h"
 
+#include "game/catalyst.h"
+
 #include "blaze/types.h"
 
 #ifdef PACKET_LOGGING
@@ -28,7 +30,7 @@
 // RakNet
 namespace RakNet {
 	// Packet
-	namespace PacketID {
+	/*namespace PacketID {
 		constexpr MessageID HelloPlayerRequest = 0x7F;
 		constexpr MessageID HelloPlayer = 0x80;
 		constexpr MessageID ReconnectPlayer = 0x81;
@@ -106,12 +108,14 @@ namespace RakNet {
 		constexpr MessageID ObjectiveAdd = 0xCA;
 		constexpr MessageID LootDropMessage = 0xCB;
 		constexpr MessageID DebugPing = 0xCC;
-	}
+	}*/
 
 	//
 	struct CrystalData {
-		uint32_t unk32[7];
-		uint8_t unk8;
+		uint32_t slot = 0;
+		uint32_t unk = 0;
+		uint32_t color = 0;
+		uint32_t level = 0;
 	};
 
 	// Server
@@ -127,7 +131,7 @@ namespace RakNet {
 			void run_one();
 
 			void add_task(std::function<void(void)> task);
-			void add_client_task(uint8_t id, MessageID packet);
+			void add_client_task(uint8_t id, PacketID packet);
 
 			Game::Instance& GetGame();
 
@@ -176,13 +180,18 @@ namespace RakNet {
 			void SendObjectDelete(const ClientPtr& client, const Game::ObjectPtr& object);
 			void SendObjectDelete(const ClientPtr& client, const std::vector<Game::ObjectPtr>& objects);
 
+			void SendActionCancel(const ClientPtr& client, uint8_t value, uint32_t otherValue);
+
 			void SendActionCommandResponse(const ClientPtr& client, uint8_t type);
 			void SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data);
-			void SendObjectJump(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position, const glm::vec3& destination, const glm::quat& rotation);
-			void SendObjectTeleport(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position, const glm::vec3& direction);
+			void SendObjectJump(
+				const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& destination, const glm::vec3& direction,
+				float speed, float minJumpHeight, float maxJumpHeight, float rangeToHitMaxJumpHeight
+			);
+			void SendObjectTeleport(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position, const glm::quat& orientation);
 			void SendObjectPlayerMove(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Locomotion& locomotionData);
-			void SendForcePhysicsUpdate(const ClientPtr& client);
-			void SendPhysicsChanged(const ClientPtr& client);
+			void SendForcePhysicsUpdate(const ClientPtr& client, const Game::ObjectPtr& object);
+			void SendPhysicsChanged(const ClientPtr& client, const Game::ObjectPtr& object, bool hasCollision);
 			void SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Locomotion& locomotionData);
 			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position);
 			void SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Attributes& attributes);
@@ -202,14 +211,15 @@ namespace RakNet {
 			void SendGameStart(const ClientPtr& client);
 			void SendArenaGameMessages(const ClientPtr& client);
 			void SendChainVoteMessages(const ClientPtr& client, uint8_t value);
+			void SendChainCashOutMessages(const ClientPtr& client, uint8_t value);
 			void SendObjectivesInitForLevel(const ClientPtr& client);
-			void SendObjectiveUpdate(const ClientPtr& client, uint8_t id);
+			void SendObjectiveUpdate(const ClientPtr& client, uint8_t id, uint32_t voiceover);
 			void SendObjectivesComplete(const ClientPtr& client);
 			void SendObjectiveAdd(const ClientPtr& client, const Objective& objective);
 			void SendDirectorState(const ClientPtr& client, const cAIDirector& director);
 			void SendPartyMergeComplete(const ClientPtr& client);
 			void SendReloadLevel(const ClientPtr& client);
-			void SendCrystalMessage(const ClientPtr& client, const CrystalData& crystalData);
+			void SendCrystalMessage(const ClientPtr& client, uint8_t moveType, uint32_t slot, uint32_t newSlot, const Game::Catalyst& catalyst);
 
 			void SendQuickGame(const ClientPtr& client);
 			void SendChainGame(const ClientPtr& client, uint8_t state);

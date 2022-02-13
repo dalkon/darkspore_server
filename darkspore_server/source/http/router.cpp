@@ -120,6 +120,7 @@ namespace HTTP {
 				response.result() = boost::beast::http::status::ok;
 				response.version() = request.data.version();
 				response.keep_alive() = request.data.keep_alive();
+				response.method() = request.data.method();
 
 				route.mFunction(session, response);
 				return true;

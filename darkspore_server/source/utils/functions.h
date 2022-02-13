@@ -119,13 +119,13 @@ namespace utils {
 	}
 
 	template<typename T>
-	std::enable_if_t<std::is_enum_v<T>, T> to_number(std::string_view str) {
-		return static_cast<T>(to_number<std::underlying_type_t<T>>(str));
+	std::enable_if_t<std::is_enum_v<T>, T> to_number(std::string_view str, int base = 10) {
+		return static_cast<T>(to_number<std::underlying_type_t<T>>(str, base));
 	}
 
 	template<typename T>
-	std::enable_if_t<std::is_enum_v<T>, T> to_number(const std::string& str) {
-		return static_cast<T>(to_number<std::underlying_type_t<T>>(str));
+	std::enable_if_t<std::is_enum_v<T>, T> to_number(const std::string& str, int base = 10) {
+		return static_cast<T>(to_number<std::underlying_type_t<T>>(str, base));
 	}
 
 	// TODO: move xml & js stuff
@@ -179,7 +179,13 @@ namespace utils {
 	// Helpers
 	class random {
 		public:
-			template<typename T>
+			template<typename T> requires std::is_enum_v<T>
+			static T get(T min, T max) {
+				using Tu = std::underlying_type_t<T>;
+				return static_cast<T>(get<Tu>(static_cast<Tu>(min), static_cast<Tu>(max)));
+			}
+
+			template<typename T> requires std::is_floating_point_v<T> || std::is_integral_v<T>
 			static T get(T min, T max) {
 				if constexpr (sizeof(T) == 1) { // for i8, u8, etc
 					std::uniform_int_distribution<int16_t> distribution(static_cast<int16_t>(min), static_cast<int16_t>(max));

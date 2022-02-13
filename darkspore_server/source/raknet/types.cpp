@@ -59,6 +59,90 @@ namespace RakNet {
 		return writeOffset;
 	}
 
+	// to_string
+	std::string to_string(PacketID type) {
+		switch (type) {
+			case PacketID::HelloPlayerRequest: return "HelloPlayerRequest";
+			case PacketID::HelloPlayer: return "HelloPlayer";
+			case PacketID::ReconnectPlayer: return "ReconnectPlayer";
+			case PacketID::Connected: return "Connected";
+			case PacketID::Goodbye: return "Goodbye";
+			case PacketID::PlayerJoined: return "PlayerJoined";
+			case PacketID::PartyMergeComplete: return "PartyMergeComplete";
+			case PacketID::PlayerDeparted: return "PlayerDeparted";
+			case PacketID::VoteKickStarted: return "VoteKickStarted";
+			case PacketID::PlayerStatusUpdate: return "PlayerStatusUpdate";
+			case PacketID::GameAborted: return "GameAborted";
+			case PacketID::GameState: return "GameState";
+			case PacketID::DirectorState: return "DirectorState";
+			case PacketID::ObjectCreate: return "ObjectCreate";
+			case PacketID::ObjectUpdate: return "ObjectUpdate";
+			case PacketID::ObjectDelete: return "ObjectDelete";
+			case PacketID::ObjectJump: return "ObjectJump";
+			case PacketID::ObjectTeleport: return "ObjectTeleport";
+			case PacketID::ObjectPlayerMove: return "ObjectPlayerMove";
+			case PacketID::ForcePhysicsUpdate: return "ForcePhysicsUpdate";
+			case PacketID::PhysicsChanged: return "PhysicsChanged";
+			case PacketID::LocomotionDataUpdate: return "LocomotionDataUpdate";
+			case PacketID::LocomotionDataUnreliableUpdate: return "LocomotionDataUnreliableUpdate";
+			case PacketID::AttributeDataUpdate: return "AttributeDataUpdate";
+			case PacketID::CombatantDataUpdate: return "CombatantDataUpdate";
+			case PacketID::InteractableDataUpdate: return "InteractableDataUpdate";
+			case PacketID::AgentBlackboardUpdate: return "AgentBlackboardUpdate";
+			case PacketID::LootDataUpdate: return "LootDataUpdate";
+			case PacketID::ServerEvent: return "ServerEvent";
+			case PacketID::ActionCommandMsgs: return "ActionCommandMsgs";
+			case PacketID::PlayerDamage: return "PlayerDamage";
+			case PacketID::LootSpawned: return "LootSpawned";
+			case PacketID::LootAcquired: return "LootAcquired";
+			case PacketID::LabsPlayerUpdate: return "LabsPlayerUpdate";
+			case PacketID::ModifierCreated: return "ModifierCreated";
+			case PacketID::ModifierUpdated: return "ModifierUpdated";
+			case PacketID::ModifierDeleted: return "ModifierDeleted";
+			case PacketID::SetAnimationState: return "SetAnimationState";
+			case PacketID::SetObjectGfxState: return "SetObjectGfxState";
+			case PacketID::PlayerCharacterDeploy: return "PlayerCharacterDeploy";
+			case PacketID::ActionCommandResponse: return "ActionCommandResponse";
+			case PacketID::ChainVoteMsgs: return "ChainVoteMsgs";
+			case PacketID::ChainLevelResultsMsgs: return "ChainLevelResultsMsgs";
+			case PacketID::ChainCashOutMsgs: return "ChainCashOutMsgs";
+			case PacketID::ChainPlayerMsgs: return "ChainPlayerMsgs";
+			case PacketID::ChainGameMsgs: return "ChainGameMsgs";
+			case PacketID::ChainGameOverMsgs: return "ChainGameOverMsgs";
+			case PacketID::QuickGameMsgs: return "QuickGameMsgs";
+			case PacketID::GamePrepareForStart: return "GamePrepareForStart";
+			case PacketID::GameStart: return "GameStart";
+			case PacketID::CheatMessageDontUseInReleaseButDontChangeTheIndexOfTheMessagesBelowInCaseWeAreRunningOnADevServer: return "CheatMessageDontUseInReleaseButDontChangeTheIndexOfTheMessagesBelowInCaseWeAreRunningOnADevServer";
+			case PacketID::ArenaPlayerMsgs: return "ArenaPlayerMsgs";
+			case PacketID::ArenaLobbyMsgs: return "ArenaLobbyMsgs";
+			case PacketID::ArenaGameMsgs: return "ArenaGameMsgs";
+			case PacketID::ArenaResultsMsgs: return "ArenaResultsMsgs";
+			case PacketID::ObjectivesInitForLevel: return "ObjectivesInitForLevel";
+			case PacketID::ObjectiveUpdated: return "ObjectiveUpdated";
+			case PacketID::ObjectivesComplete: return "ObjectivesComplete";
+			case PacketID::CombatEvent: return "CombatEvent";
+			case PacketID::JuggernautPlayerMsgs: return "JuggernautPlayerMsgs";
+			case PacketID::JuggernautLobbyMsgs: return "JuggernautLobbyMsgs";
+			case PacketID::JuggernautGameMsgs: return "JuggernautGameMsgs";
+			case PacketID::JuggernautResultsMsgs: return "JuggernautResultsMsgs";
+			case PacketID::ReloadLevel: return "ReloadLevel";
+			case PacketID::GravityForceUpdate: return "GravityForceUpdate";
+			case PacketID::CooldownUpdate: return "CooldownUpdate";
+			case PacketID::CrystalDragMessage: return "CrystalDragMessage";
+			case PacketID::CrystalMessage: return "CrystalMessage";
+			case PacketID::KillRacePlayerMsgs: return "KillRacePlayerMsgs";
+			case PacketID::KillRaceLobbyMsgs: return "KillRaceLobbyMsgs";
+			case PacketID::KillRaceGameMsgs: return "KillRaceGameMsgs";
+			case PacketID::KillRaceResultsMsgs: return "KillRaceResultsMsgs";
+			case PacketID::TutorialGameMsgs: return "TutorialGameMsgs";
+			case PacketID::CinematicMsgs: return "CinematicMsgs";
+			case PacketID::ObjectiveAdd: return "ObjectiveAdd";
+			case PacketID::LootDropMessage: return "LootDropMessage";
+			case PacketID::DebugPing: return "DebugPing";
+		}
+		return "unknown packet type";
+	}
+
 	// cAIDirector
 	void cAIDirector::WriteTo(BitStream& stream) const {
 		constexpr auto size = bytes_to_bits(0x4D0);
@@ -401,18 +485,7 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x05F));
 		Write<bool>(stream, mVisible);
 		Write<bool>(stream, mbHasCollision);
-
-		/*
-			Movement type
-				0 = nothing special?
-				1 = projectile? (uses locomotion projectile params)
-				2 = projectile again
-				3 = projectile again
-				4 = bouncing? (uses locomotion lob params)
-				5 = uses locomotion offset... somehow
-				6 = projectile again
-		*/
-		Write<uint8_t>(stream, mMovementType); // 0 to 6
+		Write<uint8_t>(stream, mMovementType);
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x088));
 		Write(stream, sourceMarkerKey_markerId);
@@ -967,6 +1040,27 @@ namespace RakNet {
 		reflector.end();
 	}
 
+	// PlanetData
+	void PlanetData::WriteTo(BitStream& stream) const {
+		constexpr auto size = bytes_to_bits(0x19);
+
+		auto writeOffset = ReallocateStream(stream, size);
+
+		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x00));
+
+		Write<uint32_t>(stream, kills);
+		Write<uint32_t>(stream, unk);
+
+		Write<float>(stream, damageDealt);
+		Write<float>(stream, damageTaken);
+		Write<float>(stream, healingDone);
+		Write<float>(stream, healingReceived);
+
+		Write<uint8_t>(stream, playerIndex);
+
+		stream.SetWriteOffset(writeOffset + size);
+	}
+
 	// ChainVoteData
 	ChainVoteData::ChainVoteData() {
 		// 1-1
@@ -1007,6 +1101,15 @@ namespace RakNet {
 	void ChainVoteData::SetLevel(uint32_t level) {
 		mLevel = level;
 		mLevelIndex = 0;
+	}
+
+	uint8_t ChainVoteData::GetProgression() const {
+		return mProgression;
+	}
+
+	void ChainVoteData::SetProgression(uint8_t progression) {
+		// Client limit of 5 planets in 1 run
+		mProgression = std::min<uint8_t>(5, progression);
 	}
 
 	uint32_t ChainVoteData::GetLevelIndex() const {
@@ -1103,7 +1206,7 @@ namespace RakNet {
 			// this is different somehow.
 			Write<uint32_t>(stream, minorDifficulty);
 			Write<uint32_t>(stream, majorDifficulty);
-			Write<uint32_t>(stream, mStarLevel);
+			Write<float>(stream, 15 * 60 * 1000.f); // time completed?
 			Write<float>(stream, 30 * 60 * 1000.f); // time remaining?
 		} else {
 			Write<uint32_t>(stream, mLevel);
@@ -1112,7 +1215,10 @@ namespace RakNet {
 			Write<float>(stream, 30 * 60 * 1000.f); // time remaining?
 		}
 
-		Write<bool>(stream, mCompletedLevel);
+		// progression (max 5?)
+		Write<uint8_t>(stream, mProgression);
+
+		// enemy data
 		for (const auto enemy : mEnemyNouns) {
 			Write<uint32_t>(stream, enemy);
 		}
@@ -1121,6 +1227,11 @@ namespace RakNet {
 		for (const auto data : mLevelNouns) {
 			Write<uint32_t>(stream, data);
 		}
+		
+		if (mCompletedLevel) {
+			Write<uint32_t>(stream, 4); // 1
+			Write<uint32_t>(stream, 3); // 2
+		}
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x39));
 		Write<uint32_t>(stream, 0); // party value?, used in sub_5313B0
@@ -1128,20 +1239,42 @@ namespace RakNet {
 		Write<uint32_t>(stream, utils::hash_id("fmv_02_zelems.vp6")); // some value
 
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x45));
-		Write<uint32_t>(stream, 1); // Unknown so far, arg0 of sub_4E4910 (hash lookup)
+		Write<uint32_t>(stream, utils::hash_id("vo_ship_flow_reinfect_zelems")); // voiceover clip
 		Write<uint32_t>(stream, 0); // tests against "mCompletedLevel" for something, but this is not a boolean.
 
 		if (mCompletedLevel) {
 			stream.SetWriteOffset(writeOffset + bytes_to_bits(0x4D));
-			Write<uint32_t>(stream, mPlayerAsset);
-			Write<uint32_t>(stream, 0x12345678);
+			Write<uint32_t>(stream, 0);
+			Write<uint32_t>(stream, mLevelIndex);
 
-#if 1
-			for (size_t i = 0; i < 0x39; ++i) {
-				Write<uint8_t>(stream, 0xDD);
+			// DNA
+			for (int i = 0; i < 4; ++i) {
+				Write<uint32_t>(stream, 30 + i * 30);
+			}
+
+			// ?
+			for (int i = 0; i < 4; ++i) {
+				Write<uint32_t>(stream, 40 + i * 40);
+			}
+#if 0
+			stream.SetWriteOffset(writeOffset + bytes_to_bits(0x76));
+			for (const auto& data : mChainSummary) {
+				data.WriteTo(stream);
 			}
 #else
-			WriteDebugData(stream, 0x39);
+			for (int i = 0; i < 4; ++i) {
+				stream.SetWriteOffset(writeOffset + bytes_to_bits((i * 0x19) + 0x76));
+				Write<uint32_t>(stream, 10 + i * 10); // pve kills
+				Write<uint32_t>(stream, 5); // unknown
+
+				Write<float>(stream, 15); // damage dealt
+				Write<float>(stream, 10); // damage taken
+
+				Write<float>(stream, 25); // healing done
+				Write<float>(stream, 5); // healing received
+
+				Write<uint8_t>(stream, i);
+			}
 #endif
 		}
 
@@ -1153,9 +1286,47 @@ namespace RakNet {
 		stream.SetWriteOffset(writeOffset + bytes_to_bits(0xE9));
 		Write<uint32_t>(stream, mLevel); // some hash, finds text in labsplanet.locale
 
-		for (size_t i = 0; i < 0x68; ++i) {
-			Write<uint8_t>(stream, 0xDD);
+		/*
+		auto writeDebugData = [](auto& stream, size_t length) {
+			constexpr std::array<uint8_t, 8> bytes { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
+			constexpr size_t bytesMask = bytes.size() - 1;
+			for (size_t i = 0; i < length; ++i) {
+				Write<uint8_t>(stream, bytes[i & bytesMask]);
+			}
+		};
+		writeDebugData(stream, 0x68);
+		*/
+
+		// Previous planet stuff
+		if (mCompletedLevel) {
+#if 0
+			stream.SetWriteOffset(writeOffset + bytes_to_bits(0xEE));
+			for (const auto& data : mPlanetData) {
+				data.WriteTo(stream);
+			}
+#else
+			for (int i = 0; i < 4; ++i) {
+				stream.SetWriteOffset(writeOffset + bytes_to_bits((i * 0x19) + 0xEE));
+				Write<uint32_t>(stream, 10 + i * 10); // pve kills
+				Write<uint32_t>(stream, 5); // unknown
+
+				Write<float>(stream, 125); // damage dealt
+				Write<float>(stream, 1231); // damage taken
+
+				Write<float>(stream, 515151); // healing done
+				Write<float>(stream, 23123); // healing received
+
+				Write<uint8_t>(stream, i);
+			}
+#endif
 		}
+
+		Write<uint32_t>(stream, 10);
+		Write<uint32_t>(stream, 20);
+		Write<uint32_t>(stream, 30);
+		Write<uint32_t>(stream, 40);
+		Write<uint32_t>(stream, 50);
+		Write<uint32_t>(stream, 60);
 
 		stream.SetWriteOffset(writeOffset + size);
 	}
@@ -1167,15 +1338,25 @@ namespace RakNet {
 
 		const auto writeOffset = ReallocateStream(stream, objectiveSize);
 
+		stream.SetWriteOffset(writeOffset);
 		Write<uint32_t>(stream, id);
 		Write<uint32_t>(stream, value);
 
+		auto writeDebugData = [](auto& stream, size_t length) {
+			constexpr std::array<uint8_t, 8> bytes { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
+			constexpr size_t bytesMask = bytes.size() - 1;
+			for (size_t i = 0; i < length; ++i) {
+				Write<uint8_t>(stream, bytes[i & bytesMask]);
+			}
+		};
+		writeDebugData(stream, 0x40);
+		/*
 		size_t length = std::min<size_t>(maxDescriptionLength, description.length());
 		size_t padding = maxDescriptionLength - length;
 
 		for (size_t i = 0; i < length; ++i) { Write<char>(stream, description[i]); }
 		for (size_t i = 0; i < padding; ++i) { Write<char>(stream, 0x00); }
-
+		*/
 		stream.SetWriteOffset(writeOffset + objectiveSize);
 	}
 }

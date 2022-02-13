@@ -30,91 +30,78 @@ namespace Game {
 	}
 
 	glm::vec3 ReadVec3(pugi::xml_node node) {
-		glm::vec3 data;
+		glm::vec3 data {};
 		data.x = utils::xml_get_text_node<float>(node, "x");
 		data.y = utils::xml_get_text_node<float>(node, "y");
 		data.z = utils::xml_get_text_node<float>(node, "z");
 		return data;
 	}
 
-	// BoundingBox
-	BoundingBox::BoundingBox() {
-		mCenter = glm::zero<glm::vec3>();
-		mExtent = glm::zero<glm::vec3>();
+	// CollisionVolume
+	void CollisionVolume::Read(pugi::xml_node node) {
+		mBoxExtents.x = utils::xml_get_text_node<float>(node, "boxWidth");
+		mBoxExtents.y = utils::xml_get_text_node<float>(node, "boxLength");
+		mBoxExtents.z = utils::xml_get_text_node<float>(node, "boxHeight");
+		mSphereRadius = utils::xml_get_text_node<float>(node, "sphereRadius");
+		mShape = utils::xml_get_text_node<CollisionShape>(node, "shape");
 	}
 
-	BoundingBox::BoundingBox(const glm::vec3& min, const glm::vec3& max) {
-		constexpr auto half = glm::vec3(0.5f);
-		mCenter = (max + min) * half;
-		mExtent = (max - min) * half;
+	const glm::vec3& CollisionVolume::GetBoxExtents() const {
+		return mBoxExtents;
 	}
 
-	bool BoundingBox::IsPoint() const {
-		return mExtent == glm::zero<glm::vec3>();
+	float CollisionVolume::GetSphereRadius() const {
+		return mSphereRadius;
 	}
 
-	bool BoundingBox::Contains(const glm::vec3& point) const {
-		auto distance = glm::abs(mCenter - point);
-		return glm::all(glm::lessThan(distance, mExtent));
+	CollisionShape CollisionVolume::GetShape() const {
+		return mShape;
 	}
 
-	bool BoundingBox::Contains(const BoundingBox& boundingBox) const {
-		auto delta = mExtent - boundingBox.mExtent;
-		if (glm::any(glm::lessThan(delta, glm::zero<glm::vec3>()))) {
-			return false;
+	// ProjectileData
+	void ProjectileData::Read(pugi::xml_node node) {
+		if (auto childNode = node.child("creatureCollisionVolume")) {
+			mCreatureCollisionVolume = std::make_unique<CollisionVolume>();
+			mCreatureCollisionVolume->Read(childNode);
 		}
-		return Contains(boundingBox.mCenter);
+
+		if (auto childNode = node.child("otherCollisionVolume")) {
+			mOtherCollisionVolume = std::make_unique<CollisionVolume>();
+			mOtherCollisionVolume->Read(childNode);
+		}
+
+		mTargetType = utils::xml_get_text_node<TargetType>(node, "targetType");
 	}
 
-	bool BoundingBox::Intersects(const BoundingBox& boundingBox) const {
-		auto distance = glm::abs(mCenter - boundingBox.mCenter);
-		auto distanceRequired = mExtent + boundingBox.mExtent;
-		return glm::all(glm::lessThanEqual(distance, distanceRequired));
+	const std::unique_ptr<CollisionVolume>& ProjectileData::GetCreatureCollisionVolume() const {
+		return mCreatureCollisionVolume;
 	}
 
-	bool BoundingBox::Touches(const BoundingBox& boundingBox) const {
-		auto distance = glm::abs(mCenter - boundingBox.mCenter);
-		auto distanceRequired = mExtent + boundingBox.mExtent;
-
-		auto results = glm::equal(distance, distanceRequired);
-		return (results.x + results.y + results.z) >= 2;
+	const std::unique_ptr<CollisionVolume>& ProjectileData::GetOtherCollisionVolume() const {
+		return mOtherCollisionVolume;
 	}
 
-	void BoundingBox::Transform(const glm::mat4& matrix) {
-		glm::vec3 min = GetMin();
-		glm::vec3 max = GetMax();
-
-		glm::vec3 xa = glm::vec3(matrix[0] * min.x);
-		glm::vec3 xb = glm::vec3(matrix[0] * max.x);
-		glm::vec3 xMin = glm::min(xa, xb);
-		glm::vec3 xMax = glm::max(xa, xb);
-
-		glm::vec3 ya = glm::vec3(matrix[1] * min.y);
-		glm::vec3 yb = glm::vec3(matrix[1] * max.y);
-		glm::vec3 yMin = glm::min(ya, yb);
-		glm::vec3 yMax = glm::max(ya, yb);
-
-		glm::vec3 za = glm::vec3(matrix[2] * min.z);
-		glm::vec3 zb = glm::vec3(matrix[2] * max.z);
-		glm::vec3 zMin = glm::min(za, zb);
-		glm::vec3 zMax = glm::max(za, zb);
-
-		glm::vec3 newMin = xMin + yMin + zMin + glm::vec3(matrix[3]);
-		glm::vec3 newMax = xMax + yMax + zMax + glm::vec3(matrix[3]);
-
-		*this = BoundingBox(newMin, newMax);
+	TargetType ProjectileData::GetTargetType() const {
+		return mTargetType;
 	}
 
-	glm::vec3 BoundingBox::GetMin() const {
-		return mCenter - mExtent;
+	// OrbitData
+	void OrbitData::Read(pugi::xml_node node) {
+		mHeight = utils::xml_get_text_node<float>(node, "orbitHeight");
+		mRadius = utils::xml_get_text_node<float>(node, "orbitRadius");
+		mSpeed = utils::xml_get_text_node<float>(node, "orbitSpeed");
 	}
 
-	glm::vec3 BoundingBox::GetMax() const {
-		return mCenter + mExtent;
+	float OrbitData::GetHeight() const {
+		return mHeight;
 	}
 
-	glm::vec3 BoundingBox::GetSize() const {
-		return mExtent * 2.0f;
+	float OrbitData::GetRadius() const {
+		return mRadius;
+	}
+
+	float OrbitData::GetSpeed() const {
+		return mSpeed;
 	}
 
 	// ClassAttributes
@@ -195,9 +182,13 @@ namespace Game {
 		mAbilities[3] = utils::xml_get_text_node(node, "specialAbility3");
 		mAbilities[4] = utils::xml_get_text_node(node, "passiveAbility");
 
+		if (auto sharedAbilityNode = node.child("sharedAbilityOffset")) {
+			mSharedAbilityOffset = ReadVec3(sharedAbilityNode);
+		}
+
 		mCreatureType = utils::xml_get_text_node<uint32_t>(node, "creatureType");
 		mCreatureClass = utils::xml_get_text_node<uint32_t>(node, "creatureClass");
-		mPrimaryAttribute = utils::xml_get_text_node<uint32_t>(node, "primaryAttribute");
+		mPrimaryAttribute = utils::xml_get_text_node<PrimaryAttribute>(node, "primaryAttribute");
 		mUnlockLevel = utils::xml_get_text_node<int32_t>(node, "unlockLevel");
 
 		mHomeworld = utils::xml_get_text_node<Homeworld>(node, "homeworld");
@@ -216,6 +207,23 @@ namespace Game {
 
 	const std::shared_ptr<ClassAttributes>& PlayerClass::GetAttributes() const {
 		return mAttributes;
+	}
+
+	uint32_t PlayerClass::GetAbility(PlayerAbility ability) const {
+		const auto index = static_cast<uint8_t>(ability);
+		return index < mAbilities.size() ? utils::hash_id(mAbilities[index]) : 0;
+	}
+
+	const glm::vec3& PlayerClass::GetSharedAbilityOffset() const {
+		return mSharedAbilityOffset;
+	}
+
+	Homeworld PlayerClass::GetHomeworld() const {
+		return mHomeworld;
+	}
+
+	PrimaryAttribute PlayerClass::GetPrimaryAttribute() const {
+		return mPrimaryAttribute;
 	}
 
 	// NonPlayerClass
@@ -255,6 +263,10 @@ namespace Game {
 		return mAttributes;
 	}
 
+	NpcType NonPlayerClass::GetType() const {
+		return mNpcType;
+	}
+
 	float NonPlayerClass::GetAggroRange() const {
 		return mAggroRange;
 	}
@@ -278,18 +290,6 @@ namespace Game {
 	bool NonPlayerClass::IsPet() const {
 		return mIsPet;
 	}
-
-	/*
-		noun->add("gfxStates", nullable_type, std::tuple(0x84, cGameObjectGfxStates));
-		noun->add("doorDef", nullable_type, std::tuple(0x88, cDoorDef));
-		noun->add("switchDef", nullable_type, std::tuple(0x8C, cSwitchDef));
-		noun->add("pressureSwitchDef", nullable_type, std::tuple(0x90, cPressureSwitchDef));
-		noun->add("crystalDef", nullable_type, std::tuple(0x94, CrystalDef));
-		noun->add("triggerVolume", nullable_type, std::tuple(0x124, TriggerVolumeDef));
-		noun->add("projectile", nullable_type, std::tuple(0x128, ProjectileDef));
-		noun->add("orbit", nullable_type, std::tuple(0x12C, OrbitDef));
-		noun->add("locomotionTuning", nullable_type, std::tuple(0x130, LocomotionTuning));
-	*/
 
 	// AssetProperty
 	void AssetProperty::Read(pugi::xml_node node) {
@@ -635,6 +635,7 @@ namespace Game {
 			// Directly parsed from .Noun files
 			mType = utils::xml_get_text_node<NounType>(node, "nounType");
 			mPresetExtents = utils::xml_get_text_node<PresetExtents>(node, "presetExtents");
+			mMovementType = utils::xml_get_text_node<MovementType>(node, "locomotionType");
 
 			if (auto bboxNode = node.child("bbox")) {
 				mBoundingBox = BoundingBox(
@@ -664,8 +665,20 @@ namespace Game {
 			}
 
 			mAssetId = utils::xml_get_text_node<uint64_t>(node, "assetId");
+			mTeam = utils::xml_get_text_node<uint8_t>(node, "spawnTeamId");
 			ReadListNode(node, "eliteAssetIds", mEliteAssetIds);
 
+			if (auto projectileNode = node.child("projectile")) {
+				mProjectileData = std::make_unique<ProjectileData>();
+				mProjectileData->Read(projectileNode);
+			}
+
+			if (auto orbitNode = node.child("orbit")) {
+				mOrbitData = std::make_unique<OrbitData>();
+				mOrbitData->Read(orbitNode);
+			}
+
+			mHasLocomotion = utils::xml_get_text_node<bool>(node, "hasLocomotion");
 			mIsFlora = utils::xml_get_text_node<bool>(node, "isFlora");
 			mIsMineral = utils::xml_get_text_node<bool>(node, "isMineral");
 			mIsCreature = utils::xml_get_text_node<bool>(node, "isCreature");
@@ -676,8 +689,60 @@ namespace Game {
 		}
 	}
 
+	std::tuple<glm::vec3, float> Noun::GetExtents(PresetExtents preset) {
+		constexpr std::array<std::tuple<glm::vec3, float>, 17> objectExtents {
+			// Critter
+			std::make_tuple(glm::vec3(1, 1, 1), -10.f),
+			std::make_tuple(glm::vec3(1, 1, 1), -10.f),
+
+			// Minion
+			std::make_tuple(glm::vec3(1.5f, 1.5f, 2.25f), 1.f),
+			std::make_tuple(glm::vec3(1.6f, 1.6f, 1.5f), 1.f),
+
+			// Elite minion
+			std::make_tuple(glm::vec3(1.5f, 1.5f, 2.5f), 1.f),
+			std::make_tuple(glm::vec3(1.75f, 1.75f, 1.75f), 1.f),
+
+			// Player (ravager, tempest, sentinel)
+			std::make_tuple(glm::vec3(1.5f, 1.5f, 3.75f), 1.f),
+			std::make_tuple(glm::vec3(1.75f, 1.75f, 3.5f), 1.f),
+			std::make_tuple(glm::vec3(2, 2, 4), 1.f),
+
+			// Lieutenant
+			std::make_tuple(glm::vec3(2.2f, 2.2f, 4), 1.f),
+			std::make_tuple(glm::vec3(2.5f, 2.5f, 3.5f), 1.f),
+
+			// Elite lieutenant
+			std::make_tuple(glm::vec3(2.25f, 2.25f, 5.5f), 1.f),
+			std::make_tuple(glm::vec3(2.5f, 2.5f, 4.5f), 1.f),
+
+			// Captain
+			std::make_tuple(glm::vec3(3, 3, 5), 1.f),
+			std::make_tuple(glm::vec3(3.5f, 3.5f, 4.5f), 1.f),
+
+			// Boss
+			std::make_tuple(glm::vec3(4.5f, 4.5f, 9), 1.f),
+			std::make_tuple(glm::vec3(5.5f, 5.5f, 8), 1.f)
+		};
+
+		const auto index = static_cast<size_t>(preset) - 1;
+		if (index < objectExtents.size()) {
+			return objectExtents[index];
+		}
+
+		return std::make_tuple(glm::zero<glm::vec3>(), 0.f);
+	}
+
 	const BoundingBox& Noun::GetBoundingBox() const {
 		return mBoundingBox;
+	}
+
+	const std::unique_ptr<ProjectileData>& Noun::GetProjectileData() const {
+		return mProjectileData;
+	}
+
+	const std::unique_ptr<OrbitData>& Noun::GetOrbitData() const {
+		return mOrbitData;
 	}
 
 	const std::shared_ptr<NonPlayerClass>& Noun::GetNonPlayerClassData() const {
@@ -708,12 +773,24 @@ namespace Game {
 		return mId;
 	}
 
+	uint8_t Noun::GetTeam() const {
+		return mTeam;
+	}
+
 	NounType Noun::GetType() const {
 		return mType;
 	}
 
 	PresetExtents Noun::GetPresetExtents() const {
 		return mPresetExtents;
+	}
+
+	MovementType Noun::GetMovementType() const {
+		return mMovementType;
+	}
+
+	bool Noun::HasLocomotion() const {
+		return mHasLocomotion;
 	}
 
 	bool Noun::IsCreature() const {

@@ -65,7 +65,10 @@ namespace Game {
 			CrystalBottomLeft | CrystalBottomCenter | CrystalBottomRight,
 
 		// Player data
-		PlayerBits = 1 << 12
+		PlayerBits = 1 << 12,
+
+		// Mask
+		Mask = CharacterMask | CrystalMask | PlayerBits
 	};
 
 	// Player
@@ -83,6 +86,7 @@ namespace Game {
 
 			uint32_t GetCurrentDeckIndex() const;
 			uint32_t GetAbilityId(uint8_t creatureIndex, uint8_t abilityIndex) const;
+			uint32_t GetAbilityRank(uint8_t creatureIndex, uint8_t abilityIndex) const;
 
 			void Setup();
 
@@ -100,9 +104,9 @@ namespace Game {
 
 			const Character& GetCharacter(uint32_t index) const;
 
-			uint32_t GetOpenCrystalSlot() const;
-			const Catalyst& GetCrystal(uint32_t index) const;
-			void SetCrystal(Catalyst&& crystal, uint32_t index);
+			uint32_t GetOpenCatalystSlot() const;
+			Catalyst GetCatalyst(uint32_t index) const;
+			void SetCatalyst(const Catalyst& crystal, uint32_t index);
 
 			uint16_t GetUpdateBits() const;
 			void SetUpdateBits(uint16_t bits);
@@ -112,9 +116,11 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
+			bool NeedUpdate() const;
+
 			void SetCharacter(Character&& character, uint32_t index);
 
-			void UpdateCrystalBonuses();
+			void UpdateCatalystBonuses();
 
 		private:
 			Instance& mInstance;
@@ -124,8 +130,8 @@ namespace Game {
 
 			std::array<ObjectPtr, 3> mCharacterObjects;
 			std::array<Character, 3> mCharacterData;
-			std::array<Catalyst, 9> mCrystals {};
-			std::array<bool, 8> mCrystalBonuses { false };
+			std::array<Catalyst, 9> mCatalysts {};
+			std::array<bool, 8> mCatalystBonuses { false };
 
 			uint64_t mPlayerOnlineId = 0;
 
@@ -156,6 +162,8 @@ namespace Game {
 
 			std::bitset<PlayerDataBits::Count> mDataBits;
 			uint16_t mUpdateBits = 0;
+
+			friend class Instance;
 	};
 
 	using PlayerPtr = std::shared_ptr<Player>;

@@ -73,6 +73,7 @@ namespace Game {
 			void survey_survey_getSurveyList(HTTP::Session& session, HTTP::Response& response);
 
 		private:
+			void add_patches(pugi::xml_node& node);
 			void add_broadcasts(pugi::xml_node& node);
 
 			void add_common_keys(pugi::xml_node& node, bool success = true, uint32_t successStatus = 200);

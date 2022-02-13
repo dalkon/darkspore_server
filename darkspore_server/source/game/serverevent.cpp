@@ -62,6 +62,10 @@ namespace Game {
 	}
 
 	// ServerEvent
+	ServerEvent::operator bool() const {
+		return mServerEventDef != 0 || mSimpleSwarmEffectId != 0 || (mRemove != false && mEffectIndex != 0);
+	}
+
 	void ServerEvent::WriteReflection(RakNet::BitStream& stream) const {
 		RakNet::reflection_serializer<ReflectionLength> reflector(stream);
 		reflector.begin();
@@ -75,7 +79,7 @@ namespace Game {
 		reflector.write<7>(mObjectId);
 		reflector.write<8>(mSecondaryObjectId);
 		reflector.write<9>(mAttackerId);
-		// 10 (unused)
+		reflector.write<10>(mPosition);
 		reflector.write<11>(mFacing);
 		reflector.write<12>(mOrientation);
 		reflector.write<13>(mTargetPoint);
@@ -86,8 +90,16 @@ namespace Game {
 	}
 
 	// ClientEvent
+	ClientEvent::operator bool() const {
+		return mEventId != ClientEventID::None;
+	}
+
+	void ClientEvent::SetEventId(ClientEventID eventId) {
+		mEventId = eventId;
+	}
+
 	void ClientEvent::SetLootPickup(uint8_t playerId, const SporeNet::Part& part) {
-		mEventId = ClientEventID::LootPickup;
+		SetEventId(ClientEventID::LootPickup);
 		mTextValue = playerId;
 		mLootReferenceId = 0;
 		mLootRigblockId = part.GetRigblockAssetHash();
@@ -100,7 +112,7 @@ namespace Game {
 	}
 
 	void ClientEvent::SetLootPickup(uint8_t playerId, const LootData& lootData) {
-		mEventId = ClientEventID::LootPickup;
+		SetEventId(ClientEventID::LootPickup);
 		mTextValue = playerId;
 		mLootReferenceId = 0;
 		mLootRigblockId = lootData.GetRigblockAsset();
@@ -113,12 +125,12 @@ namespace Game {
 	}
 
 	void ClientEvent::SetCatalystPickup(uint8_t playerId) {
-		mEventId = ClientEventID::CatalystPickup;
+		SetEventId(ClientEventID::CatalystPickup);
 		mTextValue = playerId;
 	}
 
 	void ClientEvent::SetPlayerDropLoot(uint8_t playerId, uint64_t lootInstanceId) {
-		mEventId = ClientEventID::LootPlayerDrop;
+		SetEventId(ClientEventID::LootPlayerDrop);
 		mTextValue = playerId;
 		mLootInstanceId = lootInstanceId;
 	}
