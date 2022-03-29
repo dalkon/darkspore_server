@@ -134,11 +134,11 @@ namespace Blaze {
 
 		IpPairAddress ip;
 
-		std::map<uint32_t, int32_t> cmap;
-		std::map<uint32_t, int64_t> dmap;
+		std::map<uint32_t, int32_t> clientAttributes;
+		std::map<uint32_t, int64_t> dataMap;
 
-		std::vector<int32_t> pslm;
-		std::vector<object_id> ulst;
+		std::vector<int32_t> latencyList;
+		std::vector<object_id> blazeObjectIdList;
 
 		std::string country;
 
@@ -289,7 +289,7 @@ namespace Blaze {
 		UserSessionExtendedData extendedData;
 		UserIdentification user;
 
-		uint32_t flags = 0;
+		uint32_t statusFlags = 0;
 
 		void Read(const rapidjson::Value& value);
 		void Write(TDF::Packet& packet) const;

@@ -8,11 +8,45 @@
 
 #include <array>
 #include <memory>
+#include <map>
 #include <unordered_map>
 
 // Game
 namespace Game {
 	using AnimationData = std::tuple<uint32_t, float>;
+
+	// DoorState
+	enum class DoorState : uint8_t {
+		Open = 0,
+		Closed = 2
+	};
+
+	// DoorData
+	class DoorData {
+		public:
+			void Read(pugi::xml_node node);
+
+		private:
+			DoorState mInitialState { DoorState::Open };
+
+			bool mClickToOpen { false };
+			bool mClickToClose { false };
+	};
+
+	// SwitchData
+	class SwitchData {
+		public:
+			void Read(pugi::xml_node node);
+	};
+
+	// PressureSwitchData
+	class PressureSwitchData {
+		public:
+			void Read(pugi::xml_node node);
+
+		private:
+			BoundingShape mShape {};
+	};
 
 	// CollisionShape
 	enum class CollisionShape : uint8_t {
@@ -93,7 +127,7 @@ namespace Game {
 			StealthDetection,
 			MovementSpeedBuff,
 
-			BaseCount = 13,
+			BaseCount,
 			MaxCount = 9
 		};
 	}
@@ -249,6 +283,9 @@ namespace Game {
 			
 			const std::shared_ptr<ClassAttributes>& GetAttributes() const;
 
+			const std::string& GetName() const;
+			const std::string& GetDescription() const;
+
 			NpcType GetType() const;
 
 			float GetAggroRange() const;
@@ -262,10 +299,13 @@ namespace Game {
 		private:
 			std::shared_ptr<ClassAttributes> mAttributes;
 
+			std::map<uint32_t, std::string> mLongDescriptions;
+
 			std::vector<EliteAffix> mEliteAffixes;
 			std::vector<DropType> mDropTypes;
 
 			std::string mName;
+			std::string mDescription;
 			std::string mEffect;
 			std::string mPath;
 
@@ -486,7 +526,7 @@ namespace Game {
 			AnimationData GetAnimationData(CharacterAnimationType type) const;
 
 		private:
-			std::array<AnimationData, utils::to_underlying(CharacterAnimationType::Count)> mAnimationData;
+			std::array<AnimationData, std::to_underlying(CharacterAnimationType::Count)> mAnimationData;
 
 			std::string mPath;
 
@@ -587,6 +627,9 @@ namespace Game {
 
 			const BoundingBox& GetBoundingBox() const;
 
+			const std::unique_ptr<DoorData>& GetDoorData() const;
+			const std::unique_ptr<SwitchData>& GetSwitchData() const;
+			const std::unique_ptr<PressureSwitchData>& GetPressureSwitchData() const;
 			const std::unique_ptr<ProjectileData>& GetProjectileData() const;
 			const std::unique_ptr<OrbitData>& GetOrbitData() const;
 
@@ -612,6 +655,9 @@ namespace Game {
 		private:
 			BoundingBox mBoundingBox;
 
+			std::unique_ptr<DoorData> mDoorData;
+			std::unique_ptr<SwitchData> mSwitchData;
+			std::unique_ptr<PressureSwitchData> mPressureSwitchData;
 			std::unique_ptr<ProjectileData> mProjectileData;
 			std::unique_ptr<OrbitData> mOrbitData;
 

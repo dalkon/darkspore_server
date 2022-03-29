@@ -151,6 +151,12 @@ namespace Blaze {
 		UserData userData;
 		userData.user.Read(request.get_request());
 
+		// Online
+		userData.statusFlags |= 1;
+
+		// Offline
+		// userData.statusFlags &= 0xFFFFFFFE;
+
 		if (userData.user.name == "test") {
 			userData.extendedData = user->get_extended_data();
 		}

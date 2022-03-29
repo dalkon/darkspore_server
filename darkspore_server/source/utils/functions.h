@@ -204,9 +204,82 @@ namespace utils {
 	};
 
 	template<typename T, typename U = std::underlying_type_t<T>> requires std::is_enum_v<T>
-	constexpr U to_underlying(T value) noexcept {
-		return static_cast<U>(value);
-	}
+	class enum_wrapper {
+		using this_type = enum_wrapper<T>;
+    
+		public:
+			constexpr enum_wrapper() noexcept = default;
+			constexpr enum_wrapper(T value) noexcept : mValue(value) {}
+			constexpr operator T() const noexcept { return mValue; }
+		
+			constexpr T value() const noexcept { return mValue; }
+			constexpr U underlying() const noexcept { return static_cast<U>(mValue); }
+
+			template<typename... Ts>
+			constexpr auto band(T value, Ts&&... args) noexcept {
+				mValue = static_cast<T>(underlying() & static_cast<U>(value));
+				if constexpr (sizeof...(args) > 0) {
+					return band(std::forward<Ts>(args)...);
+				}
+				return *this;
+			}
+
+			template<typename... Ts>
+			constexpr auto bor(T value, Ts&&... args) noexcept {
+				mValue = static_cast<T>(underlying() | static_cast<U>(value));
+				if constexpr (sizeof...(args) > 0) {
+					return bor(std::forward<Ts>(args)...);
+				}
+				return *this;
+			}
+		
+			template<typename... Ts>
+			constexpr auto bxor(T value, Ts&&... args) noexcept {
+				mValue = static_cast<T>(underlying() ^ static_cast<U>(value));
+				if constexpr (sizeof...(args) > 0) {
+					return bxor(std::forward<Ts>(args)...);
+				}
+				return *this;
+			}
+
+			constexpr auto bnot() noexcept {
+				mValue = static_cast<T>(~underlying());
+				return *this;
+			}
+		
+			constexpr auto lshift(int sh) noexcept {
+				mValue = static_cast<T>(underlying() << sh);
+				return *this;
+			}
+		
+			constexpr auto rshift(int sh) noexcept {
+				mValue = static_cast<T>(underlying() >> sh);
+				return *this;
+			}
+
+			template<typename... Ts>
+			constexpr bool test(Ts&&... args) const noexcept {
+				decltype(auto) value = this_type().bor(std::forward<Ts>(args)...).underlying();
+				return (underlying() & value) == value;
+			}
+
+			static constexpr T next(T value, U n) noexcept {
+				return static_cast<T>(underlying() + n);
+			}
+		
+			friend constexpr this_type operator&(const this_type& lhs, const this_type& rhs) { return this_type(lhs).band(rhs); }
+			friend constexpr this_type operator|(const this_type& lhs, const this_type& rhs) { return this_type(lhs).bor(rhs); }
+			friend constexpr this_type operator^(const this_type& lhs, const this_type& rhs) { return this_type(lhs).bxor(rhs); }
+			friend constexpr this_type operator~(const this_type& value) { return this_type(value).bnot(); }
+		
+			friend constexpr this_type operator<<(const this_type& value, int sh) { return this_type(value).lshift(sh); }
+			friend constexpr this_type operator>>(const this_type& value, int sh) { return this_type(value).rshift(sh); }
+
+			friend constexpr auto operator<=>(const this_type& lhs, const this_type& rhs) { return lhs.underlying() <=> rhs.underlying(); }
+
+		private:
+			T mValue { static_cast<T>(0) };
+	};
 
 	template<typename T, typename U = std::underlying_type_t<T>> requires std::is_enum_v<T>
 	struct enum_helper {

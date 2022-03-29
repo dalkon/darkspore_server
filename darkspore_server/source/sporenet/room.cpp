@@ -209,6 +209,11 @@ namespace SporeNet {
 		for (uint32_t i = 0; i < 4; ++i) {
 			CreateRoomCategory(i + 1)->SetView(roomView);
 		}
+
+		//		Rooms
+		for (uint32_t i = 0; i < 4; ++i) {
+			CreateRoom(i + 1)->SetCategory(GetRoomCategory(i + 1));
+		}
 	}
 
 	RoomPtr RoomManager::GetRoom(uint32_t id) const {

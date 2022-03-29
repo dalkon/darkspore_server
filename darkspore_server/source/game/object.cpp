@@ -126,7 +126,7 @@ namespace Game {
 	}
 
 	// InteractableData
-	InteractableData::InteractableData(Object& object) : mObject(object) {}
+	InteractableData::InteractableData(const ObjectPtr& object) : mObject(object) {}
 
 	uint32_t InteractableData::GetAbility() const {
 		return mAbility;
@@ -134,7 +134,7 @@ namespace Game {
 
 	void InteractableData::SetAbility(uint32_t ability) {
 		mAbility = ability;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateInteractableData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateInteractableData);
 	}
 
 	int32_t InteractableData::GetTimesUsed() const {
@@ -143,7 +143,7 @@ namespace Game {
 
 	void InteractableData::SetTimesUsed(int32_t timesUsed) {
 		mTimesUsed = timesUsed;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateInteractableData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateInteractableData);
 	}
 
 	int32_t InteractableData::GetUsesAllowed() const {
@@ -152,7 +152,7 @@ namespace Game {
 
 	void InteractableData::SetUsesAllowed(int32_t usesAllowed) {
 		mUsesAllowed = usesAllowed;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateInteractableData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateInteractableData);
 	}
 
 	void InteractableData::WriteTo(RakNet::BitStream& stream) const {
@@ -183,7 +183,7 @@ namespace Game {
 	}
 
 	// LootData
-	LootData::LootData(Object& object) : mObject(object) {}
+	LootData::LootData(const ObjectPtr& object) : mObject(object) {}
 
 	uint32_t LootData::GetRigblockAsset() const {
 		return mRigblockAsset;
@@ -223,12 +223,12 @@ namespace Game {
 
 	void LootData::SetId(uint64_t id) {
 		mId = id;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLootData);
 	}
 
 	void LootData::SetInstanceId(uint64_t id) {
 		mInstanceId = id;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLootData);
 	}
 
 	void LootData::SetPart(const SporeNet::Part& part) {
@@ -238,19 +238,19 @@ namespace Game {
 		mSecondaryPrefixAssetId = part.GetPrefixSecondaryAssetHash();
 		mItemLevel = part.GetLevel();
 		mRarity = static_cast<int32_t>(part.GetRarity());
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLootData);
 	}
 
 	void LootData::SetDNAAmount(float amount) {
 		mDNAAmount = amount;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLootData);
 	}
 
 	void LootData::SetCatalyst(const Catalyst& catalyst) {
 		mCatalystType = static_cast<int32_t>(catalyst.GetType());
 		mCatalystLevel = static_cast<int32_t>(catalyst.GetRarity());
 		mCatalystPrismatic = catalyst.GetColor() == CatalystColor::Prismatic;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLootData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLootData);
 	}
 
 	void LootData::WriteTo(RakNet::BitStream& stream) const {
@@ -297,7 +297,7 @@ namespace Game {
 	}
 
 	// AgentBlackboard
-	AgentBlackboard::AgentBlackboard(Object& object) : mObject(object) {}
+	AgentBlackboard::AgentBlackboard(const ObjectPtr& object) : mObject(object) {}
 
 	uint32_t AgentBlackboard::GetTargetId() const {
 		return mTargetId;
@@ -305,7 +305,7 @@ namespace Game {
 
 	void AgentBlackboard::SetTargetId(uint32_t id) {
 		mTargetId = id;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateAgentBlackboardData);
 	}
 
 	uint32_t AgentBlackboard::GetNumAttackers() const {
@@ -314,7 +314,7 @@ namespace Game {
 
 	void AgentBlackboard::SetNumAttackers(uint32_t attackers) {
 		mNumAttackers = attackers;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateAgentBlackboardData);
 	}
 
 	StealthType AgentBlackboard::GetStealthType() const {
@@ -323,7 +323,7 @@ namespace Game {
 
 	void AgentBlackboard::SetStealthType(StealthType stealthType) {
 		mStealthType = stealthType;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateAgentBlackboardData);
 	}
 
 	bool AgentBlackboard::IsInCombat() const {
@@ -332,7 +332,7 @@ namespace Game {
 
 	void AgentBlackboard::SetInCombat(bool inCombat) {
 		mInCombat = inCombat;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateAgentBlackboardData);
 	}
 
 	bool AgentBlackboard::IsTargetable() const {
@@ -341,7 +341,7 @@ namespace Game {
 
 	void AgentBlackboard::SetTargetable(bool targetable) {
 		mTargetable = targetable;
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateAgentBlackboardData);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateAgentBlackboardData);
 	}
 
 	void AgentBlackboard::WriteTo(RakNet::BitStream& stream) const {
@@ -380,7 +380,7 @@ namespace Game {
 	}
 
 	// Modifier
-	Modifier::Modifier(Object& object, uint32_t id) : mObject(object), mId(id) {
+	Modifier::Modifier(const ObjectPtr& object, uint32_t id) : mObject(object), mId(id) {
 		// 
 	}
 
@@ -393,7 +393,7 @@ namespace Game {
 	}
 
 	void Modifier::ResetDuration() {
-		mTimestamp = mObject.GetGame().GetTime();
+		mTimestamp = mObject->GetGame().GetTime();
 		mDirty = true;
 	}
 
@@ -407,7 +407,7 @@ namespace Game {
 	}
 
 	// AI
-	AI::AI(Object& object) : mObject(object) {
+	AI::AI(const ObjectPtr& object) : mObject(object) {
 		// TODO: Make some booleans to determine if certain variables are accessable
 	}
 
@@ -416,7 +416,7 @@ namespace Game {
 			return;
 		}
 
-		const auto& aidefinition = mObject.GetNoun()->GetAIDefinition();
+		const auto& aidefinition = mObject->GetNoun()->GetAIDefinition();
 		if (!aidefinition) {
 			return;
 		}
@@ -430,7 +430,7 @@ namespace Game {
 		UseAbility();
 
 		if (aidefinition->FaceTarget()) {
-			mObject.GetLocomotionData()->SetFacing(mTargetObject->GetPosition());
+			mObject->GetLocomotionData()->SetFacing(mTargetObject->GetPosition());
 		}
 	}
 
@@ -439,14 +439,16 @@ namespace Game {
 			return true;
 		}
 
-		const auto& data = mObject.GetNoun()->GetNonPlayerClassData();
+		const auto& data = mObject->GetNoun()->GetNonPlayerClassData();
 		if (!data) {
 			// If we don't have class data then we cannot have a target.
 			return false;
 		}
-#if 0
+#if 1
+		const auto& objectManager = mObject->GetObjectManager();
+
 		const auto searchRadius = data->GetAggroRange();
-		const auto& objects = mObject.GetObjectManager().GetObjectsInRadius(BoundingSphere(mObject.GetPosition(), searchRadius), { NounType::Creature });
+		const auto& objects = objectManager.GetObjectsInRadius(BoundingSphere(mObject->GetPosition(), searchRadius), { NounType::Creature });
 		for (const auto& possibleTarget : objects) {
 			if (possibleTarget->IsPlayerControlled()) {
 				mTargetObject = possibleTarget;
@@ -462,18 +464,17 @@ namespace Game {
 	}
 
 	bool AI::UseAbility(uint32_t id) {
-		if (!mObject.HasCooldown(id)) {
-			const auto& ability = mObject.GetGame().GetLua().GetAbility(id);
+		if (!mObject->HasCooldown(id)) {
+			const auto& ability = mObject->GetGame().GetLua().GetAbility(id);
 			if (ability) {
-				ability->Tick(mObject.shared_from_this(), mTargetObject);
-				return true;
+				return ability->Tick(mObject, mTargetObject, mTargetObject->GetPosition(), 1);
 			}
 		}
 		return false;
 	}
 
 	void AI::UseAbility() {
-		const auto& aidefinition = mObject.GetNoun()->GetAIDefinition();
+		const auto& aidefinition = mObject->GetNoun()->GetAIDefinition();
 		const auto& nodes = aidefinition->GetNodes();
 		if (nodes.empty()) {
 			// No nodes, no AI.
@@ -614,21 +615,55 @@ namespace Game {
 					SetMana(GetMaxMana());
 				}
 
-				auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-				if (nonCombatSpeed > 0) {
-					SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Strength); value > 0) {
+					SetAttributeValue(AttributeType::Strength, value);
 				}
 
-				auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-				if (combatSpeed > 0) {
-					SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Dexterity); value > 0) {
+					SetAttributeValue(AttributeType::Dexterity, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Mind); value > 0) {
+					SetAttributeValue(AttributeType::Mind, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::PhysicalDefense); value > 0) {
+					SetAttributeValue(AttributeType::PhysicalDefense, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::MagicalDefense); value > 0) {
+					// Unused
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::EnergyDefense); value > 0) {
+					SetAttributeValue(AttributeType::EnergyDefense, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Critical); value > 0) {
+					SetAttributeValue(AttributeType::CriticalRating, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed); value > 0) {
+					SetAttributeValue(AttributeType::NonCombatSpeed, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::CombatSpeed); value > 0) {
+					SetAttributeValue(AttributeType::CombatSpeed, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::StealthDetection); value > 0) {
+					SetAttributeValue(AttributeType::StealthDetection, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::MovementSpeedBuff); value > 0) {
+					SetAttributeValue(AttributeType::MovementSpeedBuff, value);
 				}
 
 				mAttributes->SetWeaponDamage(1, 5);
 			}
 		} else {
 			// All nonplayer objects should have an AI object
-			mAI = std::make_unique<AI>(*this);
+			mAI = std::make_unique<AI>(shared_from_this());
 
 			const auto& data = mNoun->GetNonPlayerClassData();
 			if (!data) {
@@ -651,14 +686,48 @@ namespace Game {
 					SetMana(GetMaxMana());
 				}
 
-				auto nonCombatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-				if (nonCombatSpeed > 0) {
-					// SetAttributeValue(AttributeType::NonCombatSpeed, nonCombatSpeed);
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Strength); value > 0) {
+					SetAttributeValue(AttributeType::Strength, value);
 				}
 
-				auto combatSpeed = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed);
-				if (combatSpeed > 0) {
-					// SetAttributeValue(AttributeType::CombatSpeed, combatSpeed);
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Dexterity); value > 0) {
+					SetAttributeValue(AttributeType::Dexterity, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Mind); value > 0) {
+					SetAttributeValue(AttributeType::Mind, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::PhysicalDefense); value > 0) {
+					SetAttributeValue(AttributeType::PhysicalDefense, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::MagicalDefense); value > 0) {
+					// Unused
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::EnergyDefense); value > 0) {
+					SetAttributeValue(AttributeType::EnergyDefense, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Critical); value > 0) {
+					SetAttributeValue(AttributeType::CriticalRating, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed); value > 0) {
+					SetAttributeValue(AttributeType::NonCombatSpeed, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::CombatSpeed); value > 0) {
+					SetAttributeValue(AttributeType::CombatSpeed, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::StealthDetection); value > 0) {
+					SetAttributeValue(AttributeType::StealthDetection, value);
+				}
+
+				if (auto value = attributes->GetBaseAttribute(ClassAttribute::MovementSpeedBuff); value > 0) {
+					SetAttributeValue(AttributeType::MovementSpeedBuff, value);
 				}
 			}
 		}
@@ -688,7 +757,7 @@ namespace Game {
 		if (mTickOverride != sol::nil) {
 			mTickOverride.call<void>(mPassiveAbility, shared_from_this());
 		} else if (mPassiveAbility) {
-			mPassiveAbility->Tick(shared_from_this());
+			mPassiveAbility->Tick(shared_from_this(), nullptr, glm::zero<glm::vec3>(), 1);
 		}
 
 		if (mAI) {
@@ -724,6 +793,14 @@ namespace Game {
 		return mManager.GetGame();
 	}
 
+	LuaThread* Object::GetLuaThread() const {
+		return mLuaThread;
+	}
+
+	void Object::SetLuaThread(LuaThread* thread) {
+		mLuaThread = thread;
+	}
+
 	bool Object::HasCombatantData() const {
 		return static_cast<bool>(mCombatantData);
 	}
@@ -746,7 +823,7 @@ namespace Game {
 
 	const std::unique_ptr<InteractableData>& Object::CreateInteractableData() {
 		if (!mInteractableData) {
-			mInteractableData = std::make_unique<InteractableData>(*this);
+			mInteractableData = std::make_unique<InteractableData>(shared_from_this());
 			SetFlags(GetFlags() | Flags::UpdateInteractableData);
 		}
 		return GetInteractableData();
@@ -770,7 +847,7 @@ namespace Game {
 
 	const std::unique_ptr<LootData>& Object::CreateLootData() {
 		if (!mLootData) {
-			mLootData = std::make_unique<LootData>(*this);
+			mLootData = std::make_unique<LootData>(shared_from_this());
 			SetFlags(GetFlags() | Flags::UpdateLootData);
 		}
 		return GetLootData();
@@ -786,7 +863,7 @@ namespace Game {
 
 	const std::unique_ptr<Locomotion>& Object::CreateLocomotionData() {
 		if (!mLocomotionData) {
-			mLocomotionData = std::make_unique<Locomotion>(*this);
+			mLocomotionData = std::make_unique<Locomotion>(shared_from_this());
 			SetFlags(GetFlags() | Flags::UpdateLocomotion);
 		}
 		return GetLocomotionData();
@@ -802,7 +879,7 @@ namespace Game {
 
 	const std::unique_ptr<AgentBlackboard>& Object::CreateAgentBlackboardData() {
 		if (!mAgentBlackboardData) {
-			mAgentBlackboardData = std::make_unique<AgentBlackboard>(*this);
+			mAgentBlackboardData = std::make_unique<AgentBlackboard>(shared_from_this());
 			SetFlags(GetFlags() | Flags::UpdateAgentBlackboardData);
 		}
 		return GetAgentBlackboardData();
@@ -1226,6 +1303,10 @@ namespace Game {
 		mDataBits.set(ObjectDataBits::MovementType);
 	}
 
+	PlayerPtr Object::GetPlayer() const {
+		return mManager.GetGame().GetPlayerByIndex(mPlayerIndex);
+	}
+
 	uint8_t Object::GetPlayerIndex() const {
 		return mPlayerIndex;
 	}
@@ -1285,6 +1366,14 @@ namespace Game {
 	}
 
 	// Combatant functions
+	bool Object::IsOverdriveCharged() const {
+		if (IsPlayerControlled()) {
+			const auto& player = GetPlayer();
+			return player ? player->IsOverdriveCharged() : false;
+		}
+		return false;
+	}
+
 	std::tuple<bool, float, bool> Object::TakeDamage(
 		const AttributesPtr& attackerAttributes,
 		const std::tuple<float, float>& damageRange,
@@ -1368,11 +1457,11 @@ namespace Game {
 		if (value > 0) {
 
 
-			// Check if we should resurrect.
-			if (health <= 0) {
-				// SendResurrectEvent();
-				OnResurrect();
-			}
+// Check if we should resurrect.
+if (health <= 0) {
+	// SendResurrectEvent();
+	OnResurrect();
+}
 		}
 
 		float remainder = std::max<float>(0.f, health - maxHealth);
@@ -1412,6 +1501,97 @@ namespace Game {
 		}
 
 		//
+	}
+
+	int32_t Object::CanUseAbility(
+		const AbilityPtr& ability,
+		uint32_t abilityIndex,
+		int32_t rank,
+		const ObjectPtr& target,
+		const glm::vec3& targetPosition
+	) {
+		if (!ability) {
+			return -9984;
+		}
+
+		if (rank > 7) {
+			// Rank cannot be higher than 7?
+			return -9994;
+		}
+
+		if (IsPlayerControlled()) {
+			const auto& player = GetPlayer();
+			if (player) {
+				if (player->IsAbilityLocked(abilityIndex)) {
+					return -9988;
+				}
+
+				if (abilityIndex >= 6) {
+					const auto& character = player->GetCharacter(abilityIndex - 6);
+					if (character.GetHealth() <= 0) {
+						return -9990;
+					}
+				}
+			}
+		}
+
+		const auto descriptors = utils::enum_wrapper { ability->GetDescriptors() };
+		if (descriptors.test(Game::Descriptors::IsBasic)) {
+			if (target && target->GetHealth() <= 0) {
+				return -9989;
+			}
+		} else {
+			if (GetAttributeValue(AttributeType::Silence) != 0) {
+				return -9993;
+			}
+		}
+
+		// Cooldown
+		if (HasCooldown(ability->GetId())) {
+			return -10000;
+		}
+
+		// Get scaling attribute
+		auto scalingAttribute = utils::enum_wrapper { ability->GetScalingAttribute() };
+		if (scalingAttribute.value() == decltype(scalingAttribute)().bnot().value()) {
+			scalingAttribute = static_cast<AttributeType>(GetPrimaryAttribute());
+		}
+
+		const auto& self = shared_from_this();
+
+		// TODO: probably not use shared_from_this here somehow.
+		float attributeValue = GetAttributeValue(scalingAttribute);
+		// also check object player index?
+		if (GetMana() < ability->GetManaCost(self, rank, attributeValue)) {
+			return -9997;
+		}
+		
+		if (!ability->IsInRange(self, target, targetPosition, rank)) {
+			return ability->ShouldPursue();
+		}
+
+		if (ability->IsAbleToHit(self, target, targetPosition, rank)) {
+			//
+		}
+
+		return 0;
+	}
+
+	void Object::RequestAbility(const AbilityPtr& ability, const ObjectPtr& attacker) {
+		auto value = CanUseAbility(ability);
+		if (value != 0) {
+			return;
+		}
+
+		if (ability->RequiresAgent()) {
+
+		}
+
+
+	}
+
+	void Object::RequestModifier(const ObjectPtr& attacker) {
+
 	}
 
 	void Object::OnChangeHealth(float healthChange) {
@@ -1457,6 +1637,23 @@ namespace Game {
 				}
 			}
 		}
+	}
+
+	// Interactable data
+	bool Object::HasInteractableUsesLeft() const {
+		if (mNoun) {
+			if (mNoun->GetDoorData() != nullptr ||
+				mNoun->GetSwitchData() != nullptr ||
+				mNoun->GetPressureSwitchData() != nullptr
+			) {
+				return true;
+			}
+		}
+
+		if (HasInteractableData()) {
+			return mInteractableData->GetTimesUsed() < mInteractableData->GetUsesAllowed();
+		}
+		return false;
 	}
 
 	// Agent Blackboard

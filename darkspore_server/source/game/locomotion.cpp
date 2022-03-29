@@ -136,22 +136,20 @@ namespace Game {
 	}
 
 	// Locomotion
-	Locomotion::Locomotion(Object& object) : mObject(object) {}
-
-	Object& Locomotion::GetObject() {
-		return mObject;
+	Locomotion::Locomotion(const ObjectPtr& object) : mObject(object) {
+		Stop();
 	}
 
-	const Object& Locomotion::GetObject() const {
+	const ObjectPtr& Locomotion::GetObject() const {
 		return mObject;
 	}
 
 	void Locomotion::Update(float deltaTime) {
-		switch (mObject.GetMovementType()) {
+		switch (mObject->GetMovementType()) {
 			case MovementType::Pathfinding: {
 				if (false) {
-					mObject.SetLinearVelocity(glm::zero<glm::vec3>());
-					mObject.SetAngularVelocity(glm::zero<glm::vec3>());
+					mObject->SetLinearVelocity(glm::zero<glm::vec3>());
+					mObject->SetAngularVelocity(glm::zero<glm::vec3>());
 				}
 				break;
 			}
@@ -368,13 +366,13 @@ LAB_009ef634:
 	}
 
 	ProjectileParameters& Locomotion::GetProjectileParameters() {
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 		mDataBits.set(LocomotionDataBits::ProjectileParameters);
 		return mProjectileParameters;
 	}
 
 	LobParameters& Locomotion::GetLobParameters() {
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 		mDataBits.set(LocomotionDataBits::LobParameters);
 		return mLobParameters;
 	}
@@ -489,7 +487,7 @@ LAB_009ef634:
 		mAllowedStopDistance = 0;
 		mDesiredStopDistance = 0;
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 
 	void Locomotion::SetGoalPositionWithDistance(const glm::vec3& position, float distance) {
@@ -518,7 +516,7 @@ LAB_009ef634:
 		mAllowedStopDistance = distance;
 		mDesiredStopDistance = distance;
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 
 	void Locomotion::SetGoalObjectEx(const ObjectPtr& object, float distance, bool useTargetPosition) {
@@ -539,7 +537,7 @@ LAB_009ef634:
 		mAllowedStopDistance = distance;
 		mDesiredStopDistance = distance;
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 
 	void Locomotion::SetGoalFlags(uint32_t flags) {
@@ -556,11 +554,11 @@ LAB_009ef634:
 
 		// set data
 		mGoalFlags = 0x002 | 0x040;
-		mGoalPosition = mObject.GetPosition();
+		mGoalPosition = mObject->GetPosition();
 		mTargetPosition = facingPosition;
 		mFacing = glm::normalize(mTargetPosition - mGoalPosition);
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 	
 	void Locomotion::Stop() {
@@ -573,7 +571,7 @@ LAB_009ef634:
 		// set data
 		mGoalFlags = 0x020;
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 
 	void Locomotion::TurnToFaceTargetObject(const ObjectPtr& object) {
@@ -587,11 +585,11 @@ LAB_009ef634:
 
 		// set data
 		mGoalFlags = 0x100 | 0x002;
-		mGoalPosition = mObject.GetPosition();
+		mGoalPosition = mObject->GetPosition();
 		mTargetId = object->GetId();
 		mFacing = glm::normalize(object->GetPosition() - mGoalPosition);
 
-		auto radius = mObject.GetFootprintRadius();
+		auto radius = mObject->GetFootprintRadius();
 		mAllowedStopDistance = radius;
 		mDesiredStopDistance = radius;
 	}
@@ -614,7 +612,7 @@ LAB_009ef634:
 		mAllowedStopDistance = 0;
 		mDesiredStopDistance = 0;
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 	
 	void Locomotion::ApplyExternalVelocity(const glm::vec3& velocity) {
@@ -626,7 +624,7 @@ LAB_009ef634:
 		mGoalFlags = 0x008;
 		mExternalLinearVelocity = velocity;
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 
 	void Locomotion::ClearExternalVelocity() {
@@ -634,7 +632,7 @@ LAB_009ef634:
 		mGoalFlags = 0x020;
 		mExternalLinearVelocity = glm::zero<glm::vec3>();
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 
 	void Locomotion::ClearTargetObject() {
@@ -643,7 +641,7 @@ LAB_009ef634:
 		mGoalFlags &= ~0x100;
 		mTargetId = 0;
 
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
 
 	void Locomotion::FaceObjectDuringMove(const ObjectPtr& object) {
@@ -656,7 +654,7 @@ LAB_009ef634:
 	}
 
 	void Locomotion::SlideToPoint(const glm::vec3& position, float speed) {
-		auto delta = position - mObject.GetPosition();
+		auto delta = position - mObject->GetPosition();
 		auto distance = glm::sqrt(glm::dot(delta, delta));
 		auto direction = delta * (static_cast<float>(1) / distance);
 		Jump(direction, distance, speed, direction, 0.f, 0.f, 0.f, false);
@@ -748,17 +746,17 @@ LAB_009ef634:
 					return true;
 				}
 
-				if (mObject.GetOwnerObject() == collidingObject) {
+				if (mObject->GetOwnerObject() == collidingObject) {
 					return false;
 				}
 
-				const auto& noun = mObject.GetNoun();
+				const auto& noun = mObject->GetNoun();
 				if (noun) {
 					const auto& projectile = noun->GetProjectileData();
 					if (projectile) {
 						switch (projectile->GetTargetType()) {
-							case TargetType::Enemies: return mObject.GetTeam() != collidingObject->GetTeam();
-							case TargetType::Allies: return mObject.GetTeam() == collidingObject->GetTeam();
+							case TargetType::Enemies: return mObject->GetTeam() != collidingObject->GetTeam();
+							case TargetType::Allies: return mObject->GetTeam() == collidingObject->GetTeam();
 							case TargetType::Any: return true;
 							case TargetType::None: return false;
 						}
@@ -772,7 +770,7 @@ LAB_009ef634:
 			return false;
 		}
 
-		const auto& noun = mObject.GetNoun();
+		const auto& noun = mObject->GetNoun();
 		if (!noun) {
 			return false;
 		}
@@ -787,7 +785,7 @@ LAB_009ef634:
 			return false;
 		}
 
-		const auto& collidingObjects = mObject.GetCollidingObjectsWith(*creatureCollisionVolume, { NounType::Creature });
+		const auto& collidingObjects = mObject->GetCollidingObjectsWith(*creatureCollisionVolume, { NounType::Creature });
 		for (const auto& collidingObject : collidingObjects) {
 			if (TestCollision(collidingObject)) {
 				return true;
@@ -800,12 +798,12 @@ LAB_009ef634:
 
 	void Locomotion::Projectile(float value) {
 		if (mReflectedCurrentUpdate != mReflectedLastUpdate) {
-			SetInitialDirection(glm::normalize(mObject.GetLinearVelocity()));
+			SetInitialDirection(glm::normalize(mObject->GetLinearVelocity()));
 			mReflectedCurrentUpdate = mReflectedLastUpdate;
 		}
 
 		if (mExternalForce != glm::zero<glm::vec3>()) {
-			mObject.SetLinearVelocity(mObject.GetLinearVelocity() + mExternalForce * value);
+			mObject->SetLinearVelocity(mObject->GetLinearVelocity() + mExternalForce * value);
 			SetExpectedGeoCollision(glm::zero<glm::vec3>());
 		}
 
@@ -813,10 +811,10 @@ LAB_009ef634:
 		float acceleration = 1.f * value;
 
 		glm::vec3 movementSpeed;
-		if (mObject.IsImmobilized()) {
+		if (mObject->IsImmobilized()) {
 			movementSpeed = glm::zero<glm::vec3>();
 		} else {
-			movementSpeed = mObject.GetLinearVelocity() * acceleration;
+			movementSpeed = mObject->GetLinearVelocity() * acceleration;
 		}
 
 		glm::vec3 collisionPosition;
@@ -824,7 +822,7 @@ LAB_009ef634:
 			mHasCollidedWithCreature = true;
 			// mCollisionPosition = position;
 			if (!mProjectileParameters.mPiercing) {
-				mObject.SetPositionSimulated(mExpectedGeoCollision);
+				mObject->SetPositionSimulated(mExpectedGeoCollision);
 				return;
 			}
 		}
@@ -833,7 +831,7 @@ LAB_009ef634:
 			if (mExpectedGeoCollision != glm::zero<glm::vec3>()) {
 				const auto& delta = mExpectedGeoCollision - movementSpeed;
 				if (glm::dot(delta, delta) < glm::dot(movementSpeed, movementSpeed)) {
-					mObject.SetPositionSimulated(mExpectedGeoCollision);
+					mObject->SetPositionSimulated(mExpectedGeoCollision);
 					mHasCollided = true;
 					return;
 				}
@@ -842,19 +840,21 @@ LAB_009ef634:
 			}
 		}
 
-		mObject.SetPositionSimulated(mObject.GetPosition() + movementSpeed);
-		mObject.SetFlags(mObject.GetFlags() | Object::Flags::UpdateLocomotion);
+		mObject->SetPositionSimulated(mObject->GetPosition() + movementSpeed);
+		if (mObject->IsDirty()) {
+			mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
+		}
 
-		const auto& angularVelocity = mObject.GetAngularVelocity();
+		const auto& angularVelocity = mObject->GetAngularVelocity();
 		if (angularVelocity != glm::zero<glm::vec3>()) {
 			// unknown "unaff_retaddr" used here aswell.
-			const auto& orientation = mObject.GetOrientation();
-			mObject.SetOrientation(glm::normalize(orientation + (orientation * glm::quat(0, angularVelocity * 0.5f))));
+			const auto& orientation = mObject->GetOrientation();
+			mObject->SetOrientation(glm::normalize(orientation + (orientation * glm::quat(0, angularVelocity * 0.5f))));
 		}
 	}
 
 	void Locomotion::OrbitOwner(float value) {
-		const auto& noun = mObject.GetNoun();
+		const auto& noun = mObject->GetNoun();
 		if (!noun) {
 			return;
 		}
@@ -864,13 +864,13 @@ LAB_009ef634:
 			return;
 		}
 
-		const auto& ownerObject = mObject.GetOwnerObject();
+		const auto& ownerObject = mObject->GetOwnerObject();
 		if (!ownerObject) {
 			return;
 		}
 
 		if (mOffset != glm::zero<glm::vec3>()) {
-			auto delta = mObject.GetPosition() - ownerObject->GetPosition();
+			auto delta = mObject->GetPosition() - ownerObject->GetPosition();
 			if (glm::dot(delta, delta) <= *reinterpret_cast<float*>(TEST_VALUE)) {
 				mOffset = GetFacing();
 			} else {
@@ -878,7 +878,7 @@ LAB_009ef634:
 			}
 		}
 
-		float speedBuff = mObject.GetAttributeValue(AttributeType::MovementSpeedBuff) + 1;
+		float speedBuff = mObject->GetAttributeValue(AttributeType::MovementSpeedBuff) + 1;
 		float speed = orbitData->GetSpeed();
 		float radius = std::max<float>(1, orbitData->GetRadius());
 
@@ -901,12 +901,12 @@ LAB_009ef634:
 
 	void Locomotion::GroundRoll(float value) {
 		if (mProjectileParameters.mSpeed == 0 || mReflectedCurrentUpdate != mReflectedLastUpdate) {
-			const auto& velocity = mObject.GetLinearVelocity();
+			const auto& velocity = mObject->GetLinearVelocity();
 
 			mProjectileParameters.mSpeed = glm::sqrt(glm::dot(velocity, velocity));
 			if (mProjectileParameters.mSpeed == 0) {
-				mObject.SetLinearVelocity(glm::zero<glm::vec3>());
-				mObject.SetAngularVelocity(glm::zero<glm::vec3>());
+				mObject->SetLinearVelocity(glm::zero<glm::vec3>());
+				mObject->SetAngularVelocity(glm::zero<glm::vec3>());
 				mProjectileParameters.mSpeed = 1;
 			} else {
 				mInitialDirection = velocity * (1.f / mProjectileParameters.mSpeed);
@@ -916,11 +916,11 @@ LAB_009ef634:
 		}
 
 		if (mExternalForce != glm::zero<glm::vec3>()) {
-			mObject.SetLinearVelocity(mObject.GetLinearVelocity() + mExternalForce * value);
+			mObject->SetLinearVelocity(mObject->GetLinearVelocity() + mExternalForce * value);
 			mExpectedGeoCollision = glm::zero<glm::vec3>();
 		}
 
-		float speed = mObject.GetAttributeValue(AttributeType::MovementSpeedBuff);
+		float speed = mObject->GetAttributeValue(AttributeType::MovementSpeedBuff);
 		if (speed != 0) {
 			speed = (speed + 1) * mProjectileParameters.mSpeed;
 		} else {

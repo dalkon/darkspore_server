@@ -556,8 +556,8 @@ namespace Blaze {
 		std::string token = request["TOKN"].GetString();
 		LoginTokenType tokenType = static_cast<LoginTokenType>(request["TYPE"].GetUint());
 
-		const auto& user = SporeNet::Get().GetUserManager().GetUserByEmail(username);
-		if (!user || user->get_password() != password) {
+		const auto& [user, success, alreadyLoggedIn] = SporeNet::Get().GetUserManager().Login(username, password);
+		if (!success) {
 			std::cout << "User '" << username << "' not found." << std::endl;
 
 			request.reply(ErrorCode::AUTH_ERR_INVALID_USER);
@@ -566,15 +566,16 @@ namespace Blaze {
 
 		// Setup initial user data (move this)
 		UserSessionExtendedData& extendedData = user->get_extended_data();
-		extendedData.country = "";
+		extendedData.country = "US";
 		extendedData.hardwareFlags = 1;
-		extendedData.userAttributes = 0;
+		extendedData.userAttributes = 3;
 		// extendedData.dmap[0x70001] = 55;
 		// extendedData.dmap[0x70002] = 707;
-		extendedData.ulst.emplace_back(4, 1, 0);
+		extendedData.blazeObjectIdList.emplace_back(4, 1, 0);
+		extendedData.blazeObjectIdList.emplace_back(5, 1, 0);
 		for (uint32_t i = 0; i < 5; ++i) {
-			// extendedData.pslm.push_back(0x0FFF0FFF);
-			extendedData.pslm.push_back(1161889797);
+			// extendedData.latencyList.push_back(0x0FFF0FFF);
+			extendedData.latencyList.push_back(1161889797);
 		}
 
 		NetworkQosData& qos = extendedData.qos;

@@ -10,7 +10,7 @@ namespace Blaze {
 	// UtilComponent
 	class UtilComponent : public Component {
 		public:
-			enum { Id = 0x09 };
+			enum : uint16_t { Id = 0x09 };
 
 			uint16_t GetId() const override;
 

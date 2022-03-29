@@ -11,7 +11,7 @@ namespace Blaze {
 	// GameManagerComponent
 	class GameManagerComponent : public Component {
 		public:
-			enum { Id = 0x04 };
+			enum : uint16_t { Id = 0x04 };
 
 			uint16_t GetId() const override;
 

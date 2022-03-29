@@ -216,9 +216,13 @@ namespace SporeNet {
 	// UserManager
 	class UserManager {
 		public:
-			UserPtr GetUserById(int64_t id);
-			UserPtr GetUserByEmail(const std::string& username);
-			UserPtr GetUserByAuthToken(const std::string& authToken);
+			std::tuple<UserPtr, bool, bool> Login(const std::string& username, const std::string& password);
+
+			std::vector<UserPtr> GetUsers() const;
+
+			UserPtr GetUserById(int64_t id) const;
+			UserPtr GetUserByEmail(const std::string& username) const;
+			UserPtr GetUserByAuthToken(const std::string& authToken) const;
 
 		private:
 			void RemoveUser(const std::string& username);

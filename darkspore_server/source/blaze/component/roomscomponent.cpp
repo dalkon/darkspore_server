@@ -368,7 +368,7 @@ namespace Blaze {
 			return;
 		}
 
-		Rooms::RoomMemberData memberData;
+		Rooms::RoomMemberData memberData {};
 		memberData.memberId = userId;
 		memberData.roomId = room->GetId();
 
@@ -418,7 +418,7 @@ namespace Blaze {
 
 		TDF::Packet packet;
 		packet.put_integer("SEID", 1);
-		packet.put_integer("UPRE", RoomViewUpdate::ConfigReloaded);
+		packet.put_integer("UPRE", RoomViewUpdate::UserRoomCreated);
 		packet.put_integer("USID", user->get_id());
 		packet.put_integer("VWID", roomViewId);
 

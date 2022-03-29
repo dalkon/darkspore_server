@@ -134,6 +134,19 @@ namespace Game {
 		return characterData.mAbilityRanks[std::clamp<size_t>(abilityIndex, 0, 8)];
 	}
 
+	bool Player::IsAbilityLocked(uint8_t abilityIndex) const {
+		if (abilityIndex < mLockedAbilityMin) {
+			return true;
+		} else if (mLockedAbilityMin == 5) {
+			return (abilityIndex - 6) == mCurrentDeckIndex;
+		}
+		return false;
+	}
+
+	bool Player::IsOverdriveCharged() const {
+		return mbIsCharged;
+	}
+
 	void Player::Setup() {
 		SetStatus(0, 0.f);
 

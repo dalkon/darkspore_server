@@ -234,7 +234,7 @@ auto parse_cookies(HTTP::Request& request) {
 
 	auto cookieList = utils::explode_string(';' + cookies.to_string(), ';');
 	for (const auto& cookie : cookieList) {
-		auto cookieData = utils::explode_string(cookie, '=');
+		auto cookieData = utils::explode_string(cookie, '=', 1);
 		if (cookieData.size() == 2) {
 			data.emplace(cookieData[0], cookieData[1]);
 		}
@@ -443,6 +443,7 @@ namespace Game {
 				if (user) {
 					session.set_user(user);
 				}
+				response.set(boost::beast::http::field::set_cookie, "token=" + token);
 			}
 
 			auto method = request.uri.parameter("method");
@@ -544,17 +545,30 @@ namespace Game {
 		router->add("/game/service/png", { boost::beast::http::verb::get, boost::beast::http::verb::post }, [this](HTTP::Session& session, HTTP::Response& response) {
 			const auto& request = session.get_request();
 
-			auto template_id = request.uri.parameter<uint32_t>("template_id");
-			auto size = request.uri.parameter("size");
-
 			std::string storagePath = Config::Get(CONFIG_STORAGE_PATH);
-			std::stringstream stream;
-			stream << storagePath;
-			stream << "template_png/";
-			stream << size << "/";
-			stream << "0x" << std::setfill('0') << std::setw(8) << std::hex << template_id << std::dec << ".png";
+			std::string path;
+			if (auto account_id = request.uri.parameter<int64_t>("account_id"); account_id != 0) {
+				/*
+				std::string path = std::format(
+					"{}www/{}{}/index.html",
+					Config::Get(CONFIG_STORAGE_PATH),
+					Config::Get(CONFIG_DARKSPORE_LAUNCHER_THEMES_PATH),
+					currentTheme
+				);
+				*/
+			} else {
+				auto template_id = request.uri.parameter<uint32_t>("template_id");
+				auto size = request.uri.parameter("size");
 
-			std::string path = stream.str();
+				std::stringstream stream;
+				stream << storagePath;
+				stream << "template_png/";
+				stream << size << "/";
+				stream << "0x" << std::setfill('0') << std::setw(8) << std::hex << template_id << std::dec << ".png";
+
+				path = stream.str();
+			}
+
 			if (!std::filesystem::exists(path)) {
 				path = storagePath + "default.png";
 			}
@@ -1013,15 +1027,11 @@ namespace Game {
 				utils::xml_add_text_node(config, "blaze_secure", "N"); // Directly linked to BlazeSecure
 				utils::xml_add_text_node(config, "blaze_env", "prod"); // Directly linked to BlazeEnvironment, can be { prod, beta, cert, test, dev }
 				utils::xml_add_text_node(config, "sporenet_cdn_host", host);
-				utils::xml_add_text_node(config, "sporenet_cdn_port", 80);
 				utils::xml_add_text_node(config, "sporenet_db_host", host);
-				utils::xml_add_text_node(config, "sporenet_db_port", 80);
 				utils::xml_add_text_node(config, "sporenet_db_name", "darkspore");
 				utils::xml_add_text_node(config, "sporenet_host", host);
-				utils::xml_add_text_node(config, "sporenet_port", 80);
 				utils::xml_add_text_node(config, "http_secure", "N");
 				utils::xml_add_text_node(config, "liferay_host", host);
-				utils::xml_add_text_node(config, "liferay_port", 80);
 				utils::xml_add_text_node(config, "launcher_action", 2);
 				utils::xml_add_text_node(config, "launcher_url", "http://" + host + "/bootstrap/launcher/?version=" + mVersion);
 			}
@@ -1652,6 +1662,17 @@ namespace Game {
 				terms = Search for Players
 			*/
 
+			if (auto docAccounts = docResponse.append_child("accounts")) {
+				const auto& users = SporeNet::Get().GetUserManager().GetUsers();
+				for (const auto& otherUser : users) {
+					auto account = docAccounts.append_child("account");
+					utils::xml_add_text_node(account, "blaze_id", otherUser->get_id());
+					utils::xml_add_text_node(account, "account_id", otherUser->get_id());
+					utils::xml_add_text_node(account, "name", otherUser->get_name());
+					utils::xml_add_text_node(account, "presence_level", 1);
+				}
+			}
+
 			if (sortBy == "name") {
 
 			} else if (sortBy == "presence_level") {
@@ -1664,7 +1685,7 @@ namespace Game {
 
 			}
 
-			success = false;
+			success = true;
 		}
 
 		add_common_keys(docResponse, success);
@@ -2150,7 +2171,8 @@ version = 1
 		xml_string_writer writer;
 		xmlDocument.save(writer, "\t", pugi::format_default | pugi::format_write_bom, pugi::encoding_latin1);
 
-		// response.set(boost::beast::http::field::host, "127.0.0.1");
+		response.set(boost::beast::http::field::host, "127.0.0.1");
+		// "%s/%s (Pollinator; %s)" (name, version, os_version)
 		// response.set(boost::beast::http::field::user_agent, "Darkspore/5.3.0.127 (Pollinator; 6.2.9200)");
 		// response.set(boost::beast::http::field::date, utils::get_utc_date_string());
 		// response.set(boost::beast::http::field::user_agent, "EA/2.0 (compatible)");

@@ -29,12 +29,74 @@ namespace Game {
 		}
 	}
 
+	auto ReadAssetString(const pugi::xml_node& node, std::string_view nodeName) {
+		// Haven't checked all files if its just "AssetStrings!hash_id(str)" but if it is you could just ignore that one.
+		using namespace std::string_literals;
+		if (auto childNode = node.child(nodeName.data())) {
+			return std::make_tuple(
+				true,
+				utils::xml_get_text_node(childNode, "str"),
+				utils::xml_get_text_node(childNode, "id")
+			);
+		}
+		return std::make_tuple(false, ""s, ""s);
+	}
+
 	glm::vec3 ReadVec3(pugi::xml_node node) {
 		glm::vec3 data {};
 		data.x = utils::xml_get_text_node<float>(node, "x");
 		data.y = utils::xml_get_text_node<float>(node, "y");
 		data.z = utils::xml_get_text_node<float>(node, "z");
 		return data;
+	}
+
+	// DoorData
+	void DoorData::Read(pugi::xml_node node) {
+		mClickToOpen = utils::xml_get_text_node<bool>(node, "clickToOpen");
+		mClickToClose = utils::xml_get_text_node<bool>(node, "clickToClose");
+		mInitialState = utils::xml_get_text_node<DoorState>(node, "initialState");
+	}
+
+	// SwitchData
+	void SwitchData::Read(pugi::xml_node node) {
+		// Empty
+	}
+
+	// PressureSwitchData
+	void PressureSwitchData::Read(pugi::xml_node node) {
+		if (auto volumeNode = node.child("volume")) {
+			switch (utils::xml_get_text_node<uint32_t>(volumeNode, "shape")) {
+				// Sphere
+				case 2: {
+					mShape.sphere = BoundingSphere(
+						glm::zero<glm::vec3>(),
+						utils::xml_get_text_node<float>(volumeNode, "sphereRadius")
+					);
+					break;
+				}
+
+				// Box
+				case 3: {
+					mShape.box = BoundingBox();
+					mShape.box.extent = 0.5f * glm::vec3(
+						utils::xml_get_text_node<float>(volumeNode, "boxWidth"),
+						utils::xml_get_text_node<float>(volumeNode, "boxHeight"),
+						utils::xml_get_text_node<float>(volumeNode, "boxLength")
+					);
+					break;
+				}
+
+				// Capsule
+				case 4: {
+					mShape.capsule = BoundingCapsule(
+						glm::zero<glm::vec3>(),
+						utils::xml_get_text_node<float>(volumeNode, "capsuleRadius"),
+						utils::xml_get_text_node<float>(volumeNode, "capsuleHeight")
+					);
+					break;
+				}
+			}
+		}
 	}
 
 	// CollisionVolume
@@ -229,8 +291,8 @@ namespace Game {
 	// NonPlayerClass
 	void NonPlayerClass::Read(pugi::xml_node node) {
 		const auto& database = NounDatabase::Instance();
-		if (auto nameNode = node.child("name")) {
-			mName = utils::xml_get_text_node(nameNode, "str");
+		if (const auto& [ok, str, id] = ReadAssetString(node, "name"); ok) {
+			mName = str;
 		}
 
 		mEffect = utils::xml_get_text_node(node, "mpClassEffect");
@@ -253,6 +315,20 @@ namespace Game {
 		ReadListNode(node, "dropType", mDropTypes);
 		ReadListNode(node, "eliteAffix", mEliteAffixes);
 
+		if (const auto& [ok, str, id] = ReadAssetString(node, "description"); ok) {
+			mDescription = str;
+		}
+
+		for (const auto& child : node.child("longDescription")) {
+			if (!utils::string_iequals(child.name(), "entry")) {
+				continue;
+			}
+
+			if (const auto& [ok, str, id] = ReadAssetString(child, "description"); ok) {
+				mLongDescriptions.emplace(utils::hash_id(str), str);
+			}
+		}
+
 		auto classAttributesName = utils::xml_get_text_node(node, "mpClassAttributes");
 		if (!classAttributesName.empty()) {
 			mAttributes = database.GetClassAttributes(utils::hash_id(classAttributesName));
@@ -261,6 +337,14 @@ namespace Game {
 
 	const std::shared_ptr<ClassAttributes>& NonPlayerClass::GetAttributes() const {
 		return mAttributes;
+	}
+
+	const std::string& NonPlayerClass::GetName() const {
+		return mName;
+	}
+
+	const std::string& NonPlayerClass::GetDescription() const {
+		return mDescription;
 	}
 
 	NpcType NonPlayerClass::GetType() const {
@@ -471,157 +555,157 @@ namespace Game {
 			CharacterAnimation->add("morphology", key_type, 0x064);
 		*/
 		if (auto value = utils::xml_get_text_node(node, "preAggroIdleAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::PreAggro)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::PreAggro)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "idleAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Idle)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Idle)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "lobbyIdleAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::LobbyIdle)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::LobbyIdle)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "specialIdleAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::SpecialIdle)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::SpecialIdle)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "walkStopState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::WalkStop)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::WalkStop)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "victoryIdleAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::VictoryIdle)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::VictoryIdle)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "combatIdleAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::CombatIdle)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::CombatIdle)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "moveAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Move)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Move)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "combatMoveAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::CombatMove)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::CombatMove)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "deathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Death)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Death)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "aggroAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Aggro)] = AnimationData(
+			mAnimationData[std::to_underlying(CharacterAnimationType::Aggro)] = AnimationData(
 				utils::hash_id(value),
 				utils::xml_get_text_node<float>(node, "aggroAnimDuration")
 			);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "subsequentAggroAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::SubsequentAggro)] = AnimationData(
+			mAnimationData[std::to_underlying(CharacterAnimationType::SubsequentAggro)] = AnimationData(
 				utils::hash_id(value),
 				utils::xml_get_text_node<float>(node, "subsequentAggroAnimDuration")
 			);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "enterPassiveIdleAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::EnterPassiveIdle)] = AnimationData(
+			mAnimationData[std::to_underlying(CharacterAnimationType::EnterPassiveIdle)] = AnimationData(
 				utils::hash_id(value),
 				utils::xml_get_text_node<float>(node, "enterPassiveIdleAnimDuration")
 			);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "danceEmoteAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Dance)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Dance)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "tauntEmoteAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Taunt)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Taunt)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "meleeDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::MeleeDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::MeleeDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "meleeCritDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::MeleeCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::MeleeCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "meleeCritKnockbackDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::MeleeCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::MeleeCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "cyberCritDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::CyberCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::CyberCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "cyberCritKnockbackDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::CyberCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::CyberCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "plasmaCritDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::PlasmaCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::PlasmaCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "plasmaCritKnockbackDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::PlasmaCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::PlasmaCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "bioCritDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::BioCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::BioCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "bioCritKnockbackDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::BioCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::BioCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "necroCritDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::NecroCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::NecroCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "necroCritKnockbackDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::NecroCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::NecroCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "spacetimeCritDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::SpacetimeCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::SpacetimeCriticalDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "spacetimeCritKnockbackDeathAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::SpacetimeCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::SpacetimeCriticalKnockbackDeath)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "bodyFadeAnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::BodyFade)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::BodyFade)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "randomAbility1AnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::RandomAbility1)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::RandomAbility1)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "randomAbility2AnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::RandomAbility2)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::RandomAbility2)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "randomAbility3AnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::RandomAbility3)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::RandomAbility3)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "overlay1AnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Overlay1)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Overlay1)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "overlay2AnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Overlay2)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Overlay2)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 
 		if (auto value = utils::xml_get_text_node(node, "overlay3AnimState"); !value.empty()) {
-			mAnimationData[utils::to_underlying(CharacterAnimationType::Overlay3)] = AnimationData(utils::hash_id(value), 0.f);
+			mAnimationData[std::to_underlying(CharacterAnimationType::Overlay3)] = AnimationData(utils::hash_id(value), 0.f);
 		}
 	}
 
 	AnimationData CharacterAnimation::GetAnimationData(CharacterAnimationType type) const {
-		auto index = utils::to_underlying(type);
+		auto index = std::to_underlying(type);
 		if (index < mAnimationData.size()) {
 			return mAnimationData[index];
 		}
@@ -667,6 +751,21 @@ namespace Game {
 			mAssetId = utils::xml_get_text_node<uint64_t>(node, "assetId");
 			mTeam = utils::xml_get_text_node<uint8_t>(node, "spawnTeamId");
 			ReadListNode(node, "eliteAssetIds", mEliteAssetIds);
+
+			if (auto doorNode = node.child("doorDef")) {
+				mDoorData = std::make_unique<DoorData>();
+				mDoorData->Read(doorNode);
+			}
+
+			if (auto switchNode = node.child("switchDef")) {
+				mSwitchData = std::make_unique<SwitchData>();
+				mSwitchData->Read(switchNode);
+			}
+
+			if (auto pressureSwitchNode = node.child("pressureSwitchDef")) {
+				mPressureSwitchData = std::make_unique<PressureSwitchData>();
+				mPressureSwitchData->Read(pressureSwitchNode);
+			}
 
 			if (auto projectileNode = node.child("projectile")) {
 				mProjectileData = std::make_unique<ProjectileData>();
@@ -735,6 +834,18 @@ namespace Game {
 
 	const BoundingBox& Noun::GetBoundingBox() const {
 		return mBoundingBox;
+	}
+
+	const std::unique_ptr<DoorData>& Noun::GetDoorData() const {
+		return mDoorData;
+	}
+
+	const std::unique_ptr<SwitchData>& Noun::GetSwitchData() const {
+		return mSwitchData;
+	}
+
+	const std::unique_ptr<PressureSwitchData>& Noun::GetPressureSwitchData() const {
+		return mPressureSwitchData;
 	}
 
 	const std::unique_ptr<ProjectileData>& Noun::GetProjectileData() const {

@@ -130,12 +130,24 @@ namespace Game {
 				config = mLevel.GetFirstTimeConfig();
 			}
 
-			mChainData.SetEnemyNoun(config.GetMinion(0).GetNounName(), 0);
-			mChainData.SetEnemyNoun(config.GetMinion(1).GetNounName(), 1);
-			mChainData.SetEnemyNoun(config.GetMinion(2).GetNounName(), 2);
-			mChainData.SetEnemyNoun(config.GetSpecial(0).GetNounName(), 3);
-			mChainData.SetEnemyNoun(config.GetSpecial(1).GetNounName(), 4);
-			mChainData.SetEnemyNoun(config.GetSpecial(2).GetNounName(), 5);
+			const auto& nounDatabase = NounDatabase::Instance();
+			for (uint32_t i = 0; i < 3; ++i) {
+				const auto& minion = config.GetMinion(i);
+				mChainData.SetEnemyNoun(minion.GetNounName(), i);
+
+				const auto& special = config.GetSpecial(i);
+				mChainData.SetEnemyNoun(special.GetNounName(), i + 3);
+
+				auto noun = nounDatabase.Get(utils::hash_id(minion.GetNounName()));
+				if (auto npcData = noun->GetNonPlayerClassData()) {
+					std::cout << npcData->GetName() << std::endl;
+				}
+
+				noun = nounDatabase.Get(utils::hash_id(special.GetNounName()));
+				if (auto npcData = noun->GetNonPlayerClassData()) {
+					std::cout << npcData->GetName() << std::endl;
+				}
+			}
 
 			Markerset markerset;
 			if (mLevel.GetMarkerset(levelName + "_design.Markerset", markerset)) {
@@ -336,12 +348,22 @@ namespace Game {
 							}
 							break;
 						}
+
+						default:
+						{
+							std::cout << "Unknown enemy noun: '" << marker->GetNounName() << "'" << std::endl;
+							break;
+						}
 					}
 
 					// temporary
 					break;
 				}
 			};
+
+			if (mLevel.GetMarkerset(levelName + "_AI_Wander.Markerset", markerset)) {
+				TestEnemy(markerset);
+			}
 			
 			if (mLevel.GetMarkerset(levelName + "_AI_WandererA.Markerset", markerset) || mLevel.GetMarkerset(levelName + "_AI_Wanderers_A.Markerset", markerset)) {
 				TestEnemy(markerset);
@@ -365,6 +387,15 @@ namespace Game {
 			mServer->SendObjectivesInitForLevel(client);
 			for (uint8_t i = 0, l = static_cast<uint8_t>(mObjectives.size()); i < l; ++i) {
 				mServer->SendObjectiveUpdate(client, i, 0);
+			}
+
+			// Create all existing objects
+			for (const auto& object : mObjectManager->GetActiveObjects()) {
+				// Create object in client
+				SendObjectCreate(object);
+
+				// Apply effects
+
 			}
 		}
 
@@ -390,20 +421,6 @@ namespace Game {
 
 			SendObjectUpdate(characterObject);
 		}
-
-		// Create all existing objects
-		/*
-		const auto& client = mServer->GetClient(player->GetId());
-		if (client) {
-			for (const auto& object : mObjectManager->GetActiveObjects()) {
-				// Create object in client
-				mServer->SendObjectCreate(client, object);
-
-				// Apply effects
-
-			}
-		}
-		*/
 	}
 
 	uint32_t Instance::AddTask(uint32_t delay, std::function<void(uint32_t)> task) {
@@ -488,7 +505,7 @@ namespace Game {
 		const auto& ability = mLua->GetAbility(combatData.abilityId);
 		if (ability) {
 			// ability:tick(object, target, cursorPosition, rank)
-			ability->Tick(ObjectPtr(object), mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank);
+			ability->Tick(object, mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank);
 		}
 	}
 
@@ -555,6 +572,14 @@ namespace Game {
 			return;
 		}
 
+		auto luaThread = object->GetLuaThread();
+		if (!luaThread) {
+			// No active action
+			return;
+		}
+
+		luaThread->stop();
+		/*
 		sol::table privateTable = mLua->GetPrivateTable(object->GetId());
 		if (privateTable == sol::nil) {
 			return;
@@ -564,6 +589,7 @@ namespace Game {
 			CancelTask(action.as<uint32_t>());
 			privateTable["CURRENT_ACTION"] = sol::nil;
 		}
+		*/
 	}
 
 	void Instance::DropLoot(const PlayerPtr& player, uint64_t lootInstanceId) {

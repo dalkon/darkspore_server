@@ -75,6 +75,8 @@ namespace Game {
 			std::vector<ObjectPtr> GetObjectsInRegion(const BoundingBox& region, const std::vector<NounType>& types) const;
 			std::vector<ObjectPtr> GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const;
 
+			bool IsInLineOfSight(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition) const;
+
 			void Update(float deltaTime);
 
 		private:

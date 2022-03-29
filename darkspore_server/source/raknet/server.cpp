@@ -671,55 +671,20 @@ namespace RakNet {
 	}
 
 	void Server::OnActionCommandMsgs(const ClientPtr& client) {
-		/*
-			Basic data
-				buffer[0x00] = type
-
-				buffer[0x04] = object.input_sync_stamp (timestamp)
-				buffer[0x08] = object.id
-				buffer[0x0C] = object.position
-				buffer[0x18] = object.orientation
-
-			Type specific data
-				3: {
-					if buffer[0x28] != 0 {
-						buffer[0x28] = 0
-						buffer[0x2C] = unk
-						buffer[0x30] = unk
-						buffer[0x34] = unk
-						buffer[0x38] = unk
-						buffer[0x3C] = unk
-					}
-				}
-		*/
-
 		const auto& player = client->GetPlayer();
 		if (!player) {
-			// No player? Get lost.
 			return;
 		}
 
-		ActionCommand type;
-		Read<ActionCommand>(mInStream, type);
+		ActionCommandData command {};
+		Read<ActionCommandCommonData>(mInStream, command.data);
 
-		// unknown 11 bytes
-		uint8_t skipByte[3];
-		for (uint32_t i = 0; i < 3; ++i) {
-			Read<uint8_t>(mInStream, skipByte[i]);
-		}
-
-		uint32_t timestamp;
-		Read<uint32_t>(mInStream, timestamp);
-
-		uint32_t objectId;
-		Read<uint32_t>(mInStream, objectId);
-
-		const auto& object = mGame.GetObjectManager().Get(objectId);
+		const auto& object = mGame.GetObjectManager().Get(command.data.objectId);
 		if (!object) {
 			// Could not find the object.
 			return;
 		}
-
+#if 0
 		std::cout << "------------------------" << std::endl;
 		std::cout << "OnActionCommandMsgs(" << static_cast<int>(type) << ", " << bits_to_bytes(mInStream.GetNumberOfUnreadBits()) << ")" << std::endl;
 		std::cout << "object: " << std::hex << objectId << std::dec << std::endl;
@@ -729,8 +694,8 @@ namespace RakNet {
 			std::cout << ", " << static_cast<int>(skipByte[i]);
 		}
 		std::cout << std::dec << std::endl;
-
-		switch (type) {
+#endif
+		switch (command.data.type) {
 			// Movement
 			case ActionCommand::Movement: {
 				const auto& locomotionData = object->GetLocomotionData();
@@ -738,39 +703,14 @@ namespace RakNet {
 					return;
 				}
 
-				glm::vec3 partialGoalPosition;
-				Read(mInStream, partialGoalPosition);
-
-				glm::quat orientation;
-				Read(mInStream, orientation);
-				
-				uint32_t unk;
-				Read<uint32_t>(mInStream, unk);
-
-				glm::vec3 goalPosition;
-				Read(mInStream, goalPosition);
-
-				uint32_t goalFlags;
-				Read<uint32_t>(mInStream, goalFlags);
-
-				uint32_t a0;
-				Read<uint32_t>(mInStream, a0);
-
-				// goalFlags = 0x001 | 0x800;
+				Read<ActionCommandMovementData>(mInStream, command.movement);
 				if (teleportMovement) {
-					goalFlags = 0x020;
+					command.movement.goalFlags = 0x020;
 				}
-				/*
-				data.mFacing = glm::eulerAngles(orientation);
-				data.mAllowedStopDistance = 0;
-				data.mDesiredStopDistance = 0;
-				data.mTargetObjectId = 0;
-				data.reflectedLastUpdate = 0xFFFF;
-				*/
 
-				locomotionData->SetGoalPosition(goalPosition);
-				locomotionData->SetPartialGoalPosition(partialGoalPosition);
-				locomotionData->SetGoalFlags(locomotionData->GetGoalFlags() | goalFlags);
+				locomotionData->SetGoalPosition(command.movement.goalPosition);
+				locomotionData->SetPartialGoalPosition(command.data.position);
+				locomotionData->SetGoalFlags(locomotionData->GetGoalFlags() | command.movement.goalFlags);
 
 				mGame.MoveObject(object, *locomotionData);
 				break;
@@ -784,32 +724,7 @@ namespace RakNet {
 					return;
 				}
 
-				glm::vec3 position;
-				Read(mInStream, position);
-
-				glm::quat orientation;
-				Read(mInStream, orientation);
-
-				// Is this garbage data?
-				uint32_t goalFlags;
-				Read<uint32_t>(mInStream, goalFlags);
-
-				uint32_t u0, u1, u2;
-				Read(mInStream, u0);
-				Read(mInStream, u1);
-				Read(mInStream, u2);
-
-				uint32_t a0, a1;
-				Read<uint32_t>(mInStream, a0);
-				Read<uint32_t>(mInStream, a1);
-
-				std::cout << "Stopping movement?" << std::endl;
-				std::cout << position.x << ", " << position.y << ", " << position.z << std::endl;
-				std::cout << std::hex;
-				std::cout << goalFlags << std::endl;
-				std::cout << u0 << ", " << u1 << ", " << u2 << std::endl;
-				std::cout << a0 << ", " << a1 << std::endl;
-				std::cout << std::dec;
+				Read<ActionCommandMovementData>(mInStream, command.movement);
 
 				// TODO: properly use the data received
 				locomotionData->Stop();
@@ -818,54 +733,41 @@ namespace RakNet {
 
 			// Switch hero
 			case ActionCommand::SwitchCharacter: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
+				Read<uint32_t>(mInStream, command.value);
 
-				glm::quat orientation;
-				Read(mInStream, orientation);
-
-				uint32_t creatureIndex;
-				Read<uint32_t>(mInStream, creatureIndex);
-
-				mGame.SwapCharacter(player, creatureIndex);
+				mGame.SwapCharacter(player, command.value);
 				break;
 			}
 
 			// Ability
 			case ActionCommand::UseCharacterAbility: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
+				Read<ActionCommandAbilityData>(mInStream, command.ability);
 
-				glm::quat orientation;
-				Read(mInStream, orientation);
+				//
+				object->SetOrientation(command.data.orientation);
 
-				CombatData combatData;
-				Read<uint32_t>(mInStream, combatData.targetId);
-				Read(mInStream, combatData.cursorPosition);
-				Read(mInStream, combatData.targetPosition);
-
-				uint32_t abilityIndex;
-				Read<uint32_t>(mInStream, abilityIndex);
+				//
+				CombatData combatData {};
+				combatData.targetId = command.ability.targetId;
+				combatData.cursorPosition = command.ability.cursorPosition;
+				combatData.targetPosition = command.ability.targetPosition;
 
 				auto currentSquadIndex = player->GetCurrentDeckIndex();
-				combatData.abilityId = player->GetAbilityId(currentSquadIndex, abilityIndex);
-				combatData.abilityRank = player->GetAbilityRank(currentSquadIndex, abilityIndex);
+				combatData.abilityId = player->GetAbilityId(currentSquadIndex, command.ability.index);
+				combatData.abilityRank = player->GetAbilityRank(currentSquadIndex, command.ability.index);
 
-				Read<uint32_t>(mInStream, combatData.unk[0]);
-				Read<uint32_t>(mInStream, combatData.unk[1]); // bool sent as u32
-				Read<uint32_t>(mInStream, combatData.valueFromActionResponse);
+				combatData.unk[0] = command.ability.rank;
+				combatData.unk[1] = command.ability.unk;
+				combatData.valueFromActionResponse = command.ability.userData;
 
 				AbilityCommandResponse actionResponse;
 				actionResponse.abilityId = combatData.abilityId;
 				actionResponse.cooldown = 100;
 				actionResponse.timeImmobilized = 100;
 				actionResponse.userData = 0x1234;
-
-				// skipByte[1] == 0 seems to be "not in range"
-				object->SetOrientation(orientation);
 				
-				bool isInRange = skipByte[1] > 0;
-				if (isInRange) {
+				combatData.targetIsInRange = command.data.unk[1] > 0;
+				if (combatData.targetIsInRange) {
 					mGame.UseAbility(object, combatData);
 					SendActionCommandResponse(client, actionResponse);
 				} else if (object->HasLocomotionData()) {
@@ -880,24 +782,24 @@ namespace RakNet {
 
 			// Squad ability
 			case ActionCommand::UseSquadAbility: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
+				Read<ActionCommandAbilityData>(mInStream, command.ability);
 
-				glm::quat orientation;
-				Read(mInStream, orientation);
+				//
+				object->SetOrientation(command.data.orientation);
 
-				CombatData combatData;
-				Read<uint32_t>(mInStream, combatData.targetId);
-				Read(mInStream, combatData.cursorPosition);
-				Read(mInStream, combatData.targetPosition);
+				//
+				CombatData combatData {};
+				combatData.targetId = command.ability.targetId;
+				combatData.cursorPosition = command.ability.cursorPosition;
+				combatData.targetPosition = command.ability.targetPosition;
 
-				uint32_t abilityIndex;
-				Read<uint32_t>(mInStream, abilityIndex);
-				combatData.abilityId = player->GetAbilityId(0xFF, abilityIndex);
+				auto currentSquadIndex = player->GetCurrentDeckIndex();
+				combatData.abilityId = player->GetAbilityId(0xFF, command.ability.index);
+				combatData.abilityRank = 0;
 
-				Read<uint32_t>(mInStream, combatData.unk[0]);
-				Read<uint32_t>(mInStream, combatData.unk[1]);
-				Read<uint32_t>(mInStream, combatData.valueFromActionResponse);
+				combatData.unk[0] = command.ability.rank;
+				combatData.unk[1] = command.ability.unk;
+				combatData.valueFromActionResponse = command.ability.userData;
 
 				AbilityCommandResponse actionResponse;
 				actionResponse.abilityId = combatData.abilityId;
@@ -920,48 +822,15 @@ namespace RakNet {
 
 			// Catalyst pickup
 			case ActionCommand::CatalystPickup: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
+				Read<ActionCommandCatalystData>(mInStream, command.catalyst);
 
-				glm::quat orientation;
-				Read(mInStream, orientation);
-
-				uint32_t catalystObjectId;
-				Read<uint32_t>(mInStream, catalystObjectId);
-
-				glm::vec3 catalystPosition;
-				Read(mInStream, catalystPosition);
-
-				uint32_t unknown;
-				Read<uint32_t>(mInStream, unknown);
-
-				mGame.InteractWithObject(player, catalystObjectId);
+				mGame.InteractWithObject(player, command.catalyst.objectId);
 				break;
 			}
 
 			// Cancel current action
 			case ActionCommand::Cancel: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
-
-				glm::quat orientation;
-				Read(mInStream, orientation);
-
-				uint32_t u0, u1, u2, u3;
-				Read<uint32_t>(mInStream, u0);
-				Read<uint32_t>(mInStream, u1);
-				Read<uint32_t>(mInStream, u2);
-				Read<uint32_t>(mInStream, u3);
-
-				uint32_t a0, a1;
-				Read<uint32_t>(mInStream, a0);
-				Read<uint32_t>(mInStream, a1);
-
-				std::cout << "Cancel current action?" << std::endl;
-				std::cout << currentPosition.x << ", " << currentPosition.y << ", " << currentPosition.z << std::endl;
-				std::cout << orientation.x << ", " << orientation.y << ", " << orientation.z << ", " << orientation.w << std::endl;
-				std::cout << u0 << ", " << u1 << ", " << u2 << ", " << u3 << std::endl;
-				std::cout << a0 << ", " << a1 << std::endl;
+				Read<ActionCommandMovementData>(mInStream, command.movement);
 
 				mGame.CancelAction(player, object);
 				break;
@@ -969,27 +838,14 @@ namespace RakNet {
 
 			// Interactable
 			case ActionCommand::UseInteractableObject: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
+				Read<uint32_t>(mInStream, command.value);
 
-				glm::quat orientation;
-				Read(mInStream, orientation);
-
-				uint32_t interactableObjectId;
-				Read<uint32_t>(mInStream, interactableObjectId);
-
-				mGame.InteractWithObject(player, interactableObjectId);
+				mGame.InteractWithObject(player, command.value);
 				break;
 			}
 
 			// Dancing (/dance command)
 			case ActionCommand::Dance: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
-
-				glm::quat orientation;
-				Read(mInStream, orientation);
-
 				// TODO: proper function for dancing
 				mGame.SendAnimationState(object, utils::hash_id("emote_dance_all"), false);
 				break;
@@ -997,12 +853,6 @@ namespace RakNet {
 
 			// Taunting (/taunt command)
 			case ActionCommand::Taunt: {
-				glm::vec3 currentPosition;
-				Read(mInStream, currentPosition);
-
-				glm::quat orientation;
-				Read(mInStream, orientation);
-
 				// TODO: proper function for taunting
 				mGame.SendAnimationState(object, utils::hash_id("emote_taunt_all"), false);
 				break;
@@ -1011,9 +861,10 @@ namespace RakNet {
 			default:
 				break;
 		}
-
+#if 0
 		PrintDebugStream(mInStream);
 		std::cout << "------------------------" << std::endl;
+#endif
 	}
 
 	void Server::OnChainPlayerMsgs(const ClientPtr& client) {
@@ -1905,6 +1756,16 @@ namespace RakNet {
 		Send(outStream, client);
 	}
 
+	void Server::SendActionCommandMessages(const ClientPtr& client, const Game::PlayerPtr& player) {
+		// 100%
+		BitStream outStream(0x38);
+		outStream.Write(PacketID::ActionCommandMsgs);
+
+		//
+
+		Send(outStream, client);
+	}
+
 	void Server::SendCombatEvent(const ClientPtr& client, const Game::CombatEvent& combatEvent) {
 		// 100%
 		BitStream outStream(8);
@@ -1945,7 +1806,7 @@ namespace RakNet {
 			return;
 		}
 
-		BitStream outStream(8);
+		BitStream outStream(0x15);
 		outStream.Write(PacketID::ModifierUpdated);
 
 		Write<uint32_t>(outStream, object->GetId());

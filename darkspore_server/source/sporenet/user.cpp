@@ -597,7 +597,40 @@ namespace SporeNet {
 	}
 
 	// UserManager
-	UserPtr UserManager::GetUserById(int64_t id) {
+	std::tuple<UserPtr, bool, bool> UserManager::Login(const std::string& username, const std::string& password) {
+		UserPtr user;
+
+		bool success = false;
+		bool alreadyLoggedIn = false;
+
+		auto it = sUsersByEmail.find(username);
+		if (it != sUsersByEmail.end()) {
+			user = it->second;
+			alreadyLoggedIn = true;
+		} else {
+			user = std::make_shared<User>(username);
+			if (user->Load() && user->get_password() == password) {
+				success = true;
+			}
+		}
+
+		if (success) {
+			sUsersByEmail.emplace(username, user);
+		}
+
+		return std::make_tuple(user, success, alreadyLoggedIn);
+	}
+
+	std::vector<UserPtr> UserManager::GetUsers() const {
+		// Cache this somewhere
+		std::vector<UserPtr> result;
+		for (const auto& [_, user] : sUsersByEmail) {
+			result.push_back(user);
+		}
+		return result;
+	}
+
+	UserPtr UserManager::GetUserById(int64_t id) const {
 		for (const auto& [_, user] : sUsersByEmail) {
 			if (user->get_id() == id) {
 				return user;
@@ -606,25 +639,14 @@ namespace SporeNet {
 		return nullptr;
 	}
 
-	UserPtr UserManager::GetUserByEmail(const std::string& username) {
-		UserPtr user;
-
-		auto it = sUsersByEmail.find(username);
-		if (it != sUsersByEmail.end()) {
-			user = it->second;
-		} else {
-			user = std::make_shared<User>(username);
-			if (user->Load()) {
-				sUsersByEmail.emplace(username, user);
-			} else {
-				user.reset();
-			}
+	UserPtr UserManager::GetUserByEmail(const std::string& username) const {
+		if (auto it = sUsersByEmail.find(username); it != sUsersByEmail.end()) {
+			return it->second;
 		}
-
-		return user;
+		return nullptr;
 	}
 
-	UserPtr UserManager::GetUserByAuthToken(const std::string& authToken) {
+	UserPtr UserManager::GetUserByAuthToken(const std::string& authToken) const {
 		for (const auto& [_, user] : sUsersByEmail) {
 			if (user->get_auth_token() == authToken) {
 				return user;

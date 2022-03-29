@@ -272,7 +272,7 @@ namespace Blaze {
 	}
 
 	void PlaygroupsComponent::CreatePlaygroup(Request& request) {
-		//
+		// Read "PlaygroupInfo" struct
 	}
 
 	void PlaygroupsComponent::DestroyPlaygroup(Request& request) {

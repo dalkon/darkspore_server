@@ -216,6 +216,10 @@ namespace Game {
 		return mRotation;
 	}
 
+	const std::string& Marker::GetNounName() const {
+		return mNounName;
+	}
+
 	uint64_t Marker::GetOverrideAssetId() const {
 		return mOverrideAssetId;
 	}

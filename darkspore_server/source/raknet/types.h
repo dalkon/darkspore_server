@@ -253,6 +253,8 @@ namespace RakNet {
 			Read<float>(stream, value.y);
 			Read<float>(stream, value.z);
 			Read<float>(stream, value.w);
+		} else {
+			stream.ReadBits(reinterpret_cast<uint8_t*>(&value), sizeof(T) * 8, true);
 		}
 	}
 
@@ -821,15 +823,57 @@ namespace RakNet {
 	};
 
 	// ActionCommand
-	/*
-	struct ActionCommand {
-		// TODO: separate this into multiple structs to minimize data use
-		uint8_t type;
+#pragma pack(push,1)
+	struct ActionCommandCommonData {
+		ActionCommand type;
 		uint8_t unk[3];
 
+		uint32_t inputSyncStamp;
+		uint32_t objectId;
 
+		glm::vec3 position;
+		glm::quat orientation;
 	};
-	*/
+
+	struct ActionCommandMovementData {
+		uint32_t unk;
+
+		glm::vec3 goalPosition;
+
+		uint32_t goalFlags;
+		uint32_t unk2;
+	};
+
+	struct ActionCommandCatalystData {
+		uint32_t objectId;
+
+		glm::vec3 position;
+		
+		uint32_t rank;
+	};
+
+	struct ActionCommandAbilityData {
+		uint32_t targetId;
+
+		glm::vec3 cursorPosition;
+		glm::vec3 targetPosition;
+
+		uint32_t index;
+		int32_t rank;
+		uint32_t unk;
+		uint32_t userData;
+	};
+
+	struct ActionCommandData {
+		ActionCommandCommonData data;
+		union {
+			ActionCommandAbilityData ability;
+			ActionCommandMovementData movement;
+			ActionCommandCatalystData catalyst;
+			uint32_t value;
+		};
+	};
+#pragma pack(pop)
 
 	// AbilityCommandResponse
 	struct AbilityCommandResponse {
@@ -841,15 +885,16 @@ namespace RakNet {
 
 	// CombatData
 	struct CombatData {
-		glm::vec3 targetPosition;
-		glm::vec3 cursorPosition;
+		glm::vec3 targetPosition {};
+		glm::vec3 cursorPosition {};
 
-		uint32_t targetId;
-		uint32_t abilityId;
-		uint32_t abilityRank;
-		uint32_t valueFromActionResponse;
-		uint32_t unk[2];
+		uint32_t targetId { 0 };
+		uint32_t abilityId { 0 };
+		uint32_t abilityRank { 0 };
+		uint32_t valueFromActionResponse { 0 };
+		uint32_t unk[2] {};
 
+		bool targetIsInRange { false };
 	};
 }
 

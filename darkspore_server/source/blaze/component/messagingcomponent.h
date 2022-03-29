@@ -11,7 +11,7 @@ namespace Blaze {
 	// MessagingComponent
 	class MessagingComponent : public Component {
 		public:
-			enum { Id = 0x0F };
+			enum : uint16_t { Id = 0x0F };
 
 			uint16_t GetId() const override;
 

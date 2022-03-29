@@ -291,11 +291,27 @@ namespace Blaze {
 				listMembers.ofrc = ofrc;
 				listMembers.toct = 0; // unknown so far, some sort of id?
 
-				if (listMembers.info.identification.type == 4) {
+				auto type = listMembers.info.identification.type;
+				if (type == 4) {
+					// Ignore list
 					decltype(auto) member = listMembers.memberList.emplace_back();
 					member.id.id = user->get_id();
 					member.id.name = user->get_name();
 					member.time = 0;
+				} else if (type == 5) {
+					// Friend list
+					{
+						decltype(auto) member = listMembers.memberList.emplace_back();
+						member.id.id = 100;
+						member.id.name = "Dalkon";
+						member.time = 0;
+					}
+					{
+						decltype(auto) member = listMembers.memberList.emplace_back();
+						member.id.id = 102;
+						member.id.name = "test";
+						member.time = 0;
+					}
 				}
 			}
 		}

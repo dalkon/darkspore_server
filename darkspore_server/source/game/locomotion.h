@@ -125,11 +125,10 @@ namespace Game {
 	// Locomotion
 	class Locomotion {
 		public:
-			Locomotion(Object& object);
+			Locomotion(const ObjectPtr& object);
 
 			//
-			Object& GetObject();
-			const Object& GetObject() const;
+			const ObjectPtr& GetObject() const;
 
 			// Simulate client positions
 			void Update(float deltaTime);
@@ -201,7 +200,7 @@ namespace Game {
 
 
 		private:
-			Object& mObject;
+			ObjectPtr mObject;
 
 			ProjectileParameters mProjectileParameters;
 

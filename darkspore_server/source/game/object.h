@@ -76,7 +76,7 @@ namespace Game {
 	// InteractableData
 	class InteractableData {
 		public:
-			InteractableData(Object& object);
+			InteractableData(const ObjectPtr& object);
 
 			uint32_t GetAbility() const;
 			void SetAbility(uint32_t ability);
@@ -91,7 +91,7 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
-			Object& mObject;
+			ObjectPtr mObject;
 
 			uint32_t mAbility = 0;
 
@@ -104,7 +104,7 @@ namespace Game {
 	// LootData
 	class LootData {
 		public:
-			LootData(Object& object);
+			LootData(const ObjectPtr& object);
 
 			uint32_t GetRigblockAsset() const;
 			uint32_t GetPrefixAsset() const;
@@ -129,7 +129,7 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
-			Object& mObject;
+			ObjectPtr mObject;
 
 			uint64_t mId = 0;
 			uint64_t mInstanceId = 0;
@@ -154,7 +154,7 @@ namespace Game {
 	// AgentBlackboard
 	class AgentBlackboard {
 		public:
-			AgentBlackboard(Object& object);
+			AgentBlackboard(const ObjectPtr& object);
 
 			uint32_t GetTargetId() const;
 			void SetTargetId(uint32_t id);
@@ -175,7 +175,7 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
-			Object& mObject;
+			ObjectPtr mObject;
 
 			uint32_t mTargetId = 0;
 			uint32_t mNumAttackers = 0;
@@ -189,7 +189,7 @@ namespace Game {
 	// Modifier
 	class Modifier {
 		public:
-			Modifier(Object& object, uint32_t id);
+			Modifier(const ObjectPtr& object, uint32_t id);
 
 			uint32_t GetDuration() const;
 			void SetDuration(uint32_t duration);
@@ -199,8 +199,7 @@ namespace Game {
 			void SetStackCount(uint8_t count);
 
 		private:
-			Object& mObject;
-
+			ObjectPtr mObject;
 			ObjectPtr mTargetObject;
 
 			uint64_t mTimestamp = 0;
@@ -217,7 +216,7 @@ namespace Game {
 	// AI
 	class AI {
 		public:
-			AI(Object& object);
+			AI(const ObjectPtr& object);
 
 			void OnTick();
 
@@ -228,10 +227,9 @@ namespace Game {
 			void UseAbility();
 
 		private:
-			Object& mObject;
-
 			std::map<uint32_t, float> mAggroMap;
 
+			ObjectPtr mObject;
 			ObjectPtr mTargetObject;
 
 			uint8_t mNode = 0;
@@ -312,6 +310,9 @@ namespace Game {
 			Instance& GetGame();
 			const Instance& GetGame() const;
 
+			LuaThread* GetLuaThread() const;
+			void SetLuaThread(LuaThread* thread);
+			
 			bool HasCombatantData() const;
 			const std::unique_ptr<CombatantData>& CreateCombatantData();
 			const std::unique_ptr<CombatantData>& GetCombatantData() const;
@@ -423,6 +424,7 @@ namespace Game {
 			MovementType GetMovementType() const;
 			void SetMovementType(MovementType movementType);
 
+			PlayerPtr GetPlayer() const;
 			uint8_t GetPlayerIndex() const;
 			void SetPlayerIndex(uint8_t playerIndex);
 
@@ -442,6 +444,8 @@ namespace Game {
 			void MarkForDeletion();
 
 			// Combatant functions
+			bool IsOverdriveCharged() const;
+
 			std::tuple<bool, float, bool> TakeDamage(
 				const AttributesPtr& attackerAttributes,
 				const std::tuple<float, float>& damageRange,
@@ -461,6 +465,15 @@ namespace Game {
 			bool CheckCritical(const AttributesPtr& attackerAttributes) const;
 			void DistributeDamageAmongSquad(float damage);
 
+			int32_t CanUseAbility(
+				const AbilityPtr& ability,
+				uint32_t abilityIndex,
+				int32_t rank,
+				const ObjectPtr& target,
+				const glm::vec3& targetPosition
+			);
+			
+			void RequestAbility(const AbilityPtr& ability, const ObjectPtr& attacker);
 			void RequestModifier(const ObjectPtr& attacker);
 
 			void OnChangeHealth(float healthChange);
@@ -468,6 +481,9 @@ namespace Game {
 
 			void OnDeath();
 			void OnResurrect();
+
+			// Interactable data
+			bool HasInteractableUsesLeft() const;
 
 			// Agent Blackboard
 			uint32_t GetTargetId() const;
@@ -498,6 +514,8 @@ namespace Game {
 			ObjectManager& mManager;
 
 			// TODO: add some better way for handling the abilities
+			LuaThread* mLuaThread { nullptr };
+
 			sol::protected_function mTickOverride = sol::nil;
 			AbilityPtr mPassiveAbility;
 

@@ -168,6 +168,16 @@ namespace Game {
 		IsThorns			= 1 << 18
 	};
 
+	enum class InterfaceType : uint32_t {
+		Position = 0,
+		Targeted,
+		SelfCast,
+		AutoTarget,
+		CreatureTarget,
+		TerrainPoint,
+		CreatureTargetDefaultSelf
+	};
+
 	// AttributeType
 	enum class AttributeType : uint8_t {
 		Strength = 0,

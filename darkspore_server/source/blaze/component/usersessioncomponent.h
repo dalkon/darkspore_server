@@ -13,7 +13,7 @@ namespace Blaze {
 	// UserSessionComponent
 	class UserSessionComponent : public Component {
 		public:
-			enum { Id = 0x7802 };
+			enum : uint16_t { Id = 0x7802 };
 
 			uint16_t GetId() const override;
 

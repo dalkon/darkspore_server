@@ -10,7 +10,7 @@ namespace Blaze {
 	// RedirectorComponent
 	class RedirectorComponent : public Component {
 		public:
-			enum { Id = 0x05 };
+			enum : uint16_t { Id = 0x05 };
 
 			uint16_t GetId() const override;
 

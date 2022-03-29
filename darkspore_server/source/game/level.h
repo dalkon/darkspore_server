@@ -128,6 +128,8 @@ namespace Game {
 			const glm::vec3& GetPosition() const;
 			const glm::vec3& GetRotation() const;
 
+			const std::string& GetNounName() const;
+
 			uint64_t GetOverrideAssetId() const;
 
 			uint32_t GetId() const;

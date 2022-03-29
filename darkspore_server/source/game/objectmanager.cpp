@@ -115,19 +115,19 @@ namespace Game {
 
 	void TriggerVolume::OnEnter(ObjectPtr object) const {
 		if (mOnEnter) {
-			mManager.GetGame().GetLua().CallCoroutine(mEnvironment, mOnEnter, shared_from_this(), std::move(object));
+			mManager.GetGame().GetLua().CallCoroutine<void>(mEnvironment, mOnEnter, shared_from_this(), std::move(object));
 		}
 	}
 
 	void TriggerVolume::OnExit(ObjectPtr object) const {
 		if (mOnExit) {
-			mManager.GetGame().GetLua().CallCoroutine(mEnvironment, mOnExit, shared_from_this(), std::move(object));
+			mManager.GetGame().GetLua().CallCoroutine<void>(mEnvironment, mOnExit, shared_from_this(), std::move(object));
 		}
 	}
 
 	void TriggerVolume::OnStay(ObjectPtr object) const {
 		if (mOnStay) {
-			mManager.GetGame().GetLua().CallCoroutine(mEnvironment, mOnStay, shared_from_this(), std::move(object));
+			mManager.GetGame().GetLua().CallCoroutine<void>(mEnvironment, mOnStay, shared_from_this(), std::move(object));
 		}
 	}
 
@@ -187,14 +187,12 @@ namespace Game {
 
 		ObjectPtr object;
 		if (const auto& teleporterData = marker->GetTeleporterData()) {
-			/*
 			const auto& triggerVolumeData = teleporterData->GetTriggerVolumeData();
 			if (triggerVolumeData) {
 				object = CreateTrigger(marker->GetPosition(), triggerVolumeData->GetBoundingBox().extent.x);
 			} else {
 				object = CreateTrigger(marker->GetPosition(), 1.f);
 			}
-			*/
 		} else {
 			object = Create(marker->GetNoun());
 		}
@@ -262,6 +260,30 @@ namespace Game {
 
 	std::vector<ObjectPtr> ObjectManager::GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const {
 		return mOctTree->GetObjectsInRadius(region, types);
+	}
+
+	bool ObjectManager::IsInLineOfSight(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition) const {
+		if (!object) {
+			return false;
+		}
+
+		const auto& centerPosition = object->GetCenterPoint();
+
+		glm::vec3 testPosition = targetPosition;
+		if (target) {
+			testPosition = target->GetPosition();
+		}
+
+		testPosition.z = (centerPosition.z + testPosition.z) - object->GetPosition().z;
+
+		/*
+		if (physicsObject->SomeFunc(centerPoints, &local_34) > 0) {
+			return true;
+		}
+		*/
+
+		// return physicsObject->OtherFunc(&local_44, &stack0xffffffb0, &object->orientation, &stack0xffffffa4, 2, &local_40.z, 1);
+		return true;
 	}
 
 	void ObjectManager::Update(float deltaTime) {

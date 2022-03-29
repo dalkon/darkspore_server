@@ -1,9 +1,14 @@
 
 // Include
 #include "utilcomponent.h"
-#include "usersessioncomponent.h"
+#include "associationcomponent.h"
+#include "authcomponent.h"
 #include "gamemanagercomponent.h"
+#include "messagingcomponent.h"
+#include "playgroupscomponent.h"
 #include "redirectorcomponent.h"
+#include "roomscomponent.h"
+#include "usersessioncomponent.h"
 
 #include "main.h"
 
@@ -177,6 +182,18 @@ namespace Blaze {
 	}
 
 	void UtilComponent::PreAuth(Request& request) {
+		constexpr uint16_t componentIds[] = {
+			AssociationComponent::Id,
+			AuthComponent::Id,
+			GameManagerComponent::Id,
+			MessagingComponent::Id,
+			PlaygroupsComponent::Id,
+			RedirectorComponent::Id,
+			RoomsComponent::Id,
+			UserSessionComponent::Id,
+			UtilComponent::Id
+		};
+
 		// decltype(auto) application = GetApp();
 
 		// auto httpQosServer = application.get_http_qos_server();
@@ -189,10 +206,9 @@ namespace Blaze {
 		TDF::Packet packet;
 		packet.put_string("ASRC", "321915");
 
-		// completely unknown what this does...
 		packet.push_list("CIDS", TDF::Type::Integer);
-		for (auto cid : { 1, 25, 4, 27, 28, 6, 7, 9, 10, 11, 30720, 30721, 30722, 30723, 20, 30725, 30726, 2000 }) {
-			packet.put_integer("", cid);
+		for (uint16_t componentId : componentIds) {
+			packet.put_integer("", componentId);
 		}
 		packet.pop();
 

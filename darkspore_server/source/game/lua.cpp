@@ -75,6 +75,7 @@
 		)
 */
 
+#ifdef UNUSED_STUFF
 // Helpers
 namespace {
 	auto& LuaGetGame(sol::this_state L) {
@@ -647,7 +648,7 @@ namespace LuaFunction {
 
 		auto Create(sol::this_state L, sol::protected_function callback, sol::variadic_args args) {
 			// TODO: add so each object has a "thread"? (same as darkspore)
-			LuaGetGame(L).GetLua().CallCoroutine(nullptr, callback, args);
+			LuaGetGame(L).GetLua().CallCoroutine<void>(nullptr, callback, args);
 		}
 	}
 
@@ -1521,6 +1522,18 @@ namespace LuaFunction {
 			return offset;
 		}
 
+		auto IncrementNumTimesUsed(sol::this_state L, sol::object objectValue) {
+			auto& game = LuaGetGame(L);
+			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+
+			if (object) {
+				const auto& interactableData = object->GetInteractableData();
+				if (interactableData) {
+					interactableData->SetTimesUsed(interactableData->GetTimesUsed() + 1);
+				}
+			}
+		}
+
 		auto GetTeleporterDestination(sol::this_state L, sol::object objectValue) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
@@ -1580,12 +1593,13 @@ namespace LuaFunction {
 
 	}
 }
+#endif
 
 // Game
 namespace Game {
 	// LuaThread
 	LuaThread::LuaThread(Lua& lua) : mLua(lua) {
-		mThread = sol::thread::create(lua.GetState());
+		mThread = sol::thread::create(mLua.GetState());
 	}
 
 	sol::object LuaThread::get_value(const std::string& key) const {
@@ -1604,8 +1618,7 @@ namespace Game {
 			return true;
 		}
 
-		const auto call_status = status();
-		if (call_status != sol::call_status::ok && call_status != sol::call_status::yielded) {
+		if (mCoroutine.error()) {
 			return false;
 		}
 
@@ -1615,13 +1628,32 @@ namespace Game {
 		}
 
 		mResumeCondition = nullptr;
-		mCoroutine(sol::as_args(results));
+
+		sol::protected_function_result result = mCoroutine(sol::as_args(results));
+		if (!result.valid()) {
+			sol::error err = result;
+			std::cout << "LuaThread::resume()" << std::endl;
+			std::cout << err.what() << std::endl;
+			std::cout << std::to_underlying(mCoroutine.status()) << std::endl;
+		}
 
 		return mCoroutine.status() == sol::call_status::ok;
 	}
 
+	void LuaThread::stop() {
+		// Stop coroutine and recreate thread
+		mCoroutine = sol::nil;
+		mThread = sol::thread::create(mLua.GetState());
+	}
+
 	void LuaThread::set_resume_condition(const ResumeCondition& condition) { mResumeCondition = condition; }
 	void LuaThread::set_resume_condition(ResumeCondition&& condition) { mResumeCondition = std::move(condition); }
+
+	void LuaThread::create(const sol::function& func) {
+		// Reset coroutine
+		mCoroutine = sol::nil;
+		mCoroutine = sol::coroutine(mThread.thread_state(), sol::ref_index(func.registry_index()));
+	}
 
 	void LuaThread::post_call() {
 		if (mCoroutine.status() == sol::call_status::ok) {
@@ -1638,20 +1670,31 @@ namespace Game {
 		mState.open_libraries();
 		sol::set_default_state(mState);
 
+		// set package path
 		LoadBuffer(R"(package.path = package.path .. ";./data/lua/?.lua")");
-		RegisterFunctions();
 
 		// Get default packages
 		sol::table packagesLoaded = mState["package"]["loaded"];
-		mDefaultPackages = mState.create_table();
-
-		for (const auto& [k, v] : packagesLoaded) {
-			mDefaultPackages[k] = v;
+		for (const auto& [name, _] : packagesLoaded) {
+			mDefaultPackages.push_back(name.as<std::string>());
 		}
+
+		// register base functions
+		RegisterFunctions();
 	}
 
 	void LuaBase::Reload() {
-		mState["package"]["loaded"] = mDefaultPackages;
+		auto end = mDefaultPackages.end();
+
+		sol::table packagesLoaded = mState["package"]["loaded"];
+		for (const auto& [k, v] : packagesLoaded) {
+			const auto& name = k.as<std::string>();
+			if (auto it = std::find(mDefaultPackages.begin(), end, name); it != end) {
+				continue;
+			}
+			packagesLoaded[k] = sol::nil;
+		}
+
 		CollectGarbage();
 	}
 
@@ -1715,68 +1758,13 @@ namespace Game {
 		mState.collect_garbage();
 	}
 
-	void LuaBase::RegisterFunctions() {
-		// os
-		auto osTable = mState.create_named_table("os");
-		osTable["mtime"] = &LuaFunction::OsMtime;
-
-		// glm
-		{
-			mState.new_usertype<glm::vec3>("vec3",
-				sol::constructors<glm::vec3(), glm::vec3(float, float, float)>(),
-
-				sol::meta_function::to_string, [](const glm::vec3& v) { return std::format("vec3<{}, {}, {}>", v.x, v.y, v.z); },
-				sol::meta_function::addition, [](const glm::vec3& v1, const glm::vec3& v2) -> glm::vec3 { return v1 + v2; },
-				sol::meta_function::subtraction, [](const glm::vec3& v1, const glm::vec3& v2) -> glm::vec3 { return v1 - v2; },
-				sol::meta_function::multiplication, sol::overload(
-					[](const glm::vec3& v1, const glm::vec3& v2) -> glm::vec3 { return v1 * v2; },
-					[](const glm::vec3& v1, float f) -> glm::vec3 { return v1 * f; },
-					[](float f, const glm::vec3& v1) -> glm::vec3 { return f * v1; }
-				),
-				sol::meta_function::division, sol::overload(
-					[](const glm::vec3& v1, const glm::vec3& v2) -> glm::vec3 { return v1 / v2; },
-					[](const glm::vec3& v1, float f) -> glm::vec3 { return v1 / f; },
-					[](float f, const glm::vec3& v1) -> glm::vec3 { return f / v1; }
-				),
-				
-				"x", &glm::vec3::x,
-				"y", &glm::vec3::y,
-				"z", &glm::vec3::z,
-					
-				"dot", [](const glm::vec3& v1, const glm::vec3& v2) -> float { return glm::dot(v1, v2); },
-				"len", [](const glm::vec3& v) -> float { return glm::length(v); },
-				"sqrlen", [](const glm::vec3& v) -> float { return glm::length2(v); },
-				"distance", [](const glm::vec3& v1, const glm::vec3& v2) -> float { return glm::distance(v1, v2); },
-				"distance2", [](const glm::vec3& v1, const glm::vec3& v2) -> float { return glm::distance2(v1, v2); },
-				"normalize", [](const glm::vec3& v) -> glm::vec3 { return glm::normalize(v); },
-				"cross", [](const glm::vec3& v1, const glm::vec3& v2) -> glm::vec3 { return glm::cross(v1, v2); },
-				"direction", [](const glm::vec3& v1, const glm::vec3& v2) -> glm::vec3 { return glm::normalize(v1 - v2); },
-				"lerp", [](const glm::vec3& v1, const glm::vec3& v2, float a) -> glm::vec3 { return glm::lerp(v1, v2, a); },
-				"scale", [](const glm::vec3& v, float scale) -> glm::vec3 { return v * scale; }
-			);
-
-			mState.new_usertype<glm::quat>("quat",
-				sol::constructors<glm::quat(), glm::quat(float, float, float, float)>(),
-
-				sol::meta_function::to_string, [](const glm::quat& q) { return std::format("quat<{}, {}, {}, {}>", q.x, q.y, q.z, q.w); },
-
-				"x", &glm::quat::x,
-				"y", &glm::quat::y,
-				"z", &glm::quat::z,
-				"w", &glm::quat::w
-			);
-		}
-
-		// nUtil
-		auto nUtilTable = mState.create_named_table("nUtil");
-		nUtilTable["SPID"] = &LuaFunction::nUtil::SPID;
-		nUtilTable["ToGUID"] = &LuaFunction::nUtil::ToGUID;
-
-		// nMathUtil
-		auto nMathUtilTable = mState.create_named_table("nMathUtil");
-		nMathUtilTable["TransformVector"] = &LuaFunction::nMathUtil::TransformVector;
-		nMathUtilTable["RotateVectorByAxisAngle"] = &LuaFunction::nMathUtil::RotateVectorByAxisAngle;
-		nMathUtilTable["CircleIntersectsArc"] = &LuaFunction::nMathUtil::CircleIntersectsArc;
+	void LuaBase::LogError(lua_State* L, std::string_view function, const std::string& message) const {
+		std::cout
+			<< "[" << utils::timestamp << "]"
+			<< "[Lua error]: "
+			<< utils::yellow << function << utils::normal << ": "
+			<< message << "."
+			<< std::endl;
 	}
 
 	// GlobalLua
@@ -1805,13 +1793,14 @@ namespace Game {
 		LoadAbilities();
 	}
 
-	sol::bytecode GlobalLua::GetAbility(const std::string& abilityName) const {
+	const sol::bytecode& GlobalLua::GetAbility(const std::string& abilityName) const {
 		return GetAbility(utils::hash_id(abilityName));
 	}
 
-	sol::bytecode GlobalLua::GetAbility(uint32_t abilityId) const {
+	const sol::bytecode& GlobalLua::GetAbility(uint32_t abilityId) const {
+		static thread_local sol::bytecode emptyBytecode {};
 		auto it = mLoadedAbilities.find(abilityId);
-		return it != mLoadedAbilities.end() ? it->second : sol::bytecode();
+		return it != mLoadedAbilities.end() ? it->second : emptyBytecode;
 	}
 
 	void GlobalLua::LoadAbilities() {
@@ -1878,8 +1867,7 @@ namespace Game {
 	void Lua::Reload() {
 		LuaBase::Reload();
 		GlobalLua::Instance().Reload();
-
-		// reload abilities
+		mAbilities.clear();
 	}
 
 	void Lua::Update() {
@@ -1898,6 +1886,14 @@ namespace Game {
 		// TODO:
 	}
 
+	Instance& Lua::GetGame() {
+		return mGame;
+	}
+
+	const Instance& Lua::GetGame() const {
+		return mGame;
+	}
+
 	AbilityPtr Lua::GetAbility(const std::string& abilityName) {
 		return GetAbility(utils::hash_id(abilityName));
 	}
@@ -1910,11 +1906,16 @@ namespace Game {
 				return nullptr;
 			}
 
-			mState.safe_script(abilityCode.as_string_view());
-			it = mAbilities.find(abilityId);
+			sol::protected_function_result pfr = mState.safe_script(abilityCode.as_string_view(), &sol::script_pass_on_error);
+			if (!pfr.valid()) {
+				sol::error err = pfr;
+				std::cout << err.what() << std::endl;
+				return nullptr;
+			}
 
+			it = mAbilities.find(abilityId);
 			if (it == mAbilities.end()) {
-				std::cout << "Did you forget to call RegisterAbility?" << std::endl;
+				std::cout << "Did you forget to call Ability.Register?" << std::endl;
 				return nullptr;
 			}
 		}
@@ -1977,544 +1978,205 @@ namespace Game {
 		// CollectGarbage();
 	}
 
-	void Lua::RegisterEnums() {
-		// Attribute
-		mState.new_enum<AttributeType>("Attribute", {
-			{ "Strength", AttributeType::Strength },
-			{ "Dexterity", AttributeType::Dexterity },
-			{ "Mind", AttributeType::Mind },
-			{ "MaxHealthIncrease", AttributeType::MaxHealthIncrease },
-			{ "MaxHealth", AttributeType::MaxHealth },
-			{ "MaxMana", AttributeType::MaxMana },
-			{ "DamageReduction", AttributeType::DamageReduction },
-			{ "PhysicalDefense", AttributeType::PhysicalDefense },
-			{ "PhysicalDamageReduction", AttributeType::PhysicalDamageReduction },
-			{ "EnergyDefense", AttributeType::EnergyDefense },
-			{ "CriticalRating", AttributeType::CriticalRating },
-			{ "NonCombatSpeed", AttributeType::NonCombatSpeed },
-			{ "CombatSpeed", AttributeType::CombatSpeed },
-			{ "DamageBuff", AttributeType::DamageBuff },
-			{ "Silence", AttributeType::Silence },
-			{ "Immobilized", AttributeType::Immobilized },
-			{ "DefenseBoostBasicDamage", AttributeType::DefenseBoostBasicDamage },
-			{ "PhysicalDamageIncrease", AttributeType::PhysicalDamageIncrease },
-			{ "PhysicalDamageIncreaseFlat", AttributeType::PhysicalDamageIncreaseFlat },
-			{ "AutoCrit", AttributeType::AutoCrit },
-			{ "BehindDirectDamageIncrease", AttributeType::BehindDirectDamageIncrease },
-			{ "BehindOrSideDirectDamageIncrease", AttributeType::BehindOrSideDirectDamageIncrease },
-			{ "CriticalDamageIncrease", AttributeType::CriticalDamageIncrease },
-			{ "AttackSpeedScale", AttributeType::AttackSpeedScale },
-			{ "CooldownScale", AttributeType::CooldownScale },
-			{ "Frozen", AttributeType::Frozen },
-			{ "ProjectileSpeedIncrease", AttributeType::ProjectileSpeedIncrease },
-			{ "AoEResistance", AttributeType::AoEResistance },
-			{ "EnergyDamageBuff", AttributeType::EnergyDamageBuff },
-			{ "Intangible", AttributeType::Intangible },
-			{ "HealingReduction", AttributeType::HealingReduction },
-			{ "EnergyDamageIncrease", AttributeType::EnergyDamageIncrease },
-			{ "EnergyDamageIncreaseFlat", AttributeType::EnergyDamageIncreaseFlat },
-			{ "Immune", AttributeType::Immune },
-			{ "StealthDetection", AttributeType::StealthDetection },
-			{ "LifeSteal", AttributeType::LifeSteal },
-			{ "RejectModifier", AttributeType::RejectModifier },
-			{ "AoEDamage", AttributeType::AoEDamage },
-			{ "TechnologyTypeDamage", AttributeType::TechnologyTypeDamage },
-			{ "SpacetimeTypeDamage", AttributeType::SpacetimeTypeDamage },
-			{ "LifeTypeDamage", AttributeType::LifeTypeDamage },
-			{ "ElementsTypeDamage", AttributeType::ElementsTypeDamage },
-			{ "SupernaturalTypeDamage", AttributeType::SupernaturalTypeDamage },
-			{ "TechnologyTypeResistance", AttributeType::TechnologyTypeResistance },
-			{ "SpacetimeTypeResistance", AttributeType::SpacetimeTypeResistance },
-			{ "LifeTypeResistance", AttributeType::LifeTypeResistance },
-			{ "ElementsTypeResistance", AttributeType::ElementsTypeResistance },
-			{ "SupernaturalTypeResistance", AttributeType::SupernaturalTypeResistance },
-			{ "MovementSpeedBuff", AttributeType::MovementSpeedBuff },
-			{ "ImmuneToDebuffs", AttributeType::ImmuneToDebuffs },
-			{ "BuffDuration", AttributeType::BuffDuration },
-			{ "DebuffDuration", AttributeType::DebuffDuration },
-			{ "ManaSteal", AttributeType::ManaSteal },
-			{ "DebuffDurationIncrease", AttributeType::DebuffDurationIncrease },
-			{ "EnergyDamageReduction", AttributeType::EnergyDamageReduction },
-			{ "Incorporeal", AttributeType::Incorporeal },
-			{ "DoTDamageIncrease", AttributeType::DoTDamageIncrease },
-			{ "MindControlled", AttributeType::MindControlled },
-			{ "SwapDisabled", AttributeType::SwapDisabled },
-			{ "ImmuneToRandomTeleport", AttributeType::ImmuneToRandomTeleport },
-			{ "ImmuneToBanish", AttributeType::ImmuneToBanish },
-			{ "ImmuneToKnockback", AttributeType::ImmuneToKnockback },
-			{ "AoeRadius", AttributeType::AoeRadius },
-			{ "PetDamage", AttributeType::PetDamage },
-			{ "PetHealth", AttributeType::PetHealth },
-			{ "CrystalFind", AttributeType::CrystalFind },
-			{ "DNADropped", AttributeType::DNADropped },
-			{ "RangeIncrease", AttributeType::RangeIncrease },
-			{ "OrbEffectiveness", AttributeType::OrbEffectiveness },
-			{ "OverdriveBuildup", AttributeType::OverdriveBuildup },
-			{ "OverdriveDuration", AttributeType::OverdriveDuration },
-			{ "LootFind", AttributeType::LootFind },
-			{ "Surefooted", AttributeType::Surefooted },
-			{ "ImmuneToStunned", AttributeType::ImmuneToStunned },
-			{ "ImmuneToSleep", AttributeType::ImmuneToSleep },
-			{ "ImmuneToTerrified", AttributeType::ImmuneToTerrified },
-			{ "ImmuneToSilence", AttributeType::ImmuneToSilence },
-			{ "ImmuneToCursed", AttributeType::ImmuneToCursed },
-			{ "ImmuneToPoisonOrDisease", AttributeType::ImmuneToPoisonOrDisease },
-			{ "ImmuneToBurning", AttributeType::ImmuneToBurning },
-			{ "ImmuneToRooted", AttributeType::ImmuneToRooted },
-			{ "ImmuneToSlow", AttributeType::ImmuneToSlow },
-			{ "ImmuneToPull", AttributeType::ImmuneToPull },
-			{ "DoTDamageDoneIncrease", AttributeType::DoTDamageDoneIncrease },
-			{ "AggroIncrease", AttributeType::AggroIncrease },
-			{ "AggroDecrease", AttributeType::AggroDecrease },
-			{ "PhysicalDamageDoneIncrease", AttributeType::PhysicalDamageDoneIncrease },
-			{ "PhysicalDamageDoneByAbilityIncrease", AttributeType::PhysicalDamageDoneByAbilityIncrease },
-			{ "EnergyDamageDoneIncrease", AttributeType::EnergyDamageDoneIncrease },
-			{ "EnergyDamageDoneByAbilityIncrease", AttributeType::EnergyDamageDoneByAbilityIncrease },
-			{ "ChannelTimeDecrease", AttributeType::ChannelTimeDecrease },
-			{ "CrowdControlDurationDecrease", AttributeType::CrowdControlDurationDecrease },
-			{ "DoTDurationDecrease", AttributeType::DoTDurationDecrease },
-			{ "AoEDurationIncrease", AttributeType::AoEDurationIncrease },
-			{ "HealIncrease", AttributeType::HealIncrease },
-			{ "OnLockdown", AttributeType::OnLockdown },
-			{ "HoTDoneIncrease", AttributeType::HoTDoneIncrease },
-			{ "ProjectileDamageIncrease", AttributeType::ProjectileDamageIncrease },
-			{ "DeployBonusInvincibilityTime", AttributeType::DeployBonusInvincibilityTime },
-			{ "PhysicalDamageDecreaseFlat", AttributeType::PhysicalDamageDecreaseFlat },
-			{ "EnergyDamageDecreaseFlat", AttributeType::EnergyDamageDecreaseFlat },
-			{ "MinWeaponDamage", AttributeType::MinWeaponDamage },
-			{ "MaxWeaponDamage", AttributeType::MaxWeaponDamage },
-			{ "MinWeaponDamagePercent", AttributeType::MinWeaponDamagePercent },
-			{ "MaxWeaponDamagePercent", AttributeType::MaxWeaponDamagePercent },
-			{ "DirectAttackDamage", AttributeType::DirectAttackDamage },
-			{ "DirectAttackDamagePercent", AttributeType::DirectAttackDamagePercent },
-			{ "GetHitAnimDisabled", AttributeType::GetHitAnimDisabled },
-			{ "XPBoost", AttributeType::XPBoost },
-			{ "InvisibleToSecurityTeleporters", AttributeType::InvisibleToSecurityTeleporters },
-			{ "BodyScale", AttributeType::BodyScale }
-		});
-
-		// NounType
-		mState.new_enum<NounType>("NounType", {
-			{ "None", NounType::None },
-			{ "Creature", NounType::Creature },
-			{ "Vehicle", NounType::Vehicle },
-			{ "Obstacle", NounType::Obstacle },
-			{ "SpawnPoint", NounType::SpawnPoint },
-			{ "PathPoint", NounType::PathPoint },
-			{ "Trigger", NounType::Trigger },
-			{ "PointLight", NounType::PointLight },
-			{ "SpotLight", NounType::SpotLight },
-			{ "LineLight", NounType::LineLight },
-			{ "ParallelLight", NounType::ParallelLight },
-			{ "HemisphereLight", NounType::HemisphereLight },
-			{ "Animator", NounType::Animator },
-			{ "Animated", NounType::Animated },
-			{ "GraphicsControl", NounType::GraphicsControl },
-			{ "Material", NounType::Material },
-			{ "Flora", NounType::Flora },
-			{ "LevelshopObject", NounType::LevelshopObject },
-			{ "Terrain", NounType::Terrain },
-			{ "Weapon", NounType::Weapon },
-			{ "Building", NounType::Building },
-			{ "Handle", NounType::Handle },
-			{ "HealthOrb", NounType::HealthOrb },
-			{ "ManaOrb", NounType::ManaOrb },
-			{ "ResurrectOrb", NounType::ResurrectOrb },
-			{ "Movie", NounType::Movie },
-			{ "Loot", NounType::Loot },
-			{ "PlacableEffect", NounType::PlacableEffect },
-			{ "LuaJob", NounType::LuaJob },
-			{ "AbilityObject", NounType::AbilityObject },
-			{ "LevelExitPoint", NounType::LevelExitPoint },
-			{ "Decal", NounType::Decal },
-			{ "Water", NounType::Water },
-			{ "Grass", NounType::Grass },
-			{ "Door", NounType::Door },
-			{ "Crystal", NounType::Crystal },
-			{ "Interactable", NounType::Interactable },
-			{ "Projectile", NounType::Projectile },
-			{ "DestructibleOrnament", NounType::DestructibleOrnament },
-			{ "MapCamera", NounType::MapCamera },
-			{ "Occluder", NounType::Occluder },
-			{ "SplineCamera", NounType::SplineCamera },
-			{ "SplineCameraNode", NounType::SplineCameraNode },
-			{ "BossPortal", NounType::BossPortal }
-		});
-
-		// ClientEventID
-		mState.new_enum<ClientEventID>("ClientEventID", {
-			{ "AbilityRequiresTarget", ClientEventID::AbilityRequiresTarget },
-			{ "AbilityNotReady", ClientEventID::AbilityNotReady },
-			{ "SquadAbilityUnavailable", ClientEventID::SquadAbilityUnavailable },
-			{ "OverdriveNotCharged", ClientEventID::OverdriveNotCharged },
-			{ "OverdriveReady", ClientEventID::OverdriveReady },
-			{ "PlayerReady", ClientEventID::PlayerReady },
-			{ "PlayerCashOut", ClientEventID::PlayerCashOut },
-			{ "PlayerDeath", ClientEventID::PlayerDeath },
-			{ "PlayerFreed", ClientEventID::PlayerFreed },
-			{ "PlayerLeftGame", ClientEventID::PlayerLeftGame },
-			{ "PlayerTrapped", ClientEventID::PlayerTrapped },
-			{ "PlayerUnlockedSecondCreature", ClientEventID::PlayerUnlockedSecondCreature },
-			{ "PlayerEnteredTunnel", ClientEventID::PlayerEnteredTunnel },
-			{ "PlayerExitedTunnel", ClientEventID::PlayerExitedTunnel },
-			{ "GameOver", ClientEventID::GameOver },
-			{ "LootRoll", ClientEventID::LootRoll },
-			{ "LootPickup", ClientEventID::LootPickup },
-			{ "LootPlayerDrop", ClientEventID::LootPlayerDrop },
-			{ "CatalystPickup", ClientEventID::CatalystPickup },
-			{ "TeleportersDeactivated", ClientEventID::TeleportersDeactivated },
-			{ "SwitchUnavailable", ClientEventID::SwitchUnavailable },
-			{ "InvalidTargetArea", ClientEventID::InvalidTargetArea },
-			{ "CannotSwitchHeroPerished", ClientEventID::CannotSwitchHeroPerished },
-			{ "WarningFinalHero", ClientEventID::WarningFinalHero },
-			{ "SwitchOnCooldown", ClientEventID::SwitchOnCooldown },
-			{ "AllyReconnected", ClientEventID::AllyReconnected },
-			{ "AllyDisconnected", ClientEventID::AllyDisconnected },
-			{ "NotEnoughMana", ClientEventID::NotEnoughMana },
-			{ "HealthLow", ClientEventID::HealthLow },
-			{ "ManaLow", ClientEventID::ManaLow },
-			{ "HordeIncoming", ClientEventID::HordeIncoming },
-			{ "HordeDefeated", ClientEventID::HordeDefeated }
-		});
-
-		// StealthType
-		mState.new_enum<StealthType>("StealthType", {
-			{ "None", StealthType::None },
-			{ "Technology", StealthType::Technology },
-			{ "Supernatural", StealthType::Supernatural },
-			{ "FullyInvisible", StealthType::FullyInvisible }
-		});
-
-		// DamageSource
-		mState.new_enum<DamageSource>("DamageSource", {
-			{ "Physical", DamageSource::Physical },
-			{ "Energy", DamageSource::Energy }
-		});
-
-		// DamageType
-		mState.new_enum<DamageType>("DamageType", {
-			{ "Technology", DamageType::Technology },
-			{ "Spacetime", DamageType::Spacetime },
-			{ "Life", DamageType::Life },
-			{ "Elements", DamageType::Elements },
-			{ "Supernatural", DamageType::Supernatural },
-			{ "Generic", DamageType::Generic }
-		});
-
-		// Descriptor
-		mState.new_enum<Descriptors>("Descriptors", {
-			{ "IsMelee", Descriptors::IsMelee },
-			{ "IsBasic", Descriptors::IsBasic },
-			{ "IsDoT", Descriptors::IsDoT },
-			{ "IsAoE", Descriptors::IsAoE },
-			{ "IsBuff", Descriptors::IsBuff },
-			{ "IsDebuff", Descriptors::IsDebuff },
-			{ "IsPhysicalDamage", Descriptors::IsPhysicalDamage },
-			{ "IsEnergyDamage", Descriptors::IsEnergyDamage },
-			{ "IsCosmetic", Descriptors::IsCosmetic },
-			{ "IsHaste", Descriptors::IsHaste },
-			{ "IsChannel", Descriptors::IsChannel },
-			{ "HitReactNone", Descriptors::HitReactNone },
-			{ "IsHoT", Descriptors::IsHoT },
-			{ "IsProjectile", Descriptors::IsProjectile },
-			{ "IgnorePlayerCount", Descriptors::IgnorePlayerCount },
-			{ "IgnoreDifficulty", Descriptors::IgnoreDifficulty },
-			{ "IsSelfResurrect", Descriptors::IsSelfResurrect },
-			{ "IsInteract", Descriptors::IsInteract },
-			{ "IsThorns", Descriptors::IsThorns }
-		});
-
-		// NpcType
-		mState.new_enum<NpcType>("NpcType", {
-			{ "Invalid", NpcType::Invalid },
-			{ "Minion", NpcType::Minion },
-			{ "Special", NpcType::Special },
-			{ "Boss", NpcType::Boss },
-			{ "Destructible", NpcType::Destructible },
-			{ "Interactable", NpcType::Interactable },
-			{ "Agent", NpcType::Agent },
-			{ "Victim", NpcType::Victim },
-			{ "Captain", NpcType::Captain }
-		});
-	}
-
-	void Lua::RegisterFunctions() {
-		// global functions
-		mState["AddEvent"] = &LuaFunction::AddEvent;
-		mState["StopEvent"] = &LuaFunction::StopEvent;
-		mState["RegisterAbility"] = [this](std::string abilityName, sol::table abilityTable) {
-			// TODO: validate ability
-			if (abilityTable == sol::nil) {
-				return;
-			}
-
-			auto id = utils::hash_id(abilityName);
-			if (auto [it, inserted] = mAbilities.try_emplace(id); inserted) {
-				abilityTable["id"] = id;
-				it->second = std::make_shared<Ability>(*this, std::move(abilityTable));
-			}
-		};
-
-		// nThread
-		{
-			auto nThreadTable = mState.create_named_table("nThread");
-			nThreadTable["GetValue"] = &LuaFunction::nThread::GetValue;
-			nThreadTable["SetValue"] = &LuaFunction::nThread::SetValue;
-
-			nThreadTable["Sleep"] = sol::yielding(&LuaFunction::nThread::Sleep);
-			nThreadTable["WaitForHitpointsAbove"] = sol::yielding(&LuaFunction::nThread::WaitForHitpointsAbove);
-			nThreadTable["WaitForXSeconds"] = sol::yielding(&LuaFunction::nThread::WaitForXSeconds);
-			nThreadTable["WaitUntilTime"] = sol::yielding(&LuaFunction::nThread::WaitUntilTime);
-			nThreadTable["WaitForProjectile"] = sol::yielding(&LuaFunction::nThread::WaitForProjectile);
-
-			nThreadTable["Create"] = &LuaFunction::nThread::Create;
-		}
-
-		// Game
-		auto gameTable = mState.create_named_table("Game");
-		{
-			auto gameMetatable = mState.create_table_with();
-
-			// variables
-			gameMetatable["Instance"] = &mGame;
-			gameMetatable["Level"] = mGame.GetChainData().GetLevelIndex();
-
-			// functions
-			gameMetatable["GetPlayer"] = &LuaFunction::Game_GetPlayer;
-			gameMetatable["Notify"] = &LuaFunction::Game_Notify;
-
-			// meta
-			gameMetatable[sol::meta_function::new_index] = [](lua_State* L) { return luaL_error(L, "You may not edit the Game table."); };
-			gameMetatable[sol::meta_function::index] = gameMetatable;
-
-			gameTable[sol::metatable_key] = gameMetatable;
-		}
-
-		// nObjectManager
-		{
-			auto nObjectManagerTable = mState.create_named_table("nObjectManager");
-			nObjectManagerTable["GetObject"] = &LuaFunction::nObjectManager_GetObject;
-			nObjectManagerTable["CreateObject"] = &LuaFunction::nObjectManager_CreateObject;
-
-			nObjectManagerTable["GetTrigger"] = &LuaFunction::nObjectManager_GetTrigger;
-			nObjectManagerTable["CreateTriggerVolume"] = &LuaFunction::nObjectManager_CreateTriggerVolume;
-
-			nObjectManagerTable["GetObjectsInRadius"] = &LuaFunction::nObjectManager_GetObjectsInRadius;
-			nObjectManagerTable["GetObjectsInRadius_SortedByDistance"] = &LuaFunction::nObjectManager_GetObjectsInRadius_SortedByDistance;
-		}
-
-		// Locomotion
-		{
-			auto locomotionTable = mState.create_named_table("Locomotion");
-
-			// event functions
-			locomotionTable["On"] = &LuaFunction::Locomotion::On;
-
-			// object functions (object as arg0)
-			locomotionTable["TeleportAndFace"] = &LuaFunction::Locomotion::TeleportAndFace;
-			locomotionTable["TeleportObject"] = &LuaFunction::Locomotion::TeleportObject;
-			locomotionTable["JumpInDirection"] = &LuaFunction::Locomotion::JumpInDirection;
-			locomotionTable["SlideToPoint"] = &LuaFunction::Locomotion::SlideToPoint;
-			locomotionTable["MoveToPointExact"] = &LuaFunction::Locomotion::MoveToPointExact;
-			locomotionTable["MoveToCircleEdge"] = &LuaFunction::Locomotion::MoveToCircleEdge;
-			locomotionTable["MoveToPointWithinRange"] = &LuaFunction::Locomotion::MoveToPointWithinRange;
-			locomotionTable["MoveToObject"] = &LuaFunction::Locomotion::MoveToObject;
-			locomotionTable["FollowAsPet"] = &LuaFunction::Locomotion::FollowAsPet;
-
-			locomotionTable["ApplyExternalVelocity"] = &LuaFunction::Locomotion::ApplyExternalVelocity;
-			locomotionTable["ClearExternalVelocity"] = &LuaFunction::Locomotion::ClearExternalVelocity;
-			locomotionTable["ClearTargetObject"] = &LuaFunction::Locomotion::ClearTargetObject;
-
-			locomotionTable["FaceObjectDuringMove"] = &LuaFunction::Locomotion::FaceObjectDuringMove;
-			locomotionTable["TurnToFace"] = &LuaFunction::Locomotion::TurnToFace;
-			locomotionTable["TurnToFaceTargetObject"] = &LuaFunction::Locomotion::TurnToFaceTargetObject;
-			locomotionTable["MoveToPointWhileFacingTarget"] = &LuaFunction::Locomotion::MoveToPointWhileFacingTarget;
-			
-			locomotionTable["Stop"] = &LuaFunction::Locomotion::Stop;
-
-			// position functions (vec3 as arg0)
-			locomotionTable["GetClosestPosition"] = &LuaFunction::Locomotion::GetClosestPosition;
-			locomotionTable["GetClosestPositionFromPoint"] = &LuaFunction::Locomotion::GetClosestPositionFromPoint;
-			
-			locomotionTable["GetTargetPosition"] = &LuaFunction::Locomotion::GetTargetPosition;
-			locomotionTable["SetTargetPosition"] = &LuaFunction::Locomotion::SetTargetPosition;
-		}
-
-		// Player
-		{
-			auto playerType = mState.new_usertype<Player>("Player", sol::no_constructor);
-			playerType["GetCharacter"] = &Player::GetCharacterObject;
-			playerType["GetDeployedCharacter"] = &Player::GetDeployedCharacterObject;
-
-			playerType["Notify"] = &LuaFunction::Player_Notify;
-		}
-
-		// Attributes
-		{
-			auto attributesType = mState.new_usertype<Game::Attributes>("Attributes", sol::no_constructor);
-			attributesType["GetValue"] = sol::resolve<float(uint8_t) const>(&Game::Attributes::GetValue);
-			attributesType["SetValue"] = sol::resolve<void(uint8_t, float)>(&Game::Attributes::SetValue);
-
-			attributesType["GetOwnerObject"] = &Game::Attributes::GetOwnerObject;
-		}
-
-		// Object
-		{
-			auto objectType = mState.new_usertype<Object>("Object", sol::no_constructor);
-			objectType["IsValid"] = &LuaFunction::Object::IsValid;
-
-			objectType["GetId"] = &Object::GetId;
-			objectType["GetName"] = &LuaFunction::Object::GetName;
-			objectType["GetPrivateTable"] = &LuaFunction::Object::GetPrivateTable;
-
-			objectType["GetPosition"] = &Object::GetPosition;
-			objectType["SetPosition"] = &Object::SetPosition;
-
-			objectType["GetOrientation"] = &Object::GetOrientation;
-			objectType["SetOrientation"] = &Object::SetOrientation;
-
-			objectType["GetExtent"] = &Object::GetExtent;
-			objectType["SetExtent"] = &Object::SetExtent;
-
-			objectType["GetType"] = &Object::GetType;
-			objectType["GetNpcType"] = &Object::GetNpcType;
-
-			objectType["GetFacing"] = &LuaFunction::Object::GetFacing;
-			objectType["GetFootprintRadius"] = &Object::GetFootprintRadius;
-			objectType["GetCenterPoint"] = &Object::GetCenterPoint;
-
-			objectType["SetTickOverride"] = sol::resolve<void(sol::protected_function)>(&Object::SetTickOverride);
-
-			objectType["Move"] = &LuaFunction::Object::Move;
-
-			objectType["GetHealth"] = &Object::GetHealth;
-			objectType["GetMaxHealth"] = &Object::GetMaxHealth;
-			objectType["SetHealth"] = &Object::SetHealth;
-
-			objectType["GetMana"] = &Object::GetMana;
-			objectType["GetMaxMana"] = &Object::GetMaxMana;
-			objectType["SetMana"] = &Object::SetMana;
-
-			objectType["GetOwnerObject"] = &Object::GetOwnerObject;
-			objectType["SetOwnerObject"] = &Object::SetOwnerObject;
-
-			objectType["PlayAnimationSequence"] = &LuaFunction::Object::PlayAnimationSequence;
-			objectType["SetAnimationState"] = &LuaFunction::Object::SetAnimationState;
-			objectType["SetAnimationStateToDeath"] = &LuaFunction::Object::SetAnimationStateToDeath;
-			objectType["SetAnimationStateToAggro"] = &LuaFunction::Object::SetAnimationStateToAggro;
-			objectType["SetGraphicsState"] = &LuaFunction::Object::SetGraphicsState;
-
-			objectType["GetAttributeSnapshot"] = &LuaFunction::Object::GetAttributeSnapshot;
-			objectType["SetAttributeSnapshot"] = &LuaFunction::Object::SetAttributeSnapshot;
-
-			objectType["GetAttributeValue"] = sol::resolve<float(uint8_t) const>(&Object::GetAttributeValue);
-			objectType["SetAttributeValue"] = sol::resolve<void(uint8_t, float)>(&Object::SetAttributeValue);
-
-			objectType["GetWeaponDamage"] = &LuaFunction::Object::GetWeaponDamage;
-
-			objectType["GetMarkerId"] = &Object::GetMarkerId;
-			objectType["SetMarkerId"] = &Object::SetMarkerId;
-
-			objectType["GetScale"] = &Object::GetScale;
-			objectType["SetScale"] = &Object::SetScale;
-
-			objectType["GetTeam"] = &Object::GetTeam;
-			objectType["SetTeam"] = &Object::SetTeam;
-
-			objectType["IsPlayerControlled"] = &Object::IsPlayerControlled;
-			objectType["GetPlayerIndex"] = &Object::GetPlayerIndex;
-
-			objectType["IsVisible"] = &Object::IsVisible;
-			objectType["SetVisible"] = &Object::SetVisible;
-
-			objectType["IsMarkedForDeletion"] = &Object::IsMarkedForDeletion;
-			objectType["MarkForDeletion"] = &Object::MarkForDeletion;
-
-			objectType["IsCombatant"] = &LuaFunction::Object::IsCombatant;
-
-			objectType["AddCooldown"] = &LuaFunction::Object::AddCooldown;
-			objectType["RemoveCooldown"] = &LuaFunction::Object::RemoveCooldown;
-			objectType["ScaleCooldown"] = &LuaFunction::Object::ScaleCooldown;
-
-			objectType["TakeDamage"] = &LuaFunction::Object::TakeDamage;
-			objectType["Heal"] = &LuaFunction::Object::Heal;
-			objectType["RequestAbility"] = &LuaFunction::Object::RequestAbility;
-			objectType["RequestModifier"] = &LuaFunction::Object::RequestModifier;
-
-			objectType["AddEffect"] = &LuaFunction::Object::AddEffect;
-			objectType["RemoveEffect"] = &LuaFunction::Object::RemoveEffect;
-			objectType["RemoveEffectIndex"] = &LuaFunction::Object::RemoveEffectIndex;
-
-			objectType["UseAbility"] = &LuaFunction::Object::UseAbility;
-			objectType["DropLoot"] = &LuaFunction::Object::DropLoot;
-
-			objectType["GetSharedAbilityOffset"] = &LuaFunction::Object::GetSharedAbilityOffset;
-
-			// Agent blackboard
-			objectType["GetTargetId"] = &Object::GetTargetId;
-			objectType["SetTargetId"] = &Object::SetTargetId;
-
-			objectType["IsStealthed"] = &LuaFunction::Object::IsStealthed;
-			objectType["GetStealthType"] = &Object::GetStealthType;
-			objectType["SetStealthType"] = &Object::SetStealthType;
-
-			objectType["IsInCombat"] = &Object::IsInCombat;
-			objectType["SetInCombat"] = &Object::SetInCombat;
-
-			objectType["IsTargetable"] = &Object::IsTargetable;
-			objectType["SetTargetable"] = &Object::SetTargetable;
-
-			// Markers
-			objectType["GetTeleporterDestination"] = &LuaFunction::Object::GetTeleporterDestination;
-		}
-
-		// TriggerVolume
-		{
-			auto triggerType = mState.new_usertype<TriggerVolume>("TriggerVolume", sol::no_constructor, sol::base_classes, sol::bases<Object>());
-
-			triggerType["Attach"] = &LuaFunction::Trigger_Attach;
-			triggerType["Detach"] = &LuaFunction::Trigger_Detach;
-
-			triggerType["SetOnEnterCallback"] = &TriggerVolume::SetOnEnterCallback;
-			triggerType["SetOnExitCallback"] = &TriggerVolume::SetOnExitCallback;
-			triggerType["SetOnStayCallback"] = &TriggerVolume::SetOnStayCallback;
-		}
-	}
-
-	// Ability
-	Ability::Ability(Lua& lua, sol::table&& self) : mLua(lua), mSelf(std::move(self)) {
+	// Coroutine
+	Coroutine::Coroutine(Lua& lua, sol::table&& self) : mLua(lua), mSelf(std::move(self)) {
 		if (mSelf == sol::nil) {
-			throw std::exception("Ability::Ability: self is nil");
+			throw std::exception("Coroutine::Coroutine: self is nil");
 		}
 
 		sol::state_view state = mSelf.lua_state();
 		mEnvironment = sol::environment(state, sol::create, state.globals());
+	}
+
+	void Coroutine::Reload() {
+		// TODO:
+	}
+
+	// Ability
+	Ability::Ability(Lua& lua, sol::table&& self, const std::string& name, uint32_t id) : Coroutine(lua, std::move(self)), mName(name), mId(id) {
 		mEnvironment["_ABILITY"] = this;
 
-		if (sol::object value = mSelf["activate"]; value.is<sol::function>()) {
-			mEnvironment.set_on(value);
-			mActivateFn = value.as<sol::function>();
+		if (sol::optional<bool> hasActivate = mSelf["hasActivate"]; hasActivate.value_or(false)) {
+			if (sol::object value = mSelf["activate"]; value.is<sol::function>()) {
+				mEnvironment.set_on(value);
+				mActivateFn = value.as<sol::function>();
+			}
 		}
 
-		if (sol::object value = mSelf["deactivate"]; value.is<sol::function>()) {
-			mEnvironment.set_on(value);
-			mDeactivateFn = value.as<sol::function>();
+		if (sol::optional<bool> hasDeactivate = mSelf["hasDeactivate"]; hasDeactivate.value_or(false)) {
+			if (sol::object value = mSelf["deactivate"]; value.is<sol::function>()) {
+				mEnvironment.set_on(value);
+				mDeactivateFn = value.as<sol::function>();
+			}
 		}
 
-		if (sol::object value = mSelf["tick"]; value.is<sol::function>()) {
-			mEnvironment.set_on(value);
-			mTickFn = value.as<sol::function>();
+		if (sol::optional<bool> hasTick = mSelf["hasTick"]; hasTick.value_or(false)) {
+			if (sol::object value = mSelf["tick"]; value.is<sol::function>()) {
+				mEnvironment.set_on(value);
+				mTickFn = value.as<sol::function>();
+			}
 		}
 
 		// Fetch properties
 		mDescriptors = mSelf.get_or("descriptors", Descriptors::IsBasic);
+		mScalingAttribute = mSelf.get_or("scalingAttribute", utils::enum_wrapper<AttributeType>().bnot().value());
+		mInterface = mSelf.get_or("interfaceType", InterfaceType::Position);
+		mRequiresAgent = mSelf.get_or("requiresAgent", false);
+		mHasGlobalCooldown = mSelf.get_or("noGlobalCooldown", false) == false;
+		mShouldPursue = mSelf.get_or("shouldPursue", false);
 	}
 
-	void Ability::Reload() {
-
+	const std::string& Ability::GetName() const {
+		return mName;
 	}
 
 	Descriptors Ability::GetDescriptors() const {
 		return mDescriptors;
+	}
+
+	AttributeType Ability::GetScalingAttribute() const {
+		return mScalingAttribute;
+	}
+
+	InterfaceType Ability::GetInterface() const {
+		return mInterface;
+	}
+
+	uint32_t Ability::GetId() const {
+		return mId;
+	}
+
+	bool Ability::RequiresAgent() const {
+		return mRequiresAgent;
+	}
+
+	bool Ability::HasGlobalCooldown() const {
+		return mHasGlobalCooldown;
+	}
+
+	bool Ability::ShouldPursue() const {
+		return mShouldPursue;
+	}
+
+	float Ability::GetManaCost(const ObjectPtr& object, int32_t rank, float value) const {
+		if (object && object->IsOverdriveCharged()) {
+			return 0.f;
+		}
+
+		sol::protected_function method = mSelf["GetManaCost"];
+		if (method != sol::nil) {
+			float cost = method.call<float>(mSelf, object, rank);
+			if (cost != 0.f) {
+				// TODO: figure out how "property" works in darkspore
+				return cost + (0.05f * value); // property[rank].something * value
+			}
+		}
+
+		return 0.f;
+	}
+
+	bool Ability::IsInRange(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const {
+		if (!object) {
+			return true;
+		}
+
+		const auto descriptors = utils::enum_wrapper { mDescriptors };
+
+		float range = 0.f;
+		if (range <= 0.f && descriptors.test(Descriptors::IsMelee)) {
+			range = 2.f; // This is the defined range in darkspore
+		}
+
+		if (const auto& attributes = object->GetAttributeData()) {
+			if (descriptors.test(Descriptors::IsMelee, Descriptors::IsBasic)) {
+				range *= 1 + attributes->GetValue(AttributeType::RangeIncrease);
+			}
+			
+			if (descriptors.test(Descriptors::IsAoE)) {
+				range *= 1 + attributes->GetValue(AttributeType::AoeRadius);
+			}
+		}
+
+		if (range <= 0.f) {
+			return true;
+		}
+
+		if (object->IsPlayerControlled()) {
+			//
+		}
+
+		if (target) {
+			// unused currently
+			const auto modifiedSpeed = target->GetModifiedMovementSpeed();
+
+			//
+			auto distance = glm::distance(object->GetPosition(), target->GetPosition());
+			distance -= object->GetFootprintRadius() + target->GetFootprintRadius();
+
+			if (range < distance) {
+				return true;
+			}
+		}
+
+		switch (mInterface) {
+			case InterfaceType::Position:
+			case InterfaceType::TerrainPoint:
+				return false;
+		}
+
+		auto distance = glm::distance(object->GetPosition(), targetPosition);
+		distance -= object->GetFootprintRadius();
+
+		return range < distance;
+	}
+
+	bool Ability::IsAbleToHit(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const {
+		sol::protected_function method = mSelf["IsAbleToHit"];
+		if (method != sol::nil) {
+			return method.call<bool>(mSelf, object, target, targetPosition, rank);
+		}
+		return mLua.GetGame().GetObjectManager().IsInLineOfSight(object, target, targetPosition);
+	}
+
+	bool Ability::Tick(ObjectPtr object, ObjectPtr target, glm::vec3 cursorPosition, int32_t rank) const {
+		if (!mTickFn) {
+			return false;
+		}
+
+		LuaThread* thread;
+		if (object) {
+			thread = object->GetLuaThread();
+			if (thread && thread->status() != sol::thread_status::dead) {
+				return false;
+			} else {
+				thread = mLua.SpawnThread();
+				object->SetLuaThread(thread);
+			}
+		} else {
+			thread = mLua.SpawnThread();
+		}
+
+		thread->call<void>(mEnvironment, mTickFn, mSelf, object, target, cursorPosition, rank);
+		return true;
+	}
+
+	// Objective
+	Objective::Objective(Lua& lua, sol::table&& self) : Coroutine(lua, std::move(self)) {
+		mEnvironment["_OBJECTIVE"] = this;
+
+		if (sol::object value = mSelf["init"]; value.is<sol::function>()) {
+			mEnvironment.set_on(value);
+			mInitFn = value.as<sol::function>();
+		}
+
+		if (sol::object value = mSelf["handle_event"]; value.is<sol::function>()) {
+			mEnvironment.set_on(value);
+			mHandleEventFn = value.as<sol::function>();
+		}
+
+		if (sol::object value = mSelf["status"]; value.is<sol::function>()) {
+			mEnvironment.set_on(value);
+			mStatusFn = value.as<sol::function>();
+		}
 	}
 }

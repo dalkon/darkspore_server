@@ -128,7 +128,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>libssl.lib;libcrypto.lib;pugixml.lib;RakNetDLL.lib;luajit.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libssl.lib;libcrypto.lib;pugixml.lib;RakNetDLL.lib;lua51.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -220,6 +220,7 @@
     <ClCompile Include="source\game\level.cpp" />
     <ClCompile Include="source\game\locomotion.cpp" />
     <ClCompile Include="source\game\lua.cpp" />
+    <ClCompile Include="source\game\luafunctions.cpp" />
     <ClCompile Include="source\game\noun.cpp" />
     <ClCompile Include="source\game\object.cpp" />
     <ClCompile Include="source\game\objectmanager.cpp" />

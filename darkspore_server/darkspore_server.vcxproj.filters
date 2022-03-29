@@ -416,5 +416,8 @@
     <ClCompile Include="source\game\collision.cpp">
       <Filter>Source Files\game</Filter>
     </ClCompile>
+    <ClCompile Include="source\game\luafunctions.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

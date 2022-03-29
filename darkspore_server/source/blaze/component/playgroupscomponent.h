@@ -10,7 +10,7 @@ namespace Blaze {
 	// PlaygroupsComponent
 	class PlaygroupsComponent : public Component {
 		public:
-			enum { Id = 0x06 };
+			enum : uint16_t { Id = 0x06 };
 
 			uint16_t GetId() const override;
 

@@ -217,7 +217,7 @@ namespace Blaze {
 		packet.put_string("BPS", bpsValues[bpsIndex]);
 
 		packet.push_map("CMAP", TDF::Type::Integer, TDF::Type::Integer); // map<uint32_t, int32_t>
-		for (auto [key, value] : cmap) {
+		for (auto [key, value] : clientAttributes) {
 			packet.put_integer(std::to_string(key), value);
 		}
 		packet.pop();
@@ -228,7 +228,7 @@ namespace Blaze {
 		packet.pop();
 
 		packet.push_map("DMAP", TDF::Type::Integer, TDF::Type::Integer); // map<uint32_t, int64_t>
-		for (auto [key, value] : dmap) {
+		for (auto [key, value] : dataMap) {
 			packet.put_integer(std::to_string(key), value);
 		}
 		// packet.put_integer("0x70001", 55);
@@ -238,7 +238,7 @@ namespace Blaze {
 		packet.put_integer("HWFG", hardwareFlags); // maybe?
 
 		packet.push_list("PSLM", TDF::Type::Integer); // vector<int32_t>
-		for (auto value : pslm) {
+		for (auto value : latencyList) {
 			packet.put_integer("", value);
 		}
 		packet.pop();
@@ -250,7 +250,7 @@ namespace Blaze {
 		packet.put_integer("UATT", userAttributes); // maybe?
 
 		packet.push_list("ULST", TDF::Type::ObjectId); // vector<vec3>
-		for (const auto& value : ulst) {
+		for (const auto& value : blazeObjectIdList) {
 			packet.put_object_id("", value);
 		}
 		packet.pop();
@@ -493,7 +493,7 @@ namespace Blaze {
 			user.Read(userIterator->value["_Content"]);
 		}
 
-		flags = value["FLGS"].GetUint();
+		statusFlags = value["FLGS"].GetUint();
 	}
 
 	void UserData::Write(TDF::Packet& packet) const {
@@ -501,7 +501,7 @@ namespace Blaze {
 		extendedData.Write(packet);
 		packet.pop();
 
-		packet.put_integer("FLGS", flags);
+		packet.put_integer("FLGS", statusFlags);
 
 		packet.push_struct("USER");
 		user.Write(packet);

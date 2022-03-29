@@ -87,6 +87,9 @@ namespace Game {
 			uint32_t GetCurrentDeckIndex() const;
 			uint32_t GetAbilityId(uint8_t creatureIndex, uint8_t abilityIndex) const;
 			uint32_t GetAbilityRank(uint8_t creatureIndex, uint8_t abilityIndex) const;
+			bool IsAbilityLocked(uint8_t abilityIndex) const;
+
+			bool IsOverdriveCharged() const;
 
 			void Setup();
 
